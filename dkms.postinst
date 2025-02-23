@@ -1,0 +1,4 @@
+#!/bin/sh
+
+dtc -Wno-interrupts_property -@ -I dts -O dtb -o rs300.dtbo rs300-overlay.dts
+install -m 751 rs300.dtbo /boot/overlays/
