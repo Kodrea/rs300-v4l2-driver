@@ -1,0 +1,341 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
+ */
+/dts-v1/;
+#include "rv1126.dtsi"
+#include "rv1126-firefly-jd4-BE-45.dtsi"
+/ {
+	model = "Firefly Core-RV1126-JD4 BE-45 Board";
+	compatible = "rockchip,rv1126-evb-ddr3-v12", "rockchip,rv1126";
+	chosen {			
+                bootargs = "earlycon=uart8250,mmio32,0xff570000 console=ttyFIQ0 ro root=PARTLABEL=rootfs rootfstype=ext4 rootwait overlayroot=device:dev=PARTLABEL=userdata,fstype=ext4,mkfs=1 cgroup_enable=memory swapaccount=1 snd_aloop.index=7";
+        };
+};
+//root=PARTLABEL=backup 去掉overlayroot 可以切换其它文件系统启动
+&i2c1 {
+	status = "okay";
+	clock-frequency = <400000>;
+	
+	rs300dvp: rs300dvp@3c {
+		//status = "disabled";
+		status = "okay";
+		compatible = "infisense,rs300"; //rs300-dvp
+		reg = <0x3c>;
+		clocks = <&cru CLK_CIF_OUT>;
+		clock-names = "xvclk";
+		avdd-supply = <&vcc_avdd>;
+		dovdd-supply = <&vcc_dovdd>;
+		dvdd-supply = <&vcc_dvdd>;
+		power-domains = <&power RV1126_PD_VI>;
+		pwdn-gpios = <&gpio2 RK_PA6 GPIO_ACTIVE_HIGH>;
+		/*reset-gpios = <&gpio2 RK_PC5 GPIO_ACTIVE_HIGH>;*/
+		rockchip,grf = <&grf>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cifm0_dvp_ctl_15_8>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "CMK-OT0836-PT2";
+		rockchip,camera-module-lens-name = "YT-2929";
+		port {
+			cam_para_out1: endpoint {
+				 remote-endpoint = <&cif_para_in>; 
+			};
+		};
+	};
+	rs300mipi0: rs300mipi0@3c {
+		status = "okay";
+		compatible = "infisense,rs300-mipi";
+		reg = <0x3c>;
+		clocks = <&cru CLK_MIPICSI_OUT>;
+		clock-names = "xvclk";
+		power-domains = <&power RV1126_PD_VI>;
+		pinctrl-names = "rockchip,camera_default";
+		pinctrl-0 = <&mipicsi_clk0>;
+		avdd-supply = <&vcc_avdd>;
+		dovdd-supply = <&vcc_dovdd>;
+		dvdd-supply = <&vcc_dvdd>;
+		pwdn-gpios = <&gpio1 RK_PD4 GPIO_ACTIVE_HIGH>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "front";
+		rockchip,camera-module-name = "CMK-OT1607-FV1";
+		rockchip,camera-module-lens-name = "M12-40IRC-4MP-F16";
+		port {
+			ucam_out: endpoint {
+				remote-endpoint = <&mipi_in_ucam>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+	rs300mipi1: rs300mipi1@3c {
+		status = "okay";
+		compatible = "infisense,rs300-mipi";
+		reg = <0x3c>;
+		clocks = <&cru CLK_MIPICSI_OUT>;
+		clock-names = "xvclk";
+		power-domains = <&power RV1126_PD_VI>;
+		pinctrl-names = "rockchip,camera_default";
+		pinctrl-0 = <&mipicsi_clk1>;
+		avdd-supply = <&vcc_avdd>;
+		dovdd-supply = <&vcc_dovdd>;
+		dvdd-supply = <&vcc_dvdd>;
+		pwdn-gpios = <&gpio1 RK_PD4 GPIO_ACTIVE_HIGH>;
+		rockchip,camera-module-index = <1>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "CMK-OT1607-FV-1";
+		rockchip,camera-module-lens-name = "M12-40IRC-4MP-F16-1";
+		port {
+			ucam_out1: endpoint {
+				remote-endpoint = <&mipi_in_ucam1>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+
+
+};
+
+&rkcif {
+	status = "okay";
+};
+
+&rkcif_mmu {
+	status = "okay";
+};
+
+/*sensor->rkcif */
+&rkcif_dvp {
+	status = "okay";
+
+	port {
+		/* Parallel bus endpoint */
+		
+		cif_para_in: endpoint {
+			remote-endpoint = <&cam_para_out1>;
+			bus-width = <8>;
+			hsync-active = <1>;
+			vsync-active = <0>;
+			pclk-sample = <0>;
+		};
+		
+	};
+};
+
+/*sensor->csi dphy->mipi csi host->rkcif */
+&csi_dphy0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi_in_ucam: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&ucam_out>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csidphy0_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi_csi2_input>;
+			};
+		};
+	};
+};
+
+&csi_dphy1 {
+	status = "okay";
+	ports {
+		port@0 {
+			mipi_in_ucam1: endpoint@1 {
+				remote-endpoint = <&ucam_out1>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			csidphy1_out: endpoint@0 {
+				remote-endpoint = <&isp_in>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+};
+
+&mipi_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csidphy0_out>;
+				data-lanes = <1 2>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in>;
+				data-lanes = <1 2>;
+			};
+		};
+	};
+};
+
+&rkcif_mipi_lvds {
+	status = "okay";
+
+	port {
+		/* MIPI CSI-2 endpoint */
+		cif_mipi_in: endpoint {
+			remote-endpoint = <&mipi_csi2_output>;
+			data-lanes = <1 2>;
+		};
+	};
+};
+&os04a10 {
+ status = "disabled";
+};
+&pinctrl {
+	cif	{
+		cifm0_dvp_ctl_15_8: cifm0_dvp_ctl_15_8 {
+                        rockchip,pins =
+                                /* cif_clkin_m0 */
+                                <3 RK_PC5 1 &pcfg_pull_none>,
+                                /* cif_clkout_m0 */
+                                <3 RK_PC6 1 &pcfg_pull_none>,
+                                /* cif_d10_m0 */
+                                <3 RK_PB6 1 &pcfg_pull_none>,
+                                /* cif_d11_m0 */
+                                <3 RK_PB7 1 &pcfg_pull_none>,
+                                /* cif_d12_m0 */
+                                <3 RK_PC0 1 &pcfg_pull_none>,
+                                /* cif_d13_m0 */
+                                <3 RK_PC1 1 &pcfg_pull_none>,
+                                /* cif_d14_m0 */
+                                <3 RK_PC2 1 &pcfg_pull_none>,
+                                /* cif_d15_m0 */
+                                <3 RK_PC3 1 &pcfg_pull_none>,
+                                /* cif_d8_m0 */
+                                <3 RK_PB4 1 &pcfg_pull_none>,
+                                /* cif_d9_m0 */
+                                <3 RK_PB5 1 &pcfg_pull_none>,
+                                /* cif_hsync_m0 */
+                                <3 RK_PC7 1 &pcfg_pull_none>,
+                                /* cif_vsync_m0 */
+                                <3 RK_PC4 1 &pcfg_pull_none>;
+                };
+		
+	
+	};
+};
+
+&spi0 {
+        status = "okay";
+        pinctrl-names = "default", "high_speed";
+        pinctrl-0 = <&spi0m1_cs0 &spi0m1_pins>;
+        pinctrl-1 = <&spi0m1_cs0 &spi0m1_pins_hs>;
+		assigned-clocks = <&pmucru CLK_SPI0>;
+		assigned-clock-rates = <100000000>;
+        spidev0: spidev@00 {
+                status = "okay";
+                compatible = "infisense,rs300";
+                reg = <0x00>;
+                spi-max-frequency = <50000000>;
+        };
+		spidev1: spidev@01 {
+                status = "okay";
+                compatible = "linux,spidev";
+                reg = <0x01>;
+                spi-max-frequency = <50000000>;
+        };
+};
+&uart3{
+	status = "disabled";
+};
+&spi1 {
+        status = "okay";
+        pinctrl-names = "default", "high_speed";
+        pinctrl-0 = <&spi1m2_cs0 &spi1m2_pins>;
+        pinctrl-1 = <&spi1m2_cs0 &spi1m2_pins_hs>;
+		assigned-clocks = <&cru CLK_SPI1>;
+		assigned-clock-rates = <100000000>;
+		dma-names = "tx","rx";
+        spidev2: spidev@00 {
+                status = "okay";
+                compatible = "infisense,rs300";
+                reg = <0x00>;
+                spi-max-frequency = <50000000>;
+        };
+		spidev3: spidev@01 {
+                status = "okay";
+                compatible = "linux,spidev";
+                reg = <0x01>;
+                spi-max-frequency = <50000000>;
+        };
+};
+
+&rkcif_dvp_sditf{
+	status = "disabled";
+	port{
+	dvp_sditf: endpoint {
+		remote-endpoint = <&isp_in>;
+		bus-width = <8>;
+		hsync-active = <1>;
+		vsync-active = <0>;
+		pclk-sample = <0>;
+		};
+	};
+};
+
+&rkisp {
+	status = "okay"; 
+};
+
+/*
+&rkisp_vir0 { 
+		status = "okay";
+		ports { 
+			port@0 { 
+			reg = <0>; 
+			#address-cells = <1>; 
+			#size-cells = <0>; 
+			isp_in: endpoint@0 { 
+				reg = <0>; //dvp sditf的端点名 
+				remote-endpoint = <&dvp_sditf>; 
+			}; 
+		}; 
+	}; 
+};*/
+
+&rkisp_vir0 {
+	status = "okay";
+	ports {
+		port@0 {
+			isp_in: endpoint@0 {
+				remote-endpoint = <&csidphy1_out>;
+			};
+		};
+	};
+};
