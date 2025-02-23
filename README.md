@@ -1,10 +1,8 @@
 
 # RS300 V4L2 Driver (Mini2 Thermal Camera)
 
-## Create a new directory for the driver
 
 ```bash
-mkdir -p rs300-v4l2-driver
 cd rs300-v4l2-driver
 ```
 
