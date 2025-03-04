@@ -13,6 +13,10 @@ This driver supports the RS300 thermal camera on Raspberry Pi platforms.
 Run the included setup script to build and install the driver:
 
 ```bash
+sudo apt install linux-headers dkms git
+```
+
+```bash
 chmod +x setup.sh
 ./setup.sh
 ```
