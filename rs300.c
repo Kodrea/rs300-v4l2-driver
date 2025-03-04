@@ -3,7 +3,6 @@
  * rs300 CMOS Image Sensor driver
  *
  * Copyright (C) 2017 Fuzhou Rockchip Electronics Co., Ltd.
- * V0.0X01.0X01 add enum_frame_interval function.
  */
 
 #include <linux/clk.h>
@@ -24,58 +23,60 @@
 #include <linux/uaccess.h>
 #include <linux/videodev2.h>
 #include <linux/version.h>
-//#include <linux/rk-camera-module.h>	//remove
 #include <media/media-entity.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-fwnode.h>
-#include <media/v4l2-image-sizes.h>
+#include <media/v4l2-image-sizes.h>	
 #include <media/v4l2-mediabus.h>
 #include <media/v4l2-subdev.h>
 #include <linux/pinctrl/consumer.h>
-#define DRIVER_VERSION			KERNEL_VERSION(0, 0x01, 0x1)
-#define DRIVER_NAME "rs300-mipi"
-//80M (clk)* 2(double ) *2 (lan) /8
-#define rs300_LINK_RATE (80 * 1000 * 1000)
-#define rs300_PIXEL_RATE		(40 * 1000 * 1000)
+#include <linux/pm_runtime.h>
 
-/*
- * Module parameters that can be passed during module loading:
- * - mode: Camera resolution mode (0=1280p, 1=640p)
- * - fps: Frames per second
- * - width/height: Image dimensions
- * - type: Image format type
- */
-static int mode = 0; 
+
+#define DRIVER_VERSION			KERNEL_VERSION(0, 0x01, 0x1)
+#define DRIVER_NAME "rs300"
+//80M (clk)* 2(double ) *2 (lan) /8
+#define RS300_LINK_RATE (80 * 1000 * 1000)
+#define RS300_PIXEL_RATE		(40 * 1000 * 1000)
+#define RS300_BRIGHTNESS_MIN 0
+#define RS300_BRIGHTNESS_MAX 100
+#define RS300_BRIGHTNESS_STEP 10
+#define RS300_BRIGHTNESS_DEFAULT 50
+
+static int mode = 0; //0-640;1-256
 static int fps = 30;
-static int width = 0; 
+static int width = 0;
 static int height = 0;
-static int type = 16; // 16 for YUYV, 18 for UYVY
+static int type = 16;
+static int debug = 1;
 module_param(mode, int, 0644);
 module_param(fps, int, 0644);
 module_param(width, int, 0644);
 module_param(height, int, 0644);
 module_param(type, int, 0644);
+module_param(debug, int, 0644);
+MODULE_PARM_DESC(debug, "Debug level (0-1)");
 
 /*
  * rs300 register definitions
  */
-//get命令不止是读还有写，所有要_IOWR
-//_IOWR/_IOR 会自动做一层浅拷贝到用户空间，如果有参数类型包含指针需要自己再调用copy_to_user。
-//_IOW 会自动把用户空间参数拷贝到内核并且指针也会拷贝，不需要调用copy_from_user。
+//The get command is not only for reading but also for writing, all of which require _IOWR
+//_IOWR/_IOR will automatically make a shallow copy to user space. If any parameter type contains a pointer, you need to call copy_to_user yourself.
+//_IOW will automatically copy user space parameters to the kernel and pointers will also be copied, without calling copy_from_user.
 
-#define CMD_MAGIC 0xEF //定义幻数
-#define CMD_MAX_NR 3 //定义命令的最大序数
+#define CMD_MAGIC 0xEF //Define magic number
+#define CMD_MAX_NR 3 //Defines the maximum ordinal number of commands
 #define CMD_GET _IOWR(CMD_MAGIC, 1,struct ioctl_data)
 #define CMD_SET _IOW(CMD_MAGIC, 2,struct ioctl_data)
 #define CMD_KBUF _IO(CMD_MAGIC, 3)
-//这个是v4l2标准推荐的私有命令配置，这里直接使用自定义的命令也是可以的
+//This is the private command configuration recommended by the v4l2 standard. You can also use custom commands directly here.
 //#define CMD_GET _IOWR('V', BASE_VIDIOC_PRIVATE + 11,struct ioctl_data)
 //#define CMD_SET _IOW('V', BASE_VIDIOC_PRIVATE + 12,struct ioctl_data)
 
-//结构体与usb-i2c保持一致，有效位为 寄存器地址：wIndex  数据指针:data  数据长度:wLength
+//The structure is consistent with usb-i2c, and the valid bits are Register address: wIndex Data pointer: data Data length: wLength
 struct ioctl_data{
 	unsigned char bRequestType;
 	unsigned char bRequest;
@@ -87,11 +88,6 @@ struct ioctl_data{
 };
 #define REG_NULL			0xFFFF	/* Array end token */
 
-/*
- * I2C Communication Constants:
- * Defines buffer sizes, status bits, and command codes for 
- * communicating with the camera over I2C bus
- */
 #define I2C_VD_BUFFER_RW			0x1D00
 #define I2C_VD_BUFFER_HLD			0x9D00
 #define I2C_VD_CHECK_ACCESS			0x8000
@@ -116,10 +112,6 @@ struct ioctl_data{
 #define VCMD_ERR_STS_UNKNOWN_SUBCMD_ERR		0x10
 #define VCMD_ERR_STS_PARAM_ERR				0x14
 
-/*
- * CRC calculation helper function
- * Used to validate data integrity in camera communications
- */
 static unsigned short do_crc(unsigned char *ptr, int len)
 {
     unsigned int i;
@@ -140,192 +132,94 @@ static unsigned short do_crc(unsigned char *ptr, int len)
     return crc;
 }
 
-/*
- * Camera initialization registers
- * Contains the register values needed to start/stop the camera stream
- */
-static u8 start_regs[] = {
-		0x01,  
-    0x30,
-    0xc1,
-    0x00,
-    
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-      
-    0x00,
-    0x00,
-    0x00,
-    0x00,  
-    
-    0x0a,
-    0x00,
-    
-    0x00,//crc [16]
-    0x00,
-    
-    0x2F,//crc [18]
-    0x0D,
-    
-    
-    0x00,//path
-    0x16,//src
-    0x03,//dst
-    0x1e,//fps
-    
-    0x80,//width&0xff;
-    0x02, //width>>8; 
-    0x00, //height&0xff;
-    0x02,//height>>8;
-    
-    0x00,
-    0x00
+static  u8 start_regs[] = {
+		0x01, 0x30, 0xc1, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x0a, 0x00,
+		0x00, 0x00, //crc [16]
+		0x2F, 0x0D, //crc [18]
+		0x00, //path
+		0x16, //src
+		0x03, //dst
+		0x1e, //fps
+		0x80, 0x02, //width&0xff, width>>8
+		0x00, 0x02, //height&0xff, height>>8
+		0x00, 0x00
 };
 
 static  u8 stop_regs[]={
-		0x01,
-    0x30,
-    0xc2,
-    0x00,
-    
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-      
-    0x00,
-    0x00,
-    0x00,
-    0x00,  
-    
-    0x0a,
-    0x00,
-    
-    0x00,//crc [16]
-    0x00,
-    
-    0x2F,//crc [18]
-    0x0D,
-    
-    
-    0x01,//path
-    0x16,//src
-    0x00,//dst
-    0x0e,//fps
-    
-    0x80,//width&0xff;
-    0x02, //width>>8; 
-    0x00, //height&0xff;
-    0x02,//height>>8;
-    
-    0x00,
-    0x00
+		0x01, 0x30, 0xc2, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x0a, 0x00,
+		0x00, 0x00, //crc [16]
+		0x2F, 0x0D, //crc [18]
+		0x01, //path
+		0x16, //src
+		0x00, //dst
+		0x0e, //fps
+		0x80, 0x02, //width&0xff, width>>8
+		0x00, 0x02, //height&0xff, height>>8
+		0x00, 0x00
     
 };
-/*
- * Core I2C read/write functions
- * Handles low-level communication with the camera sensor
- */
-static int read_regs(struct i2c_client *client, u16 reg, u8 *val, int len)
+static int read_regs(struct i2c_client *client,  u32 reg, u8 *val ,int len )
 {
-    // Create array for two I2C messages (write + read sequence)
-    struct i2c_msg msg[2];
-    // Buffer to hold the register address we want to read from
-    unsigned char data[4] = { 0, 0, 0, 0 };
+	struct i2c_msg msg[2];
+	unsigned char data[4] = { 0, 0, 0, 0 };
     int ret;
-    dev_dbg(&client->dev, "Reading %d bytes from reg 0x%04x\n", len, reg);
 
-    // First message: Write the register address we want to read from
-    msg[0].addr = client->addr;  // 7-bit I2C address (0x3c)
-    msg[0].flags = 0;           // 0 = Write operation
-    msg[0].len = 2;            // Send 2 bytes (16-bit register address)
-    msg[0].buf = data;         // Points to our data buffer containing register address
+	msg[0].addr = client->addr;
+	msg[0].flags = 0;
+	msg[0].len = 2;
+	msg[0].buf = data;
 
-    // Second message: Read data from the previously specified register
-    msg[1].addr = client->addr;  // Same 7-bit I2C address (0x3c)
-    msg[1].flags = 1;           // 1 = Read operation
-    msg[1].len = len;           // Number of bytes to read (passed as parameter)
-    msg[1].buf = val;           // Buffer where read data will be stored
-
-    // Break down 16-bit register address into two bytes
-    // Example: reg = 0x1D00
-    data[0] = reg>>8;           // High byte = 0x1D
-    data[1] = reg&0xff;         // Low byte = 0x00
-
-
-    // Send both messages to the I2C bus
-    // This performs:
-    // 1. START condition
-    // 2. Send slave address (0x3c) with write bit (0) = 0x78
-    // 3. Send register address (2 bytes)
-    // 4. REPEATED START condition
-    // 5. Send slave address (0x3c) with read bit (1) = 0x79
-    // 6. Read 'len' bytes of data
-    // 7. STOP condition
-
+	msg[1].addr = client->addr;
+	msg[1].flags = 1;
+	msg[1].len = len;
+	msg[1].buf = val;
+	/* High byte goes out first */
+	data[0] = reg>>8;
+	data[1] = reg&0xff;
+    
     ret = i2c_transfer(client->adapter, msg, 2);
-    if (ret < 0) {
-        dev_err(&client->dev, "i2c read failed at reg 0x%04x: %d\n", reg, ret);
-        return ret;
+    if (ret != 2) {
+        dev_err(&client->dev, "i2c read error at reg 0x%04x: %d\n", reg, ret);
+        return ret < 0 ? ret : -EIO;
     }
+    
     return 0;
 }
 
-/*
-static int check_access_done(struct i2c_client *client,int timeout){
-	u8 ret=-1;
-	do{
-		read_regs(client,I2C_VD_BUFFER_STATUS,&ret,1);
-		if ((ret & (VCMD_RST_STS_BIT | VCMD_BUSY_STS_BIT)) == \
-					(VCMD_BUSY_STS_IDLE | VCMD_RST_STS_PASS))
-			{
-				return 0;
-			}
-
-		msleep(1);
-		timeout--;
-	}while (timeout);
-	v4l_err(client,"timeout ret=%d\n",ret);
-	return -1;
-}
-*/
-static int write_regs(struct i2c_client *client, u16 reg, u8 *val, int len)
+static int write_regs(struct i2c_client *client,  u32 reg, u8 *val,int len)
 {
-    struct i2c_msg msg[1];
-    unsigned char *outbuf;
+	struct i2c_msg msg[1];
+	unsigned char *outbuf = (unsigned char *)kmalloc(sizeof(unsigned char)*(len+2), GFP_KERNEL);
     int ret;
 
-    dev_dbg(&client->dev, "Writing %d bytes to reg 0x%04x\n", len, reg);
-
-    outbuf = kmalloc(len + 2, GFP_KERNEL);
     if (!outbuf) {
-        dev_err(&client->dev, "Memory allocation failed\n");
+        dev_err(&client->dev, "Failed to allocate memory for I2C write\n");
         return -ENOMEM;
     }
 
-    msg->addr = client->addr;
-    msg->flags = 0;
-    msg->len = len + 2;
-    msg->buf = outbuf;
-
-    outbuf[0] = reg>>8;
+	msg->addr = client->addr;
+	msg->flags = 0;
+	msg->len = len+2;
+	msg->buf = outbuf;
+	outbuf[0] = reg>>8;
     outbuf[1] = reg&0xff;
-    memcpy(outbuf + 2, val, len);
-
+	memcpy(outbuf+2, val, len);
+    
     ret = i2c_transfer(client->adapter, msg, 1);
-    if (ret < 0) {
-        dev_err(&client->dev, "i2c write failed at reg 0x%04x: %d\n", reg, ret);
+    if (ret != 1) {
+        dev_err(&client->dev, "i2c write error at reg 0x%04x: %d\n", reg, ret);
         kfree(outbuf);
-        return ret;
+        return ret < 0 ? ret : -EIO;
     }
-
-    dev_dbg(&client->dev, "Wrote %d bytes to reg 0x%04x, first byte: 0x%02x\n", 
-            len, reg, val[0]);
-
+    
     kfree(outbuf);
-    return ret;
+    return 0;
 	// if (reg & I2C_VD_CHECK_ACCESS){
 	// 	return ret;
 	// }else
@@ -334,315 +228,146 @@ static int write_regs(struct i2c_client *client, u16 reg, u8 *val, int len)
 	// }
 }
 
-/* Frame size configuration structure
- * To add a new resolution:
- * 1. Add a new entry to rs300_framesizes array
- * 2. Specify width, height, max_fps and pixel format code
- * 3. Update rs300_enum_frame_sizes() if needed
- */
-struct rs300_framesize {
-	u16 width;
-	u16 height;
-	struct v4l2_fract max_fps;  // Framerate specified as fraction (e.g. 30/1 for 30fps)
-	u32 code;  // V4L2 media bus format code (e.g. MEDIA_BUS_FMT_YUYV8_1X16)
+enum pad_types {
+	IMAGE_PAD,
+	METADATA_PAD,
+	NUM_PADS
 };
 
-/*
- * Power supply configuration
- * Camera sensors typically need multiple power rails:
- * - dovdd: Digital I/O voltage
- * - avdd: Analog voltage
- * - dvdd: Digital core voltage
- */
+struct rs300_mode {
+	u32 width;
+	u32 height;
+	struct v4l2_fract max_fps;
+	u32 code;
+};
+
+struct pll_ctrl_reg {
+	unsigned int div;
+	unsigned char reg;
+};
+
 static const char * const rs300_supply_names[] = {
-	"dovdd",    /* Digital I/O power */
-	"avdd",     /* Analog power */
-	"dvdd",     /* Digital core voltage */
+	"VANA",	/* Digital I/O power */
+	"VDIG",		/* Analog power */
+	"VDDL",		/* Digital core power */
 };
 
 #define rs300_NUM_SUPPLIES ARRAY_SIZE(rs300_supply_names)
 
-/*
- * Main camera sensor structure
- * Contains all state information and V4L2 subdev structures needed
- * to represent this camera in the Linux media framework
- */
+static const u32 codes[] = {
+	/* YUV 4:2:2 Formats*/
+	MEDIA_BUS_FMT_YUYV8_1X16,
+	MEDIA_BUS_FMT_UYVY8_1X16,
+	MEDIA_BUS_FMT_YUYV8_2X8,
+	MEDIA_BUS_FMT_UYVY8_2X8,
+};
+
 struct rs300 {
 	struct v4l2_subdev sd;
-	struct media_pad pad;
-	struct v4l2_mbus_framefmt format;
+	struct media_pad pad[NUM_PADS];
+
+	struct v4l2_mbus_framefmt fmt;
+
 	unsigned int xvclk_frequency;
 	struct clk *xvclk;
-	struct gpio_desc *pwdn_gpio;
+
+	struct gpio_desc *reset_gpio;
 	struct regulator_bulk_data supplies[rs300_NUM_SUPPLIES];
-	struct mutex lock;
-	struct i2c_client *client;
-	struct v4l2_ctrl_handler ctrls;
-	struct v4l2_ctrl *link_frequency;
+	
+	struct v4l2_ctrl_handler ctrl_handler;
+	/* V4L2 Controls */
 	struct v4l2_ctrl *pixel_rate;
-	const struct rs300_framesize *frame_size;
-	int streaming;
-	u32 module_index;
-	const char *module_facing;
-	const char *module_name;
-	const char *len_name;
+	struct v4l2_ctrl *link_frequency;
+	struct v4l2_ctrl *brightness;
+	struct v4l2_ctrl *shutter_cal;  /* Shutter calibration button */
+
+	/* Current mode */
+	const struct rs300_mode *mode;
+
+	/*
+	 * Mutex for serialized access:
+	 * Protect sensor module set pad format and start/stop streaming safely.
+	 */
+	struct mutex mutex;
+
+	/* Streaming on/off */
+	bool streaming;
 };
 
-static struct rs300_framesize rs300_framesizes[] = {
-	{
-		.width = 256,
-		.height = 192,
+static  struct rs300_mode supported_modes[] = {
+	{ /* 640*/
+		.width		= 640,
+		.height		= 512,
 		.max_fps = {
-			.numerator = 1,
-			.denominator = 25,  // 25fps
+			.numerator = 30,
+			.denominator = 1,
 		},
-		.code = MEDIA_BUS_FMT_YUYV8_2X8,
+		.code = MEDIA_BUS_FMT_YUYV8_1X16,
 	},
+	{ /* 256*/
+		.width		= 256,
+		.height		= 256,
+		.max_fps = {
+			.numerator = 25,
+			.denominator = 1,
+		},
+		.code = MEDIA_BUS_FMT_YUYV8_1X16,
+	}
 };
 
-/*
- * Helper function to convert V4L2 subdev pointer to rs300 structure
- * Uses container_of macro which is a common Linux kernel pattern for
- * accessing the parent structure from a member pointer
- */
 static inline struct rs300 *to_rs300(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct rs300, sd);
 }
 
-/*
- * rs300_get_default_format - Sets up default video format
- * Configures resolution and pixel format based on camera mode
- * Uses module parameters if provided, otherwise uses defaults
- */
-static void rs300_get_default_format(struct v4l2_mbus_framefmt *format, int index)
+static u32 rs300_get_format_code(struct rs300 *rs300, u32 code)
 {
-	// Set native resolution and format
-	format->width = 256;
-	format->height = 192;
-	format->code = MEDIA_BUS_FMT_YUYV8_2X8;
-	format->field = V4L2_FIELD_NONE;
-	format->colorspace = V4L2_COLORSPACE_SRGB;
-	format->ycbcr_enc = V4L2_YCBCR_ENC_601;
-	format->quantization = V4L2_QUANTIZATION_LIM_RANGE;
-	format->xfer_func = V4L2_XFER_FUNC_SRGB;
+	unsigned int i;
+
+	lockdep_assert_held(&rs300->mutex);	
+
+	for (i = 0; i < ARRAY_SIZE(codes); i++)
+		if (codes[i] == code)
+			break;
+
+	if (i >= ARRAY_SIZE(codes))
+		i = 0;	
+
+	return codes[i];
 }
 
-/*
- * rs300_enum_mbus_code - Lists supported pixel formats
- * Part of V4L2 subdev pad ops - allows userspace to query
- * supported format codes (like YUYV, RGB, etc)
- */
-static int rs300_enum_mbus_code(struct v4l2_subdev *sd,
-				 struct v4l2_subdev_state *state,
-				 struct v4l2_subdev_mbus_code_enum *code)
-{
-	//struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct rs300 *rs300 = to_rs300(sd);
-	if (code->index >= 1)
-		return -EINVAL;
-	code->code = rs300_framesizes[rs300->module_index].code;
-
-	return 0;
-}
-
-/*
- * rs300_enum_frame_sizes - Lists supported frame sizes
- * Allows userspace to query available resolutions for each format
- */
-static int rs300_enum_frame_sizes(struct v4l2_subdev *sd,
-				   struct v4l2_subdev_state *state,
-				   struct v4l2_subdev_frame_size_enum *fse)
-{
-	//struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct rs300 *rs300 = to_rs300(sd);
-	if (fse->index >= 1)
-		return -EINVAL;
-
-	fse->code = rs300_framesizes[rs300->module_index].code;
-	fse->min_width  = rs300_framesizes[rs300->module_index].width;
-	fse->max_width  = fse->min_width;
-	fse->max_height = rs300_framesizes[rs300->module_index].height;
-	fse->min_height = fse->max_height;
-
-	return 0;
-}
-
-static int rs300_get_fmt(struct v4l2_subdev *sd,
-                        struct v4l2_subdev_state *state,
-                        struct v4l2_subdev_format *fmt)
-{
-    struct rs300 *rs300 = to_rs300(sd);
-
-    fmt->format.width = rs300->format.width;
-    fmt->format.height = rs300->format.height;
-    fmt->format.code = rs300->format.code;
-    fmt->format.field = V4L2_FIELD_NONE;
-    fmt->format.colorspace = V4L2_COLORSPACE_SRGB;
-    fmt->format.ycbcr_enc = V4L2_YCBCR_ENC_601;
-    fmt->format.quantization = V4L2_QUANTIZATION_LIM_RANGE;
-    fmt->format.xfer_func = V4L2_XFER_FUNC_SRGB;
-
-    return 0;
-}
-
-static int rs300_set_fmt(struct v4l2_subdev *sd,
-                        struct v4l2_subdev_state *state,
-                        struct v4l2_subdev_format *fmt)
-{
-    struct rs300 *rs300 = to_rs300(sd);
-    struct v4l2_mbus_framefmt *format;
-
-    // Question: Should we allow format changes while streaming?
-    if (rs300->streaming)
-        return -EBUSY;
-
-    format = v4l2_subdev_get_try_format(sd, state, fmt->pad);
-
-    // Force native format - but should we be more flexible?
-    fmt->format.width = 256;
-    fmt->format.height = 192;
-    fmt->format.code = MEDIA_BUS_FMT_YUYV8_2X8;
-    fmt->format.field = V4L2_FIELD_NONE;
-    fmt->format.colorspace = V4L2_COLORSPACE_SRGB;
-    fmt->format.ycbcr_enc = V4L2_YCBCR_ENC_601;
-    fmt->format.quantization = V4L2_QUANTIZATION_LIM_RANGE;
-    fmt->format.xfer_func = V4L2_XFER_FUNC_SRGB;
-
-    if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-        *format = fmt->format;
-    } else {
-        rs300->format = fmt->format;
-        // Should we configure sensor registers here?
-    }
-
-    return 0;
-}
-
-/* Rockchip module info structure 
-*  can be removed for Raspberry Pi, find where it's used throughout the code
-*/
-/*
-static void rs300_get_module_inf(struct rs300 *rs300,
-				  struct rkmodule_inf *inf)
-{
-	memset(inf, 0, sizeof(*inf));
-	strlcpy(inf->base.sensor, DRIVER_NAME, sizeof(inf->base.sensor));
-	strlcpy(inf->base.module, rs300->module_name,
-		sizeof(inf->base.module));
-	strlcpy(inf->base.lens, rs300->len_name, sizeof(inf->base.lens));
-}
-*/
-
-/* rs300_ioctl - Handles custom V4L2 commands for camera control
- * @sd: V4L2 subdevice pointer
- * @cmd: IOCTL command code
- * @arg: Command argument/data pointer
- *
- * Supports three main operations:
- * 1. RKMODULE_GET_MODULE_INFO: Get camera module information
- * 2. CMD_GET: Read camera registers via I2C
- * 3. CMD_SET: Write to camera registers via I2C
- *
- * Return: 0 on success, error code on failure
- */
 static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
-    struct rs300 *rs300 = to_rs300(sd);
-    struct i2c_client *client = rs300->client;
-    long ret = 0;
+	struct rs300 *rs300 = to_rs300(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	long ret = 0;
+	unsigned char *data;
+	struct ioctl_data * valp;
 
-    dev_dbg(&client->dev, "IOCTL cmd: 0x%x\n", cmd);
-
-    // Add mutex protection
-    mutex_lock(&rs300->lock);
-
-    switch (cmd) {
-        case VIDIOC_QUERYCAP: {
-            struct v4l2_capability *cap = arg;
-            // But should we handle this at subdev level? Maybe this belongs in the bridge driver?
-            strlcpy(cap->driver, DRIVER_NAME, sizeof(cap->driver));
-            strlcpy(cap->card, "rs300-mipi", sizeof(cap->card));
-            cap->capabilities = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
-            break;
-        }
-
-        case VIDIOC_S_PARM: {
-            struct v4l2_streamparm *parm = arg;
-            // Question: Should we allow dynamic FPS changes?
-            if (parm->parm.capture.timeperframe.numerator != 1 ||
-                parm->parm.capture.timeperframe.denominator != 25) {
-                ret = -EINVAL;
-            }
-            break;
-        }
-
-        // Handle custom commands from before
-        case CMD_GET: {
-            struct ioctl_data *valp = arg;
-            unsigned char *data = kmalloc(valp->wLength, GFP_KERNEL);
-            if (!data) {
-                ret = -ENOMEM;
-                break;
-            }
-            ret = read_regs(client, valp->wIndex, data, valp->wLength);
-            if (ret >= 0 && copy_to_user(valp->data, data, valp->wLength))
-                ret = -EFAULT;
-            kfree(data);
-            break;
-        }
-
-        case CMD_SET: {
-            struct ioctl_data *valp = arg;
-            ret = write_regs(client, valp->wIndex, valp->data, valp->wLength);
-            break;
-        }
-
-        default:
-            // Should we pass unknown commands to parent?
-            ret = -ENOTTY;
-            break;
-    }
-
-    mutex_unlock(&rs300->lock);
-    return ret;
-}
-
-// comment out for Raspberry Pi	
-/*	
-#ifdef CONFIG_COMPAT
-static long rs300_compat_ioctl32(struct v4l2_subdev *sd,
-				  unsigned int cmd, unsigned long arg)
-{
-	void __user *up = compat_ptr(arg);
-	struct rkmodule_inf *inf;
-	struct rkmodule_awb_cfg *cfg;
-	long ret;
-	printk("rs300 ioctl %d\n",cmd);
+	valp=(struct ioctl_data *)arg;
+	if((cmd==CMD_GET)||(cmd==CMD_SET)){
+		if((valp!=NULL) &&(valp->data!=NULL) ){
+			dev_info(&client->dev,"rs300 %d %d %d  \n",cmd, valp->wIndex,valp->wLength);
+		}else{
+			dev_err(&client->dev, "rs300 args error \n");
+			return -EFAULT;
+		}
+	}
 	switch (cmd) {
-	case RKMODULE_GET_MODULE_INFO:
-		inf = kzalloc(sizeof(*inf), GFP_KERNEL);
-		if (!inf) {
-			ret = -ENOMEM;
-			return ret;
-		}
 
-		ret = rs300_ioctl(sd, cmd, inf);
-		if (!ret)
-			ret = copy_to_user(up, inf, sizeof(*inf));
-		kfree(inf);
+	case CMD_GET:
+		data = kmalloc(valp->wLength, GFP_KERNEL);
+		read_regs(client,valp->wIndex,data,valp->wLength);
+
+		if (copy_to_user(valp->data, data, valp->wLength))
+		{
+			ret = -EFAULT;
+			dev_err(&client->dev, "error stop rs300\n");
+		}
+		kfree(data);                                                                                                                                               
 		break;
-	case RKMODULE_AWB_CFG:
-		cfg = kzalloc(sizeof(*cfg), GFP_KERNEL);
-		if (!cfg) {
-			ret = -ENOMEM;
-			return ret;
-		}
-
-		ret = copy_from_user(cfg, up, sizeof(*cfg));
-		if (!ret)
-			ret = rs300_ioctl(sd, cmd, cfg);
-		kfree(cfg);
+	case CMD_SET:
+		write_regs(client,valp->wIndex,valp->data,valp->wLength);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -651,379 +376,1042 @@ static long rs300_compat_ioctl32(struct v4l2_subdev *sd,
 
 	return ret;
 }
-#endif
-*/
 
-
-/* rs300_s_stream - Start/Stop video streaming
- * @sd: V4L2 subdev
- * @enable: Stream state (1=on, 0=off)
- *
- * Key steps:
- * 1. Validates streaming state to avoid duplicate starts/stops
- * 2. Updates sensor registers via I2C for streaming control
- * 3. Calculates CRC for command validation
- * 4. Handles error conditions and recovery
- *
- * To modify framerates:
- * 1. Update start_regs/stop_regs timing values
- * 2. Modify rs300_framesize max_fps values
- */
-static int rs300_s_stream(struct v4l2_subdev *sd, int enable)
+static void rs300_set_default_format(struct rs300 *rs300)
 {
-    struct rs300 *rs300 = to_rs300(sd);
-    struct i2c_client *client = rs300->client;
-    int ret = 0;
+	struct v4l2_mbus_framefmt *fmt;
 
-    mutex_lock(&rs300->lock);
+	fmt = &rs300->fmt;
+	fmt->code = MEDIA_BUS_FMT_YUYV8_1X16;
+	fmt->colorspace = V4L2_COLORSPACE_SRGB;
+	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
+	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(false,
+							  fmt->colorspace,
+							  fmt->ycbcr_enc);
+	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
+	fmt->width = supported_modes[0].width;
+	fmt->height = supported_modes[0].height;
+	fmt->field = V4L2_FIELD_NONE;
+}	
 
-    if (enable) {
-        if (rs300->streaming) {
-            mutex_unlock(&rs300->lock);
-            return 0;
-        }
-
-        // Question: Should we verify format before starting stream?
-        if (rs300->format.width != 256 || rs300->format.height != 192) {
-            dev_err(&client->dev, "Invalid format: %dx%d\n", 
-                    rs300->format.width, rs300->format.height);
-            mutex_unlock(&rs300->lock);
-            return -EINVAL;
-        }
-
-        // Initialize sensor with specific settings
-        // But what if these settings are wrong for this sensor variant?
-        ret = write_regs(client, I2C_VD_BUFFER_RW, start_regs, sizeof(start_regs));
-        if (ret < 0) {
-            dev_err(&client->dev, "Failed to start streaming: %d\n", ret);
-            mutex_unlock(&rs300->lock);
-            return ret;
-        }
-
-        // Add delay for sensor to stabilize - but is 100ms enough?
-        msleep(100);
-        rs300->streaming = 1;
-    } else {
-        if (!rs300->streaming) {
-            mutex_unlock(&rs300->lock);
-            return 0;
-        }
-
-        ret = write_regs(client, I2C_VD_BUFFER_RW, stop_regs, sizeof(stop_regs));
-        if (ret < 0) {
-            dev_err(&client->dev, "Failed to stop streaming: %d\n", ret);
-            // Should we force streaming off despite error?
-            rs300->streaming = 0;
-            mutex_unlock(&rs300->lock);
-            return ret;
-        }
-
-        rs300->streaming = 0;
-        msleep(50);
-    }
-
-    mutex_unlock(&rs300->lock);
-    return ret;
-}
-
+/*
+ * V4L2 subdev video and pad level operations
+ */
 static int rs300_set_test_pattern(struct rs300 *rs300, int value)
 {
 	return 0;
 }
 
-static int rs300_s_ctrl(struct v4l2_ctrl *ctrl)
+/* Function to get the current brightness value from the camera */
+static int rs300_get_brightness(struct rs300 *rs300, int *brightness_value)
 {
-	struct rs300 *rs300 = container_of(ctrl->handler, struct rs300, ctrls);
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    u8 result_buffer[18];  /* Buffer to hold the result data */
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+    
+    dev_info(&client->dev, "Getting current brightness value from camera");
+    
+    /* Construct the command buffer for GET brightness based on the example */
+    cmd_buffer[0] = 0x10;  /* Command Class */
+    cmd_buffer[1] = 0x04;  /* Module Command Index */
+    cmd_buffer[2] = 0x87;  /* SubCmd - 0x87 for GET brightness */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+    cmd_buffer[4] = 0x01;  /* Parameter 1 - Based on your example */
+    cmd_buffer[5] = 0x00;
+    cmd_buffer[6] = 0x00;
+    cmd_buffer[7] = 0x00;
+    cmd_buffer[8] = 0x00;
+    cmd_buffer[9] = 0x00;
+    cmd_buffer[10] = 0x00;
+    cmd_buffer[11] = 0x00;
+    cmd_buffer[12] = 0x01;  /* Parameter 9 - Based on your example */
+    cmd_buffer[13] = 0x00;
+    cmd_buffer[14] = 0x00;
+    cmd_buffer[15] = 0x00;
+    
+    /* Calculate CRC/checksum for the command */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    /* Swap byte order to match the expected format */
+    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
+    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
+    
+    dev_info(&client->dev, "Get brightness command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    
+    /* STEP 1: Write command to command buffer register (0x1d00) */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write get brightness command: %d", ret);
+        return ret;
+    }
+    
+    /* STEP 2: Read command status and wait for completion */
+    while (retry_count < max_retries) {
+        /* Wait for command processing */
+        msleep(50);
+        
+        /* Read command status from status register (0x0200) */
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read command status: %d", ret);
+            return ret;
+        }
+        
+        /* Check command status */
+        dev_info(&client->dev, "Get brightness command status: 0x%02X", status_buffer[0]);
+        
+        /* Extract status components */
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  /* Bits 2-7 */
+        
+        /* Check if command is still busy */
+        if (is_busy) {
+            dev_info(&client->dev, "Get brightness command is busy, retrying...");
+            retry_count++;
+            continue;
+        }
+        
+        /* Check for errors */
+        if (has_failed) {
+            /* Bit 1 set: Command execution failed */
+            dev_err(&client->dev, "Get brightness command execution failed with error code: 0x%02X", error_code);
+            
+            /* Interpret error code */
+            switch (error_code) {
+            case 0x00:
+                dev_info(&client->dev, "Error: Correct");
+                break;
+            case 0x01:
+                dev_err(&client->dev, "Error: Length");
+                break;
+            case 0x02:
+                dev_err(&client->dev, "Error: Unknown instruction");
+                break;
+            case 0x03:
+                dev_err(&client->dev, "Error: Hardware error");
+                break;
+            case 0x04:
+                dev_err(&client->dev, "Error: Unknown instruction (not yet enabled)");
+                break;
+            case 0x05:
+            case 0x06:
+            case 0x07:
+                dev_err(&client->dev, "Error: CRC check error");
+                break;
+            default:
+                dev_err(&client->dev, "Error: Unknown error code");
+                break;
+            }
+            
+            return -EIO;
+        }
+        
+        /* Even if not failed, check if there's an error code */
+        if (error_code != 0) {
+            dev_warn(&client->dev, "Get brightness command completed but with error code: 0x%02X", error_code);
+        }
+        
+        /* STEP 3: Command executed successfully, now read the result from 0x1d00 */
+        ret = read_regs(client, 0x1d00, result_buffer, sizeof(result_buffer));
+        if (ret) {
+            dev_err(&client->dev, "Failed to read brightness result: %d", ret);
+            return ret;
+        }
+        
+        dev_info(&client->dev, "Brightness result buffer: %*ph", (int)sizeof(result_buffer), result_buffer);
+        
+        /* Based on the command structure, the brightness value should be in byte 4 */
+        *brightness_value = result_buffer[4];
+        
+        dev_info(&client->dev, "Current brightness value: %d (0x%02X)", *brightness_value, *brightness_value);
+        return 0;
+    }
+    
+    /* If we get here, we've exceeded max retries */
+    dev_err(&client->dev, "Get brightness command timed out after %d retries", max_retries);
+    return -ETIMEDOUT;
+}
 
-	switch (ctrl->id) {
-	case V4L2_CID_TEST_PATTERN:
-		return rs300_set_test_pattern(rs300, ctrl->val);
+static int rs300_shutter_calibration(struct rs300 *rs300)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+	int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+    
+    dev_info(&client->dev, "Triggering shutter calibration (FFC)");
+    
+    /* Construct the command buffer based on the example (shutter command) */
+    cmd_buffer[0] = 0x10;  /* Command Class */
+    cmd_buffer[1] = 0x02;  /* Module Command Index */
+    cmd_buffer[2] = 0x43;  /* SubCmd - 0x43 for shutter/FFC */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+    
+    /* Fill remaining parameters with zeros */
+    memset(&cmd_buffer[4], 0, 12);
+    
+    /* Calculate CRC/checksum for the command */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    /* Swap byte order to match the expected format */
+    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
+    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
+    
+    dev_info(&client->dev, "Shutter command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    
+    /* STEP 1: Write command to command buffer register (0x1d00) */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write shutter command: %d", ret);
+        return ret;
+    }
+    
+    /* STEP 2: Read command status and wait for completion */
+    while (retry_count < max_retries) {
+        /* Wait for command processing - FFC might take longer */
+        msleep(100);  /* Longer wait time for FFC */
+        
+        /* Read command status from status register (0x0200) */
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read command status: %d", ret);
+            return ret;
+        }
+        
+        /* Check command status */
+        dev_info(&client->dev, "Shutter command status: 0x%02X", status_buffer[0]);
+        
+        /* Extract status components */
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  // Bits 2-7
+        
+        /* Check if command is still busy */
+        if (is_busy) {
+            dev_info(&client->dev, "Shutter command is busy, retrying...");
+            retry_count++;
+            continue;
+        }
+        
+        /* Check for errors */
+        if (has_failed) {
+            /* Bit 1 set: Command execution failed */
+            dev_err(&client->dev, "Shutter command execution failed with error code: 0x%02X", error_code);
+            
+            /* Interpret error code */
+            switch (error_code) {
+            case 0x00:
+                dev_info(&client->dev, "Error: Correct");
+                break;
+            case 0x01:
+                dev_err(&client->dev, "Error: Length");
+                break;
+            case 0x02:
+                dev_err(&client->dev, "Error: Unknown instruction");
+                break;
+            case 0x03:
+                dev_err(&client->dev, "Error: Hardware error");
+                break;
+            case 0x04:
+                dev_err(&client->dev, "Error: Unknown instruction (not yet enabled)");
+                break;
+            case 0x05:
+            case 0x06:
+            case 0x07:
+                dev_err(&client->dev, "Error: CRC check error");
+                break;
+            default:
+                dev_err(&client->dev, "Error: Unknown error code");
+                break;
+            }
+            
+            return -EIO;
+        }
+        
+        /* Even if not failed, check if there's an error code */
+        if (error_code != 0) {
+            dev_warn(&client->dev, "Shutter command completed but with error code: 0x%02X", error_code);
+        }
+        
+        /* Command executed successfully */
+        dev_info(&client->dev, "Shutter calibration command executed successfully");
+        return 0;
+    }
+    
+    /* If we get here, we've exceeded max retries */
+    dev_err(&client->dev, "Shutter command timed out after %d retries", max_retries);
+    return -ETIMEDOUT;
+}
+
+
+
+static int rs300_brightness_correct(struct rs300 *rs300, int brightness_value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 brightness_param;
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+    int current_brightness;
+    
+    /* Map 0-100 brightness to appropriate parameter values */
+    if (brightness_value == 0)
+        brightness_param = 0x00;
+    else if (brightness_value <= 10)
+        brightness_param = 0x0A;
+    else if (brightness_value <= 20)
+        brightness_param = 0x14;
+    else if (brightness_value <= 30)
+        brightness_param = 0x1E;
+    else if (brightness_value <= 40)
+        brightness_param = 0x28;
+    else if (brightness_value <= 50)
+        brightness_param = 0x32;
+    else if (brightness_value <= 60)
+        brightness_param = 0x3C;
+    else if (brightness_value <= 70)
+        brightness_param = 0x46;
+    else if (brightness_value <= 80)
+        brightness_param = 0x50;
+    else if (brightness_value <= 90)
+        brightness_param = 0x5A;
+    else
+        brightness_param = 0x64;
+    
+    dev_info(&client->dev, "Setting brightness correctly to %d (param: 0x%02X)", 
+             brightness_value, brightness_param);
+    
+    /* Construct the command buffer */
+    cmd_buffer[0] = 0x10;             /* Command Class */
+    cmd_buffer[1] = 0x04;             /* Module Command Index */
+    cmd_buffer[2] = 0x47;             /* SubCmd */
+    cmd_buffer[3] = 0x00;             /* Reserved */
+    cmd_buffer[4] = brightness_param; /* Parameter 1 (brightness) */
+    
+    /* Fill remaining parameters with zeros */
+    memset(&cmd_buffer[5], 0, 11);
+    
+    /* Calculate CRC/checksum for the command */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    /* Swap byte order to match the expected format */
+    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
+    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
+    
+    dev_info(&client->dev, "Command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    
+    /* STEP 1: Write command to command buffer register (0x1d00) */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write command: %d", ret);
+        return ret;
+    }
+    
+    /* STEP 2: Read command status and wait for completion */
+    while (retry_count < max_retries) {
+        /* Wait for command processing */
+        msleep(50);
+        
+        /* Read command status from status register (0x0200) */
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read command status: %d", ret);
+            return ret;
+        }
+        
+        /* Check command status */
+        dev_info(&client->dev, "Command status: 0x%02X", status_buffer[0]);
+        
+        /* Extract status components */
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  // Bits 2-7
+        
+        /* Check if command is still busy */
+        if (is_busy) {
+            dev_info(&client->dev, "Command is busy, retrying...");
+            retry_count++;
+            continue;
+        }
+        
+        /* Check for errors */
+        if (has_failed) {
+            /* Bit 1 set: Command execution failed */
+            dev_err(&client->dev, "Command execution failed with error code: 0x%02X", error_code);
+            
+            /* Interpret error code */
+            switch (error_code) {
+            case 0x00:
+                dev_info(&client->dev, "Error: Correct");
+                break;
+            case 0x01:
+                dev_err(&client->dev, "Error: Length");
+                break;
+            case 0x02:
+                dev_err(&client->dev, "Error: Unknown instruction");
+                break;
+            case 0x03:
+                dev_err(&client->dev, "Error: Hardware error");
+                break;
+            case 0x04:
+                dev_err(&client->dev, "Error: Unknown instruction (not yet enabled)");
+                break;
+            case 0x05:
+            case 0x06:
+            case 0x07:
+                dev_err(&client->dev, "Error: CRC check error");
+                break;
+            default:
+                dev_err(&client->dev, "Error: Unknown error code");
+                break;
+            }
+            
+            return -EIO;
+        }
+        
+        /* After successful command execution */
+        if (!has_failed && error_code == 0) {
+            /* Wait a moment before getting the brightness */
+            msleep(100);
+            
+            /* Get the current brightness to verify the change */
+            ret = rs300_get_brightness(rs300, &current_brightness);
+            if (ret) {
+                dev_warn(&client->dev, "Failed to get current brightness: %d", ret);
+            } else {
+                if (current_brightness == brightness_param) {
+                    dev_info(&client->dev, "Brightness successfully set and verified: %d", current_brightness);
+                } else {
+                    dev_warn(&client->dev, "Brightness mismatch! Set: 0x%02X, Got: 0x%02X", 
+                             brightness_param, current_brightness);
+                }
+            }
+        }
+        
+        return 0;
+    }
+    
+    /* If we get here, we've exceeded max retries */
+    dev_err(&client->dev, "Command timed out after %d retries", max_retries);
+    return -ETIMEDOUT;
+}
+
+static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
+{
+    struct rs300 *rs300 =
+        container_of(ctrl->handler, struct rs300, ctrl_handler);
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    int ret = 0;
+
+    switch (ctrl->id) {
+    case V4L2_CID_TEST_PATTERN:
+        ret = rs300_set_test_pattern(rs300, ctrl->val);
+        break;
+    case V4L2_CID_BRIGHTNESS:
+        ret = rs300_brightness_correct(rs300, ctrl->val);
+        break;
+    case V4L2_CID_DO_WHITE_BALANCE:
+        /* This is our shutter calibration button */
+        if (ctrl->val == 1) {
+            ret = rs300_shutter_calibration(rs300);
+        }
+        break;
+    default:
+        dev_err(&client->dev, "Invalid control %d", ctrl->id);
+        ret = -EINVAL;
+    }
+
+    return ret;
+}
+
+static const struct v4l2_ctrl_ops rs300_ctrl_ops = {
+	.s_ctrl = rs300_set_ctrl,
+};
+
+static int rs300_enum_mbus_code(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_state *sd_state,
+				 struct v4l2_subdev_mbus_code_enum *code)
+{
+	struct rs300 *rs300 = to_rs300(sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(sd);
+	
+	if (code->pad >= NUM_PADS)
+		return -EINVAL;
+
+	if (code->pad == IMAGE_PAD) {
+		if (code->index >= ARRAY_SIZE(supported_modes))
+			return -EINVAL;
+
+		mutex_lock(&rs300->mutex);
+		code->code = supported_modes[code->index].code;
+		mutex_unlock(&rs300->mutex);
+	} else {
+		if (code->index > 0)
+			return -EINVAL;
+
+		code->code = MEDIA_BUS_FMT_SENSOR_DATA;
+	}
+	
+	return 0;
+}
+
+static int rs300_enum_frame_sizes(struct v4l2_subdev *sd,
+				   struct v4l2_subdev_state *sd_state,
+				   struct v4l2_subdev_frame_size_enum *fse)
+{
+	//struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct rs300 *rs300 = to_rs300(sd);
+	u32 code;
+
+	if (fse->pad >= NUM_PADS)
+		return -EINVAL;
+
+	if (fse->pad == IMAGE_PAD) {
+		if (fse->index >= ARRAY_SIZE(supported_modes))
+			return -EINVAL;
+
+		mutex_lock(&rs300->mutex);
+		code = rs300_get_format_code(rs300, fse->code);
+		mutex_unlock(&rs300->mutex);
+	
+	fse->min_width  = supported_modes[fse->index].width;
+	fse->max_width  = fse->min_width;
+	fse->min_height = supported_modes[fse->index].height;
+	fse->max_height = fse->min_height;
+	} else {
+		if (fse->code != MEDIA_BUS_FMT_SENSOR_DATA || fse->index > 0)
+			return -EINVAL;
+
+		fse->min_width = 640;
+		fse->max_width = fse->min_width;
+		fse->min_height = 512;
+		fse->max_height = fse->min_height;
 	}
 
 	return 0;
 }
 
-/* Fix control ops structure definition */
-static const struct v4l2_ctrl_ops rs300_ctrl_ops = {
-	.s_ctrl = rs300_s_ctrl,
-};
+static void rs300_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
+{
+	fmt->colorspace = V4L2_COLORSPACE_SRGB;
+	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
+	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(false,
+							  fmt->colorspace,
+							  fmt->ycbcr_enc);
+	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
+}
+
+static void rs300_update_image_pad_format(struct rs300 *rs300,
+					   const struct rs300_mode *mode,
+					   struct v4l2_subdev_format *fmt)
+{
+	fmt->format.width = mode->width;
+	fmt->format.height = mode->height;
+	fmt->format.field = V4L2_FIELD_NONE;
+	rs300_reset_colorspace(&fmt->format);
+}
+
+static int __rs300_get_pad_fmt(struct rs300 *rs300,
+				struct v4l2_subdev_state *sd_state,
+				struct v4l2_subdev_format *fmt)
+{
+	if (fmt->pad >= NUM_PADS)
+		return -EINVAL;	
+
+	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+		struct v4l2_mbus_framefmt *try_fmt =
+			v4l2_subdev_get_try_format(&rs300->sd, sd_state, 
+							fmt->pad);
+		try_fmt->code = fmt->pad == IMAGE_PAD ?
+				rs300_get_format_code(rs300, try_fmt->code) :
+				MEDIA_BUS_FMT_SENSOR_DATA;
+		fmt->format = *try_fmt;
+	} else {
+		if (fmt->pad == IMAGE_PAD) {
+			rs300_update_image_pad_format(rs300, rs300->mode, 
+								fmt);
+			fmt->format.code = rs300_get_format_code(rs300, 
+								rs300->fmt.code); //is this correct?
+		}
+	}
+	return 0;
+}
+
+static int rs300_get_pad_fmt(struct v4l2_subdev *sd,
+			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_format *fmt)
+{
+	//struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct rs300 *rs300 = to_rs300(sd);
+	int ret;
+	
+	mutex_lock(&rs300->mutex);
+	ret = __rs300_get_pad_fmt(rs300, sd_state, fmt);
+	mutex_unlock(&rs300->mutex);
+	return ret;
+}
+
+static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
+			  struct v4l2_subdev_state *sd_state,
+			  struct v4l2_subdev_format *fmt)
+{
+	struct rs300 *rs300 = to_rs300(sd);
+	const struct rs300_mode *mode;
+	struct v4l2_mbus_framefmt *framefmt;
+	int brightness_max, brightness_def, pixel_rate;
+	unsigned int i;
+
+	if (fmt->pad >= NUM_PADS)
+		return -EINVAL;
+
+	mutex_lock(&rs300->mutex);
+
+	if (fmt->pad == IMAGE_PAD) {
+		for (i = 0; i < ARRAY_SIZE(codes); i++)
+			if (codes[i] == fmt->format.code)
+				break;
+		if (i >= ARRAY_SIZE(codes))
+			i = 0;
+
+		fmt->format.code = rs300_get_format_code(rs300, codes[i]);
+
+		mode = v4l2_find_nearest_size(supported_modes,
+					      ARRAY_SIZE(supported_modes),
+					      width, height,
+					      fmt->format.width,
+					      fmt->format.height);
+		rs300_update_image_pad_format(rs300, mode, fmt);
+		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+			framefmt = v4l2_subdev_get_try_format(sd, sd_state,
+								fmt->pad);
+			*framefmt = fmt->format;
+		} else if (rs300->mode != mode ||
+			   rs300->fmt.code != fmt->format.code) {
+
+			rs300->fmt = fmt->format;
+			rs300->mode = mode;
+
+		} else {
+			if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {	
+				framefmt = v4l2_subdev_get_try_format(sd, sd_state,
+								fmt->pad);
+				*framefmt = fmt->format;
+			}
+		}
+	}
+
+	mutex_unlock(&rs300->mutex);
+
+	return 0;
+}
+
+static int rs300_set_framefmt(struct rs300 *rs300)
+{
+	switch (rs300->fmt.code) {
+	case MEDIA_BUS_FMT_YUYV8_1X16:
+		return 0;
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+		return 0;
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		return 0;
+	}		
+
+	return -EINVAL;
+}
+
+static void rs300_stop_streaming(struct rs300 *rs300)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+	int ret;
+
+	/* add device shutdown regs*/
+	/**/
+
+	pm_runtime_put(&client->dev);
+}
+
+static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct rs300 *rs300 = to_rs300(sd);
+	unsigned short crcdata;
+	int ret = 0;
+
+	mutex_lock(&rs300->mutex);
+	if (rs300->streaming == enable) {
+		mutex_unlock(&rs300->mutex);
+		return 0;
+	}
+
+	if (enable) {
+	
+		ret = pm_runtime_resume_and_get(&client->dev);
+		if (ret < 0)
+			return ret;
+
+		rs300->streaming = enable;
+		start_regs[19]= type;
+		start_regs[22]= rs300->mode->width&0xff;
+		start_regs[23]= rs300->mode->width>>8;
+		start_regs[24]= rs300->mode->height&0xff;
+		start_regs[25]= rs300->mode->height>>8;
+
+		//update crc
+		crcdata= do_crc((uint8_t*)(start_regs+18),10);
+		start_regs[14]=crcdata&0xff;
+		start_regs[15]=crcdata>>8;
+		
+		crcdata= do_crc((uint8_t*)(start_regs),16);
+		start_regs[16]=crcdata&0xff;
+		start_regs[17]=crcdata>>8;
+		
+		if (write_regs(client, I2C_VD_BUFFER_RW,start_regs,sizeof(start_regs)) < 0) {
+				dev_err(&client->dev, "error start rs300\n");
+				goto error_unlock;
+		}
+
+		ret = rs300_set_framefmt(rs300);
+		if (ret) {
+			dev_err(&client->dev, "error set framefmt\n");
+			goto error_unlock;
+		}
+		
+	} else {
+		rs300_stop_streaming(rs300);
+	}
+
+	rs300->streaming = enable;
+	mutex_unlock(&rs300->mutex);
+
+	return ret;
+
+error_unlock:
+	mutex_unlock(&rs300->mutex);
+
+	return ret;
+}
 
 static const s64 link_freq_menu_items[] = {
-	rs300_LINK_RATE,//80m
+	RS300_LINK_RATE,//80m
 };
 /* -----------------------------------------------------------------------------
  * V4L2 subdev internal operations
  */
 
-#ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
+
 static int rs300_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
 	struct rs300 *rs300 = to_rs300(sd);
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct v4l2_mbus_framefmt *format =
-				v4l2_subdev_get_try_format(sd, fh->state, 0);
+	struct v4l2_mbus_framefmt *try_img_fmt =
+		v4l2_subdev_get_try_format(sd, fh->state, IMAGE_PAD);
 
-	dev_dbg(&client->dev, "%s:\n", __func__);
+	mutex_lock(&rs300->mutex);
+	
+	/* Initialize try_fmt */
+	try_img_fmt->width = supported_modes[0].width;
+	try_img_fmt->height = supported_modes[0].height;
+	try_img_fmt->code = supported_modes[0].code;
+	try_img_fmt->field = V4L2_FIELD_NONE;
 
-	rs300_get_default_format(format,rs300->module_index);
-
+	mutex_unlock(&rs300->mutex);
 	return 0;
 }
-#endif
 
-/*
- * MIPI CSI-2 Configuration
- * Sets up the MIPI serial interface parameters used by the camera
- * - Configures number of data lanes
- * - Sets up channel allocation
- * - Defines clock behavior
- */
-static int rs300_g_mbus_config(struct v4l2_subdev *sd,
-                              unsigned int pad,
-                              struct v4l2_mbus_config *config)
-{
-    /* Use the correct structure members for newer kernels */
-    config->type = V4L2_MBUS_CSI2_DPHY;
-    config->bus.mipi_csi2.num_data_lanes = 2;
-    config->bus.mipi_csi2.flags = V4L2_MBUS_CSI2_NONCONTINUOUS_CLOCK;
-    return 0;
-}
 
-/* rs300_enum_frame_interval - List supported frame intervals
- *
- * Returns supported framerates for each resolution
- * To add new framerates:
- * 1. Update rs300_framesizes max_fps values
- * 2. Modify sensor timing registers if needed
- * 3. Update fie->interval validation
- */
-static int rs300_enum_frame_interval(struct v4l2_subdev *sd,
-				       struct v4l2_subdev_state *state,
-				       struct v4l2_subdev_frame_interval_enum *fie)
+static int rs300_power_on(struct device *dev)
 {
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct rs300 *rs300 = to_rs300(sd);
-	if (fie->index >= 1)
-		return -EINVAL;
+	int ret;
+	ret = regulator_bulk_enable(rs300_NUM_SUPPLIES, rs300->supplies);
+	if (ret) {
+		dev_err(dev, "failed to enable regulators\n");
+		return ret;
+	}
 
-	fie->width = rs300_framesizes[rs300->module_index].width;
-	fie->height = rs300_framesizes[rs300->module_index].height;
-	fie->interval = rs300_framesizes[rs300->module_index].max_fps;
+	gpiod_set_value_cansleep(rs300->reset_gpio, 1);
+
 	return 0;
 }
 
-// Forward declarations for power management functions
-static int rs300_power_on(struct rs300 *rs300);
-static void rs300_power_off(struct rs300 *rs300);
-
-// Remove duplicate g_frame_interval function and keep only one implementation
-static int rs300_g_frame_interval(struct v4l2_subdev *sd,
-                                struct v4l2_subdev_frame_interval *fi)
+static int rs300_power_off(struct device *dev)
 {
-    // Return fixed 25fps
-    fi->interval.numerator = 1;
-    fi->interval.denominator = 25;
-    return 0;
+	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+	struct rs300 *rs300 = to_rs300(sd);
+
+	gpiod_set_value_cansleep(rs300->reset_gpio, 0);
+	regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
+
+	return 0;
 }
 
-static int rs300_s_frame_interval(struct v4l2_subdev *sd,
-                                struct v4l2_subdev_frame_interval *fi)
+static int rs300_get_regulators(struct rs300 *rs300)
 {
-    // Force 25fps
-    fi->interval.numerator = 1;
-    fi->interval.denominator = 25;
-    return 0;
+	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+	unsigned int i;
+
+	for (i = 0; i < rs300_NUM_SUPPLIES; i++)
+		rs300->supplies[i].supply = rs300_supply_names[i];
+
+	return devm_regulator_bulk_get(&client->dev, 
+						rs300_NUM_SUPPLIES,
+				       rs300->supplies);
 }
+
+static const struct v4l2_subdev_core_ops rs300_subdev_core_ops = {
+	.log_status = v4l2_ctrl_subdev_log_status,
+	.subscribe_event = v4l2_ctrl_subdev_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
+	.ioctl = rs300_ioctl, //NEEDED?
+};
 
 static const struct v4l2_subdev_video_ops rs300_subdev_video_ops = {
-    .s_stream = rs300_s_stream,
-    .g_frame_interval = rs300_g_frame_interval,
-    .s_frame_interval = rs300_s_frame_interval,
+	.s_stream = rs300_set_stream,
 };
 
-// Move power management implementations before probe function
-static int rs300_power_on(struct rs300 *rs300)
-{
-    struct i2c_client *client = rs300->client;
-    int ret;
-
-    // Question: Is this power sequence correct for this specific sensor?
-    ret = regulator_bulk_enable(rs300_NUM_SUPPLIES, rs300->supplies);
-    if (ret) {
-        dev_err(&client->dev, "Failed to enable regulators\n");
-        return ret;
-    }
-
-    // Toggle reset pin - but what's the correct timing?
-    if (rs300->pwdn_gpio) {
-        gpiod_set_value_cansleep(rs300->pwdn_gpio, 1);
-        msleep(20); // Is 20ms enough?
-        gpiod_set_value_cansleep(rs300->pwdn_gpio, 0);
-        msleep(20);
-    }
-
-    // Should we add sensor-specific initialization here?
-    ret = write_regs(client, I2C_VD_BUFFER_RW, start_regs, sizeof(start_regs));
-    if (ret) {
-        dev_err(&client->dev, "Sensor init failed\n");
-        regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
-        return ret;
-    }
-
-    return 0;
-}
-
-static void rs300_power_off(struct rs300 *rs300)
-{
-    if (rs300->pwdn_gpio)
-        gpiod_set_value_cansleep(rs300->pwdn_gpio, 1);
-    regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
-}
-
-// First, define the subdev ops structure that combines all operation types
-static const struct v4l2_subdev_core_ops rs300_core_ops = {
-    .log_status = v4l2_ctrl_subdev_log_status,
-    .subscribe_event = v4l2_ctrl_subdev_subscribe_event,
-    .unsubscribe_event = v4l2_event_subdev_unsubscribe,
-    .ioctl = rs300_ioctl,
+static const struct v4l2_subdev_pad_ops rs300_subdev_pad_ops = {
+	.enum_mbus_code = rs300_enum_mbus_code,
+	.get_fmt = rs300_get_pad_fmt,
+	.set_fmt = rs300_set_pad_fmt,
+	.enum_frame_size = rs300_enum_frame_sizes,
 };
 
-static const struct v4l2_subdev_video_ops rs300_video_ops = {
-    .s_stream = rs300_s_stream,
-    .g_frame_interval = rs300_g_frame_interval,
-    .s_frame_interval = rs300_s_frame_interval,
-};
-
-static const struct v4l2_subdev_pad_ops rs300_pad_ops = {
-    .enum_mbus_code = rs300_enum_mbus_code,
-    .enum_frame_size = rs300_enum_frame_sizes,
-    .enum_frame_interval = rs300_enum_frame_interval,
-    .get_fmt = rs300_get_fmt,
-    .set_fmt = rs300_set_fmt,
-    .get_mbus_config = rs300_g_mbus_config,
-};
-
-#ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
-static const struct v4l2_subdev_internal_ops rs300_internal_ops = {
-    .open = rs300_open,
-};
-#endif
-
-// Main subdev ops structure that was missing
 static const struct v4l2_subdev_ops rs300_subdev_ops = {
-    .core = &rs300_core_ops,
-    .video = &rs300_video_ops,
-    .pad = &rs300_pad_ops,
+	.core  = &rs300_subdev_core_ops,
+	.video = &rs300_subdev_video_ops,
+	.pad   = &rs300_subdev_pad_ops,
 };
 
-// Update probe function to properly initialize subdev
+static const struct v4l2_subdev_internal_ops rs300_subdev_internal_ops = {
+	.open = rs300_open,
+};
+
+static int rs300_init_controls(struct rs300 *rs300)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+	struct v4l2_ctrl_handler *ctrl_hdlr;
+	int ret;
+
+	ctrl_hdlr = &rs300->ctrl_handler;
+	ret = v4l2_ctrl_handler_init(ctrl_hdlr, 4); /* Increased for shutter cal */
+	if (ret)
+		return ret;
+
+	ctrl_hdlr->lock = &rs300->mutex;
+	
+	rs300->link_frequency =	v4l2_ctrl_new_int_menu(ctrl_hdlr, NULL,
+		V4L2_CID_LINK_FREQ, 0, 0, link_freq_menu_items);
+			
+	rs300->pixel_rate = v4l2_ctrl_new_std(&rs300->ctrl_handler, &rs300_ctrl_ops,
+					  V4L2_CID_PIXEL_RATE, 0,
+					  RS300_PIXEL_RATE, 1,
+					  RS300_PIXEL_RATE);
+
+	rs300->brightness = v4l2_ctrl_new_std(ctrl_hdlr, &rs300_ctrl_ops,
+					     V4L2_CID_BRIGHTNESS,
+					     RS300_BRIGHTNESS_MIN, RS300_BRIGHTNESS_MAX,
+					     RS300_BRIGHTNESS_STEP,
+					     RS300_BRIGHTNESS_DEFAULT);
+
+	/* Add shutter calibration button */
+	rs300->shutter_cal = v4l2_ctrl_new_std(ctrl_hdlr, &rs300_ctrl_ops,
+										  V4L2_CID_DO_WHITE_BALANCE, 0, 1, 1, 0);
+
+	if (ctrl_hdlr->error) {
+		ret = ctrl_hdlr->error;
+		dev_err(&client->dev, "%s control init failed (%d)\n",
+			__func__, ret);
+		goto error;
+	}
+	
+	rs300->sd.ctrl_handler = ctrl_hdlr;
+
+	return 0;
+
+error:
+	v4l2_ctrl_handler_free(ctrl_hdlr);
+	mutex_destroy(&rs300->mutex);	
+
+	return ret;
+}
+
+static void rs300_free_controls(struct rs300 *rs300)
+{
+	v4l2_ctrl_handler_free(&rs300->ctrl_handler);
+	mutex_destroy(&rs300->mutex);
+}
+
+static int rs300_check_hwcfg(struct device *dev)
+{
+	struct fwnode_handle *endpoint;
+	struct v4l2_fwnode_endpoint ep_cfg = {
+		.bus_type = V4L2_MBUS_CSI2_DPHY
+	};
+	int ret = -EINVAL;
+
+	endpoint = fwnode_graph_get_next_endpoint(dev_fwnode(dev), NULL);
+	if (!endpoint) {
+		dev_err(dev, "endpoint node not found\n");
+		return -EINVAL;
+	}
+
+	if (v4l2_fwnode_endpoint_alloc_parse(endpoint, &ep_cfg)) {
+		dev_err(dev, "could not parse endpoint\n");
+		goto error_out;
+	}
+	
+	if (ep_cfg.bus.mipi_csi2.num_data_lanes != 2) {
+		dev_err(dev, "only 2 data lanes are currently supported\n");
+		goto error_out;
+	}
+	
+	if (ep_cfg.nr_of_link_frequencies != 1 ||
+	    ep_cfg.link_frequencies[0] != RS300_LINK_RATE) {
+		dev_err(dev, "Link frequency not supported: %lld\n",
+			ep_cfg.link_frequencies[0]);
+		goto error_out;
+	}
+
+	ret = 0;
+
+error_out:
+	v4l2_fwnode_endpoint_free(&ep_cfg);
+	fwnode_handle_put(endpoint);
+
+	return ret;
+}
+
 static int rs300_probe(struct i2c_client *client)
 {
-    struct rs300 *rs300;
-    int ret;
-    int i;  // Add missing variable declaration
+	struct device *dev = &client->dev;
+	struct rs300 *rs300;
+	int ret;
 
-    dev_info(&client->dev, "Probing rs300 camera\n");
+	dev_info(dev, "Starting rs300_probe");
+	
+	dev_info(dev, "driver version: %02x.%02x.%02x",
+		DRIVER_VERSION >> 16,
+		(DRIVER_VERSION & 0xff00) >> 8,
+		DRIVER_VERSION & 0x00ff);
 
-    rs300 = devm_kzalloc(&client->dev, sizeof(*rs300), GFP_KERNEL);
-    if (!rs300)
-        return -ENOMEM;
+	dev_dbg(dev, "Allocating memory for rs300 structure");
+	rs300 = devm_kzalloc(&client->dev, sizeof(*rs300), GFP_KERNEL);
+	if (!rs300) {
+		dev_err(dev, "Failed to allocate memory for rs300 structure");
+		return -ENOMEM;
+	}
+	dev_dbg(dev, "Memory allocation successful");
 
-    rs300->client = client;
+	dev_dbg(dev, "Initializing V4L2 subdev");
+	v4l2_i2c_subdev_init(&rs300->sd, client, &rs300_subdev_ops);
+	dev_dbg(dev, "V4L2 subdev initialization complete");
 
-    // Initialize power supplies
-    for (i = 0; i < rs300_NUM_SUPPLIES; i++)
-        rs300->supplies[i].supply = rs300_supply_names[i];
+	/* Check the hardware configuration in device tree */
+	dev_dbg(dev, "Checking hardware configuration");
+	if (rs300_check_hwcfg(dev)) {
+		dev_err(dev, "Hardware configuration check failed");
+		return -EINVAL;
+	}
+	dev_dbg(dev, "Hardware configuration check successful");
 
-    ret = devm_regulator_bulk_get(&client->dev,
-                                 rs300_NUM_SUPPLIES,
-                                 rs300->supplies);
-    if (ret)
-        return ret;
+	dev_dbg(dev, "Getting regulators");
+	ret = rs300_get_regulators(rs300);
+	if (ret) {
+		dev_err(dev, "Failed to get regulators: %d", ret);
+		return ret;
+	}
+	dev_dbg(dev, "Regulators acquired successfully");
 
-    // Get GPIO descriptors
-    rs300->pwdn_gpio = devm_gpiod_get_optional(&client->dev, "pwdn",
-                                              GPIOD_OUT_HIGH);
-    if (IS_ERR(rs300->pwdn_gpio))
-        return PTR_ERR(rs300->pwdn_gpio);
+	/* Get reset GPIO */
+	dev_dbg(dev, "Getting reset GPIO");
+	rs300->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(rs300->reset_gpio)) {
+		ret = PTR_ERR(rs300->reset_gpio);
+		dev_err(dev, "Failed to get reset GPIO: %d", ret);
+		return ret;
+	}
+	dev_dbg(dev, "Reset GPIO acquired successfully");
 
-    // Initialize mutex
-    mutex_init(&rs300->lock);
+	/* Power on the sensor */
+	dev_dbg(dev, "Powering on the sensor");
+	ret = rs300_power_on(dev);
+	if (ret) {
+		dev_err(dev, "Failed to power on rs300: %d", ret);
+		goto error_power_off;
+	}
+	dev_dbg(dev, "Sensor powered on successfully");
 
-    // Initialize V4L2 subdev with the ops structure
-    v4l2_i2c_subdev_init(&rs300->sd, client, &rs300_subdev_ops);
+	/* Set default mode to 640x512 */
+	rs300->mode = &supported_modes[0];
 
-#ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
-    rs300->sd.internal_ops = &rs300_internal_ops;
-    rs300->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-#endif
+	/* Initialize default format */
+	rs300_set_default_format(rs300);
+	
+	ret = rs300_init_controls(rs300);
+	if (ret) {
+		dev_err(dev, "failed to initialize controls\n");
+		goto error_power_off;
+	}
+	
+	/* Initialize subdev */
+	rs300->sd.internal_ops = &rs300_subdev_internal_ops;
+	rs300->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
+			    V4L2_SUBDEV_FL_HAS_EVENTS;
+	rs300->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-    // Initialize controls
-    ret = v4l2_ctrl_handler_init(&rs300->ctrls, 2);
-    if (ret)
-        goto error_mutex_destroy;
+	/* Initialize source pad */
+	rs300->pad[0].flags = MEDIA_PAD_FL_SOURCE;
 
-    rs300->link_frequency = v4l2_ctrl_new_int_menu(&rs300->ctrls, NULL,
-                                                  V4L2_CID_LINK_FREQ,
-                                                  0, 0, link_freq_menu_items);
+	ret = media_entity_pads_init(&rs300->sd.entity, NUM_PADS, rs300->pad);
+	if (ret) {
+		dev_err(dev, "failed to init entity pads: %d\n", ret);
+		goto error_handler_free;
+	}
+	
+	ret = v4l2_async_register_subdev_sensor(&rs300->sd);
+	if (ret < 0) {
+		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
+		goto error_media_entity;
+	}
 
-    rs300->pixel_rate = v4l2_ctrl_new_std(&rs300->ctrls, &rs300_ctrl_ops,
-                                         V4L2_CID_PIXEL_RATE, 0,
-                                         rs300_PIXEL_RATE, 1,
-                                         rs300_PIXEL_RATE);
+	/* Enable runtime PM and turn off the device */
+	pm_runtime_set_active(dev);
+	pm_runtime_enable(dev);
+	pm_runtime_idle(dev);
 
-    rs300->sd.ctrl_handler = &rs300->ctrls;
-    if (rs300->ctrls.error) {
-        ret = rs300->ctrls.error;
-        goto error_free_ctrl;
-    }
+	return 0;
 
-    // Initialize format
-    rs300_get_default_format(&rs300->format, rs300->module_index);
+error_media_entity:
+	media_entity_cleanup(&rs300->sd.entity);
 
-    // Initialize media entity
-    rs300->pad.flags = MEDIA_PAD_FL_SOURCE;
-    rs300->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
-    ret = media_entity_pads_init(&rs300->sd.entity, 1, &rs300->pad);
-    if (ret)
-        goto error_free_ctrl;
+error_handler_free:
+	v4l2_ctrl_handler_free(&rs300->ctrl_handler);		
 
-    ret = v4l2_async_register_subdev_sensor(&rs300->sd);
-    if (ret)
-        goto error_clean_entity;
-
-    dev_info(&client->dev, "rs300 camera probed successfully\n");
-    return 0;
-
-error_clean_entity:
-    media_entity_cleanup(&rs300->sd.entity);
-error_free_ctrl:
-    v4l2_ctrl_handler_free(&rs300->ctrls);
 error_power_off:
-    rs300_power_off(rs300);
-error_mutex_destroy:
-    mutex_destroy(&rs300->lock);
-    return ret;
+	rs300_power_off(dev);
+
+	return ret;
 }
 
-/* rs300_remove - Driver cleanup
- *
- * Cleanup steps:
- * 1. Free V4L2 controls
- * 2. Unregister V4L2 subdevice
- * 3. Cleanup media controller resources
- * 4. Free mutex
- */
 static void rs300_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct rs300 *rs300 = to_rs300(sd);
 
-	v4l2_ctrl_handler_free(&rs300->ctrls);
 	v4l2_async_unregister_subdev(sd);
-#if defined(CONFIG_MEDIA_CONTROLLER)
 	media_entity_cleanup(&sd->entity);
-#endif
-	mutex_destroy(&rs300->lock);
+	rs300_free_controls(rs300);
+
+	pm_runtime_disable(&client->dev);
+	if (!pm_runtime_status_suspended(&client->dev))
+		pm_runtime_suspend(&client->dev);	
+	pm_runtime_set_suspended(&client->dev);
 }
 
 static const struct i2c_device_id rs300_id[] = {
@@ -1034,7 +1422,7 @@ MODULE_DEVICE_TABLE(i2c, rs300_id);
 
 #if IS_ENABLED(CONFIG_OF)
 static const struct of_device_id rs300_of_match[] = {
-	{ .compatible = "infisense,rs300-mipi"  },
+	{ .compatible = "infisense,rs300"  },
 	{ /* sentinel */ },
 };
 MODULE_DEVICE_TABLE(of, rs300_of_match);
@@ -1045,29 +1433,16 @@ static struct i2c_driver rs300_i2c_driver = {
 		.name	= DRIVER_NAME,
 		.of_match_table = of_match_ptr(rs300_of_match),
 	},
-	.probe = rs300_probe,
+	.probe		= rs300_probe,
 	.remove		= rs300_remove,
 	.id_table	= rs300_id,
 };
 
-/*
- * sensor_mod_init - Module initialization
- *
- * Called during driver loading:
- * 1. Registers I2C driver with kernel
- * 2. Sets up module parameters
- * 3. Initializes driver resources
- */
 static int __init sensor_mod_init(void)
 {
 	return i2c_add_driver(&rs300_i2c_driver);
 }
 
-/*
- * sensor_mod_exit - Module cleanup function
- * Called when the driver is unloaded
- * Unregisters the I2C driver
- */
 static void __exit sensor_mod_exit(void)
 {
 	i2c_del_driver(&rs300_i2c_driver);
@@ -1076,10 +1451,6 @@ static void __exit sensor_mod_exit(void)
 device_initcall_sync(sensor_mod_init);
 module_exit(sensor_mod_exit);
 
-/* 
- * Module metadata and license information
- * Required for all kernel modules
- */
 MODULE_AUTHOR("infisense");
 MODULE_DESCRIPTION("rs300 ir camera driver");
 MODULE_LICENSE("GPL v2");
