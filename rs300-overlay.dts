@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Definitions for IMX294 camera module on VC I2C bus
+// Definitions for RS300 camera module on VC I2C bus
 /dts-v1/;
 /plugin/;
+
 /{
 	compatible = "brcm,bcm2835";
 
@@ -14,9 +15,9 @@
 
 	clk_frag: fragment@1 {
 		target = <&cam1_clk>;
-		cam_clk: __overlay__ {
-			clock-frequency = <24000000>;
+		__overlay__ {
 			status = "okay";
+			clock-frequency = <24000000>;
 		};
 	};
 
@@ -24,20 +25,6 @@
 		target = <&i2c0mux>;
 		__overlay__ {
 			status = "okay";
-		};
-	};
-
-	reg_frag: fragment@3 {
-		target = <&cam1_reg>;
-		cam_reg: __overlay__ {
-			startup-delay-us = <1000>;
-		};
-	};
-
-	reg_alwayson_frag: fragment@99 {
-		target = <&cam1_reg>;
-		__dormant__ {
-			regulator-always-on;
 		};
 	};
 
@@ -50,29 +37,29 @@
 			clock-frequency = <400000>;
 
 			cam_node: rs300@3c {
-				reg = <0x3c>;
-				status = "okay";
 				compatible = "infisense,rs300";
+				reg = <0x3c>;
+				status = "disabled";
+
 				clocks = <&cam1_clk>;
 				clock-names = "xvclk";
 
+				reset-gpios = <&gpio 5 1>;
+
 				VANA-supply = <&cam1_reg>;	/* 2.8v */
-				VDIG-supply = <&cam_dummy_reg>;	/* 1.2v */
-				VDDL-supply = <&cam_dummy_reg>;	/* 1.8v */
+				VDIG-supply = <&cam_dummy_reg>;
+				VDDL-supply = <&cam_dummy_reg>;
 
 				port {
 					cam_endpoint: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2>;
 						clock-noncontinuous;
-						remote-endpoint = <&csi_ep>;
 						link-frequencies =
 							/bits/ 64 <80000000>;
 					};
 				};
-
 			};
-
 		};
 	};
 
@@ -98,10 +85,15 @@
 		cam0 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi0>,
 		       <&csi_frag>, "target:0=",<&csi0>,
 		       <&clk_frag>, "target:0=",<&cam0_clk>,
-		       <&reg_frag>, "target:0=",<&cam0_reg>,
-		       <&reg_alwayson_frag>, "target:0=",<&cam0_reg>,
 		       <&cam_node>, "clocks:0=",<&cam0_clk>,
 		       <&cam_node>, "VANA-supply:0=",<&cam0_reg>;
-		always-on = <0>, "+99";
 	};
+};
+
+&cam_node {
+	status = "okay";
+};
+
+&cam_endpoint {
+	remote-endpoint = <&csi_ep>;
 };
