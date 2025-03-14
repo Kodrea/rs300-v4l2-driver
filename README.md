@@ -1,6 +1,21 @@
 # RS300 Thermal Camera Driver for Raspberry Pi
 
-This driver supports the RS300 thermal camera on Raspberry Pi platforms.
+This driver is for the "mini2" thermal camera module refered to as the rs300 in the original driver.
+Tested with a 640x512 module on Raspberry Pi 4b running Raspberry OS - Bookworm
+
+## TODO
+- Raspberry Pi 5 testing coming soon
+- Get the 256 module working
+
+
+## Where I got the module
+I've bought from two stores on Alibaba who sell the same module
+1. Purple River Technology: https://purpleriver.en.alibaba.com/index.html?spm=a2700.details.0.0.1a245460PSIafr&from=detail&productId=1601081970203
+   - I bought a 256 module with 15mm lens from them and they helped me with the custom PCB board for the module that allows it to connect to the Pi. Excellent Customer support.
+
+2. Shenzhen Chengen Thermovisiontechnology: https://cersnv.en.alibaba.com/index.html?spm=a2700.details.0.0.7d0f2dfbCpGJwE&from=detail&productId=1601308525861
+   - I bought the 640 module with 25mm lens from this seller and put the PCB board from purple river on it to connect it to the pi.
+
 
 ## Installation
 
@@ -23,75 +38,18 @@ chmod +x setup.sh
 
 ## Usage
 
-### Driver Parameters
-
-The driver supports several parameters that can be set at load time:
-
-| Parameter   | Values           | Description                                   |
-|-------------|------------------|-----------------------------------------------|
-| mode        | 0=256x192, 1=640x512 | Camera resolution mode                       |
-| fps         | integer (e.g. 25)     | Frames per second                            |
-| width       | integer (e.g. 256)    | Image width                                  |
-| height      | integer (e.g. 192)    | Image height                                 |
-| type        | 16=YUYV, 18=UYVY     | Image format type                            |
-| bus_format  | 0=YUYV8_2X8, 1=YUYV8_1X16 | Media bus format                       |
-| debug       | 0=off, 1=on          | Enable debugging output                      |
-
-### Setting Parameters at Module Load
-
-You can set these parameters when loading the module:
-
-```bash
-sudo modprobe rs300 mode=1 fps=30 bus_format=1 debug=1
-```
-
-Or permanently in `/etc/modprobe.d/rs300.conf`:
-
-```
-options rs300 mode=1 fps=30 bus_format=1 debug=1
-```
-
-### Runtime Configuration
-
-Some parameters can be changed at runtime via sysfs:
-
-```bash
-# Change bus format
-echo 1 > /sys/devices/platform/soc/fe201000.serial/tty/ttyAMA0/device/subsystem/devices/i2c-1/1-003c/bus_format
-```
-
-## Debugging
-
-### Enabling Debug Output
-
-To enable debug output:
-
-1. Load the module with the debug parameter:
-   ```bash
-   sudo modprobe rs300 debug=1
-   ```
-
-2. View kernel logs:
-   ```bash
-   dmesg -w
-   ```
-
-### Checking Camera Status
-
-When debug mode is enabled, the driver will print detailed information about camera operations:
-
-- Driver initialization
-- Format negotiation
-- Streaming start/stop
-- I2C communication details
-
 ### Viewing Device Information
 
-Get basic information about the device:
-
+Get basic information about the Unicam bridge driver:
 ```bash
 v4l2-ctl --list-devices
 v4l2-ctl --all -d /dev/video0
+```
+
+The actual camera is registered as a sub device in the driver
+
+```bash
+v4l2-ctl -d /dev/v4l-subdev0 --list-ctrls
 ```
 
 ### Testing Video Capture
@@ -99,7 +57,7 @@ v4l2-ctl --all -d /dev/video0
 Test the camera with v4l2-ctl:
 
 ```bash
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=256,height=192,pixelformat=YUYV --stream-mmap --stream-count=10
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV --stream-mmap --stream-count=10
 ```
 
 ### Common Issues and Solutions
@@ -113,10 +71,9 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=256,height=192,pixelformat=YUYV --
 
 If experiencing issues:
 
-1. Enable debug mode: `sudo modprobe -r rs300 && sudo modprobe rs300 debug=1`
-2. Check kernel messages: `dmesg | grep rs300`
-3. Verify I2C connection: `i2c-detect -y 1`
-4. Check for device: `ls -la /dev/video*`
+1. Check kernel messages: `dmesg | grep rs300`
+2. Verify I2C connection: `i2c-detect -y 1`
+3. Check for device: `ls -la /dev/video*`
 
 # RS300 V4L2 Driver (Mini2 Thermal Camera)
 
@@ -227,10 +184,10 @@ ffplay -f video4linux2 -input_format yuyv422 -video_size 256x192 -i /dev/video0
 ffplay -f video4linux2 -input_format yuyv422 -video_size 640x512 -i /dev/video0
 ```
 
-sudo i2ctransfer -y 10 w20@0x3c 0x1d 0x00 0x10 0x02 0x81 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x01 0x00 0x00 0x00 0x78 0x34
-sudo i2ctransfer -y 10 r2@0x3c 0x02 0x00
-sudo i2ctransfer -y 10 r4@0x3c 0x1d 0x00
+## rs300-v4l2-driver
+I started getting a message that postinst wasn't running, but it's only needed for the first time or if changes to the device tree overlay are made
 
-# rs300-v4l2-driver
+```bash
 ./setup.sh
 sudo sh /usr/src/rs300-0.0.1/dkms.postinst
+```
