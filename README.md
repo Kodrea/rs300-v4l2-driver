@@ -7,6 +7,8 @@ This driver is for the "mini2" thermal camera module refered to as the rs300 in 
 Tested with a 640x512 module on Raspberry Pi 4b running Raspberry OS - Bookworm
 
 **WORK IN PROGRESS**
+## UPDATE!! 3/27/25
+Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be available from Purple River Tech.
 
 ## TODO
 - Raspberry Pi 5 testing coming soon
