@@ -6,13 +6,44 @@ This driver is for the "mini2" thermal camera module refered to as the rs300 in 
 
 Tested with a 640x512 module on Raspberry Pi 4b running Raspberry OS - Bookworm
 
+---
 **WORK IN PROGRESS**
+
+---
+
+## UPDATE 5/2/2025
+After a delay with the boards they are now available for purchase with the module! Currently the only listing for the Mini2 is the 640 module with 9mm lens but if you need a different lens or resolutions feel free to reach out to their customer support. 
+
+Below is the link to buy, make sure to use the coupon code which will ensure your order has the RPi adapter board and takes 30USD off.
+</br>⚠️IMPORTANT: use the coupon code to get the custom RPi board and not their standard board!
+- Link to Buy: https://www.thermal-image.com/product/mini2-640x512-9mm-thermal-imaging-camera-module-for-drones/
+- Coupon Code: HXZUK8WG
+
+I'm working on cleaning up the driver as well as creating tutorial videos in the coming days
+- https://linktr.ee/kodrea
+
 ## UPDATE!! 3/27/25
 Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be available from Purple River Tech.
 
+---
+
+## Raspberry Pi MIPI CSI-2 Testing
+
+| Raspberry Pi Model | Module Resolution | Connection Type | OS & Kernel | Status         | Notes                                                          |
+| ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
+| Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues |
+| Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Untested       | Should be arriving 5/2 for testing                           |
+| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | ⚠️ No video    | I2C commands work, but no MIPI video data after extensive testing |
+| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | In Progress    | New camera pipeline; requires driver and/or device tree changes |
+| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | May have been underpowering the Pi, need to retest |
+
+- For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB.
+- For the Pi Zero 2W I'm going to retest with a power supply that I know can meet the 5V 2.5A. If that fails I will connect a variable DC power supply directly to the 5V header pin.
+
 ## TODO
-- Raspberry Pi 5 testing coming soon
-- Get the 256 module working with raspberry pi
+- Raspberry Pi 5 compatibility
+- Test 384 module when it arrives
+- Continue Troubleshooting 256 mipi data
 
 
 ## Where I got the module
@@ -29,10 +60,10 @@ The "mini2" is a thermal imaging camera that comes in multiple resolutions and t
 
 The available resolutions are:
 1. 256x192 - 25/50hz   (50hz is available over USB)
-2. 384x288 - 30/60hz   (Untested - Don't have this module)
+2. 384x288 - 30/60hz   (Untested - Don't have this module, arriving 5/2)
 3. 640x512 - 30/60hz   (60hz is NOT supported by USB)
 
-NETD: 50mk or 40mk I've seen it listed as both
+NETD: 40mk
 ------
 ### Video Output Methods
 This module can output two simultaneous video streams. One Digital, One Analog.
@@ -41,13 +72,13 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 #### USB 2.0
 - As mentioned above the 640 module is limited to 30fps over USB. I'm unsure about the 384 module.
-- The camera is UVC compliant and will work the same as a webcam. For the 256 module you can even switch the framerate from 25fps to 50fps in standard camera apps.
-- The pixel format is YUYV422 but you can change it to a different order like UYVU.
+- The camera is UVC compliant and will work the same as a webcam but camera controls are not exposed. For the 256 module you can even switch the framerate from 25fps to 50fps in standard camera apps.
+- The pixel format is YUYV422 but you can change it to a different order like UYVU with the SDK.
 - For sending commands to the camera over USB, such as brightness changes, shutter calibration, changing colormaps, you will need to use the provided SDK. The SDK is for windows and linux but I have only used the linux portion so far
 
 #### MIPI
 - Allows digital 60fps with the 640 module
-- The custom PCB has the 15 pin connector compatible with RPi 4B MIPI CSI-2 camera port. However, the design uses a same sided head ribbon cable and not a reverse head like most other RPi cameras. I will try to have this changed before a batch is made for easier compatibility. This will be critical for easy connection to newer RPis with the 22pin camera ports.
+- The custom PCB has the 15 pin connector compatible with RPi 4B MIPI CSI-2 camera port. The original board needed a same-sided ribbon cable so I had them update the design to be compatible with the reverse head cable that raspberry pi cameras generally use. This is critical to be able to use the 15-22pin adapter cable for the RPi 5, zero, and CMs
 - Uses the rs300 driver I am currently working on to connect to the Pi. I'm implementing camera commands over I2C without the need for any SDK or precompiled binary files. As many commands as I can I am making them V4L2 compliant for easy integration.
 
 #### CVBS
