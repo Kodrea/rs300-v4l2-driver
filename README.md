@@ -32,13 +32,13 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 | Raspberry Pi Model | Module Resolution | Connection Type | OS & Kernel | Status         | Notes                                                          |
 | ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
 | Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues |
-| Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Untested       | Should be arriving 5/2 for testing                           |
-| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | ⚠️ No video    | I2C commands work, but no MIPI video data after extensive testing |
+| Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
+| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | ⚠️ No video    | I2C commands work, but no MIPI video data. More Testing Needed |
 | Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | In Progress    | New camera pipeline; requires driver and/or device tree changes |
-| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | May have been underpowering the Pi, need to retest |
+| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
 
 - For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB.
-- For the Pi Zero 2W I'm going to retest with a power supply that I know can meet the 5V 2.5A. If that fails I will connect a variable DC power supply directly to the 5V header pin.
+- For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable.
 
 ## TODO
 - Raspberry Pi 5 compatibility
@@ -59,8 +59,8 @@ I've bought from two stores on Alibaba who sell the same module
 The "mini2" is a thermal imaging camera that comes in multiple resolutions and to my understanding is imaging only. For temperature measurements a different module or variant is needed, like the "mini" (I wish they used a better naming scheme).
 
 The available resolutions are:
-1. 256x192 - 25/50hz   (50hz is available over USB)
-2. 384x288 - 30/60hz   (Untested - Don't have this module, arriving 5/2)
+1. 256x192 - 25/50hz   (25/50hz is available over USB)
+2. 384x288 - 30/60hz   (30/60Hz is available over USB)
 3. 640x512 - 30/60hz   (60hz is NOT supported by USB)
 
 NETD: 40mk
