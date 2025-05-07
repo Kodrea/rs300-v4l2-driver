@@ -44,7 +44,7 @@
 				clocks = <&cam1_clk>;
 				clock-names = "xvclk";
 
-				reset-gpios = <&gpio 5 1>;
+				reset-gpios = <&gpio 5 0>;
 
 				VANA-supply = <&cam1_reg>;	/* 2.8v */
 				VDIG-supply = <&cam_dummy_reg>;
@@ -54,7 +54,7 @@
 					cam_endpoint: endpoint {
 						clock-lanes = <0>;
 						data-lanes = <1 2>;
-						clock-noncontinuous;
+
 						link-frequencies =
 							/bits/ 64 <80000000>;
 					};
