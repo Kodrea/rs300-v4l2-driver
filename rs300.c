@@ -74,15 +74,15 @@ static const char * const scene_mode_menu[] = {
     "Low Contrast",       /* 2 */
     "General Mode",       /* 3 */
     "High Contrast",      /* 4 */
-    "Highlight",         /* 5 */
-    "Reserved 1",        /* 6 */
-    "Reserved 2",        /* 7 */
-    "Reserved 3",        /* 8 */
-    "Outline Mode",      /* 9 */
+    "Highlight",          /* 5 */
+    "Reserved 1",         /* 6 */
+    "Reserved 2",         /* 7 */
+    "Reserved 3",         /* 8 */
+    "Outline Mode",       /* 9 */
     NULL
 };
 
-#define NUM_COLORMAP_ITEMS ARRAY_SIZE(colormap_menu)
+#define NUM_COLORMAP_ITEMS (ARRAY_SIZE(colormap_menu) - 1) // Account for NULL terminator
 
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
@@ -1684,6 +1684,7 @@ static void rs300_update_image_pad_format(struct rs300 *rs300,
 	rs300_reset_colorspace(&fmt->format);
 }
 
+// Restore and fix __rs300_get_pad_fmt
 static int __rs300_get_pad_fmt(struct rs300 *rs300,
 				struct v4l2_subdev_state *sd_state,
 				struct v4l2_subdev_format *fmt)
@@ -1697,8 +1698,8 @@ static int __rs300_get_pad_fmt(struct rs300 *rs300,
 		fmt->pad, fmt->which);
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-        // Get pointer to where V4L2 framework stores try formats for this pad
-        try_fmt = v4l2_subdev_get_try_format(&rs300->sd, sd_state, fmt->pad);
+        // Use v4l2_subdev_get_fmt instead of v4l2_subdev_get_try_format
+        try_fmt = v4l2_subdev_get_fmt(&rs300->sd, sd_state, fmt->pad);
 
         // Copy the format from userspace (fmt->format) to that location (*try_fmt)
         *try_fmt = fmt->format;
@@ -1731,6 +1732,7 @@ static int __rs300_get_pad_fmt(struct rs300 *rs300,
 	return 0;
 }
 
+// Fix rs300_get_pad_fmt to call __rs300_get_pad_fmt
 static int rs300_get_pad_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
@@ -1745,6 +1747,7 @@ static int rs300_get_pad_fmt(struct v4l2_subdev *sd,
 	return ret;
 }
 
+// Fix rs300_set_pad_fmt to use v4l2_subdev_get_fmt
 static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_state *sd_state,
 			  struct v4l2_subdev_format *fmt)
@@ -1797,7 +1800,7 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 
 		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
 			/* Just update the try format */
-			framefmt = v4l2_subdev_get_try_format(sd, sd_state, fmt->pad);
+			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
 			*framefmt = fmt->format;
 			dev_info(&client->dev, "Set TRY format: code=0x%x, %dx%d",
 				framefmt->code, framefmt->width, framefmt->height);
@@ -1820,7 +1823,7 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 	} else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
 		/* Handle metadata pad format if needed */
 		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			framefmt = v4l2_subdev_get_try_format(sd, sd_state, fmt->pad);
+			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
 			*framefmt = fmt->format;
 		}
 		/* For active format, we don't change anything as metadata format is fixed */
@@ -2128,14 +2131,13 @@ static const s64 link_freq_menu_items[] = {
 static int rs300_init_cfg(struct v4l2_subdev *sd,
 			   struct v4l2_subdev_state *state)
 {
-	struct rs300 *rs300 = to_rs300(sd);
-	struct v4l2_mbus_framefmt *format;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct v4l2_mbus_framefmt *format;
 
 	dev_info(&client->dev, "rs300_init_cfg");
 
 	/* Initialize the format for the image pad */
-	format = v4l2_subdev_get_pad_format(sd, state, IMAGE_PAD);
+	format = v4l2_subdev_get_fmt(sd, state, IMAGE_PAD);
 	format->code = supported_modes[mode].code;
 	format->width = supported_modes[mode].width;
 	format->height = supported_modes[mode].height;
@@ -2144,9 +2146,10 @@ static int rs300_init_cfg(struct v4l2_subdev *sd,
 
 	/* Initialize the format for the metadata pad if needed */
 	if (NUM_PADS > 1) {
-		format = v4l2_subdev_get_pad_format(sd, state, METADATA_PAD);
+		format = v4l2_subdev_get_fmt(sd, state, METADATA_PAD);
 		format->code = MEDIA_BUS_FMT_SENSOR_DATA;
 		format->width = 0;  /* Set appropriate width for metadata */
+		
 		format->height = 0; /* Set appropriate height for metadata */
 		format->field = V4L2_FIELD_NONE;
 	}
@@ -2258,7 +2261,6 @@ static int rs300_set_selection(struct v4l2_subdev *sd,
 }
 
 static const struct v4l2_subdev_pad_ops rs300_subdev_pad_ops = {
-	.init_cfg = rs300_init_cfg,
 	.enum_mbus_code = rs300_enum_mbus_code,
 	.get_fmt = rs300_get_pad_fmt,
 	.set_fmt = rs300_set_pad_fmt,
@@ -2285,43 +2287,35 @@ static const struct v4l2_ctrl_config colormap_ctrl = {
     .name = "Colormap",
     .type = V4L2_CTRL_TYPE_MENU,
     .qmenu = colormap_menu,
-    .flags = V4L2_CTRL_FLAG_MODIFY_LAYOUT,
     .min = 0,
     .max = 11,
     .step = 1,
     .def = 0,
 };
 
-/* Define this at file scope, outside any function */
 static const struct v4l2_ctrl_config ffc_ctrl = {
-    .ops = &rs300_ctrl_ops,          // Pointer to control operations
-    .id = V4L2_CID_CUSTOM_BASE + 2,  // Custom control ID
-    .name = "FFC Trigger",           // Human-readable name
-    .type = V4L2_CTRL_TYPE_BUTTON,   // Button type for trigger actions
-    .flags = V4L2_CTRL_FLAG_WRITE_ONLY | V4L2_CTRL_FLAG_UPDATE | V4L2_CTRL_FLAG_EXECUTE_ON_WRITE,
-    .min = 0,                        // Always 0 for button
-    .max = 0,                        // Always 0 for button
-    .step = 0,                       // Always 0 for button
-    .def = 0,                        // Always 0 for button
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 2,
+    .name = "FFC Trigger",
+    .type = V4L2_CTRL_TYPE_BUTTON,
+    .min = 0,
+    .max = 0,
+    .step = 0,
+    .def = 0,
 };
 
-/* Define scene mode control configuration */
 static const struct v4l2_ctrl_config scene_mode_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 3,
     .name = "Scene Mode",
     .type = V4L2_CTRL_TYPE_MENU,
     .qmenu = scene_mode_menu,
-    .flags = V4L2_CTRL_FLAG_MODIFY_LAYOUT,
     .min = 0,
     .max = 9,
     .step = 1,
-    .def = 3,  /* Default to General Mode */
+    .def = 3,
 };
 
-/* Add these control configurations after the existing control configs */
-
-/* Define DDE control configuration */
 static const struct v4l2_ctrl_config dde_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 4,
@@ -2330,10 +2324,9 @@ static const struct v4l2_ctrl_config dde_ctrl = {
     .min = 0,
     .max = 100,
     .step = 1,
-    .def = 50,  // Changed from 0 to 50
+    .def = 50,
 };
 
-/* Define spatial noise reduction control configuration */
 static const struct v4l2_ctrl_config spatial_nr_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 5,
@@ -2342,10 +2335,9 @@ static const struct v4l2_ctrl_config spatial_nr_ctrl = {
     .min = 0,
     .max = 100,
     .step = 1,
-    .def = 50,  // Changed from 0 to 50
+    .def = 50,
 };
 
-/* Define temporal noise reduction control configuration */
 static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 6,
@@ -2354,7 +2346,7 @@ static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .min = 0,
     .max = 100,
     .step = 1,
-    .def = 50,  // Changed from 0 to 50
+    .def = 50,
 };
 
 static int rs300_init_controls(struct rs300 *rs300)
@@ -2371,8 +2363,10 @@ static int rs300_init_controls(struct rs300 *rs300)
     
     ctrl_hdlr = &rs300->ctrl_handler;
     ret = v4l2_ctrl_handler_init(ctrl_hdlr, 11);
-    if (ret)
+    if (ret) {
+        dev_err(&client->dev, "Failed to init ctrl handler: %d", ret);
         return ret;
+    }
 
     /* Set the lock for the control handler */
     ctrl_hdlr->lock = &rs300->mutex;
@@ -2380,15 +2374,18 @@ static int rs300_init_controls(struct rs300 *rs300)
     /* Add standard controls */
     rs300->link_frequency = v4l2_ctrl_new_int_menu(ctrl_hdlr, NULL,
         V4L2_CID_LINK_FREQ, 
-        ARRAY_SIZE(link_freq_menu) - 1,
-        0, link_freq_menu);
+        0, // Maximum index (not array size)
+        0, // Default index
+        link_freq_menu);
+    
     if (rs300->link_frequency)
         rs300->link_frequency->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
     rs300->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, NULL,
                                       V4L2_CID_PIXEL_RATE,
                                       RS300_PIXEL_RATE, RS300_PIXEL_RATE, 1, 
-                                      RS300_PIXEL_RATE);  // Use the macro value
+                                      RS300_PIXEL_RATE);
+    
     if (rs300->pixel_rate)
         rs300->pixel_rate->flags |= V4L2_CTRL_FLAG_READ_ONLY;
     
@@ -2398,57 +2395,19 @@ static int rs300_init_controls(struct rs300 *rs300)
                          RS300_BRIGHTNESS_STEP,
                          RS300_BRIGHTNESS_DEFAULT);
 
-
-    /* Add colormap control - use simpler approach first */
-    rs300->colormap = v4l2_ctrl_new_custom(ctrl_hdlr, &colormap_ctrl, NULL);
-    if (!rs300->colormap) {
-        dev_err(&client->dev, "Failed to create colormap control");
-    }
-
-    /* Add FFC (Flat Field Correction) control using a custom control */
-    rs300->shutter_cal = v4l2_ctrl_new_custom(ctrl_hdlr, &ffc_ctrl, NULL);
-    if (!rs300->shutter_cal) {
-        dev_err(&client->dev, "Failed to create shutter calibration control");
-    }
-
-    /* Add zoom control - use simpler approach first */
-    rs300->zoom = v4l2_ctrl_new_std(ctrl_hdlr, &rs300_ctrl_ops,
-                    V4L2_CID_ZOOM_ABSOLUTE,
-                    1,  // min (1x zoom)
-                    8,  // max (8x zoom)
-                    1,  // step
-                    1); // default (1x zoom)
-    if (!rs300->zoom) {
-        dev_err(&client->dev, "Failed to create zoom control\n");
-    }
-
-    /* Add scene mode control */
-    rs300->scene_mode = v4l2_ctrl_new_custom(ctrl_hdlr, &scene_mode_ctrl, NULL);
-    if (!rs300->scene_mode) {
-        dev_err(&client->dev, "Failed to create scene mode control");
-    }
-
     /* Add standard contrast control */
     rs300->contrast = v4l2_ctrl_new_std(ctrl_hdlr, &rs300_ctrl_ops,
                          V4L2_CID_CONTRAST, 0, 100, 1, 50);
 
-    /* Add DDE control */
+    /* Add custom controls with simpler configurations */
+    rs300->colormap = v4l2_ctrl_new_custom(ctrl_hdlr, &colormap_ctrl, NULL);
+    rs300->shutter_cal = v4l2_ctrl_new_custom(ctrl_hdlr, &ffc_ctrl, NULL);
+    rs300->zoom = v4l2_ctrl_new_std(ctrl_hdlr, &rs300_ctrl_ops,
+                    V4L2_CID_ZOOM_ABSOLUTE, 1, 8, 1, 1);
+    rs300->scene_mode = v4l2_ctrl_new_custom(ctrl_hdlr, &scene_mode_ctrl, NULL);
     rs300->dde = v4l2_ctrl_new_custom(ctrl_hdlr, &dde_ctrl, NULL);
-    if (!rs300->dde) {
-        dev_err(&client->dev, "Failed to create DDE control");
-    }
-
-    /* Add spatial noise reduction control */
     rs300->spatial_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &spatial_nr_ctrl, NULL);
-    if (!rs300->spatial_nr) {
-        dev_err(&client->dev, "Failed to create spatial NR control");
-    }
-
-    /* Add temporal noise reduction control */
     rs300->temporal_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &temporal_nr_ctrl, NULL);
-    if (!rs300->temporal_nr) {
-        dev_err(&client->dev, "Failed to create temporal NR control");
-    }
 
     /* Check for errors */
     if (ctrl_hdlr->error) {
@@ -2467,7 +2426,7 @@ static int rs300_init_controls(struct rs300 *rs300)
 
 error:
     v4l2_ctrl_handler_free(ctrl_hdlr);
-    mutex_destroy(&rs300->mutex);    
+    mutex_destroy(&rs300->mutex);
 
     return ret;
 }
@@ -2708,6 +2667,9 @@ static int rs300_probe(struct i2c_client *client)
 
 	/* Initialize default format */
 	rs300_set_default_format(rs300);
+
+	/* Initialize mutex */
+	mutex_init(&rs300->mutex);
 	
 	/* Initialize controls BEFORE registering the subdevice */
 	ret = rs300_init_controls(rs300);
@@ -2716,27 +2678,29 @@ static int rs300_probe(struct i2c_client *client)
 		goto error_power_off;
 	}
 	
-	/* Initialize subdev */
-	//rs300->sd.internal_ops = &rs300_subdev_internal_ops;
+	/* Initialize subdev flags */
 	rs300->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE |
 			    V4L2_SUBDEV_FL_HAS_EVENTS;
 	rs300->sd.entity.function = MEDIA_ENT_F_CAM_SENSOR;
 
-	/* Initialize source pad */
-	rs300->pad[0].flags = MEDIA_PAD_FL_SOURCE;
+	/* Initialize pads */
+	rs300->pad[IMAGE_PAD].flags = MEDIA_PAD_FL_SOURCE;
+	if (NUM_PADS > 1)
+		rs300->pad[METADATA_PAD].flags = MEDIA_PAD_FL_SOURCE;
 
+	/* Initialize media entity */
 	ret = media_entity_pads_init(&rs300->sd.entity, NUM_PADS, rs300->pad);
 	if (ret) {
 		dev_err(dev, "failed to init entity pads: %d\n", ret);
 		goto error_handler_free;
 	}
 	
+	/* Register the subdevice */
 	ret = v4l2_async_register_subdev_sensor(&rs300->sd);
 	if (ret < 0) {
 		dev_err(dev, "failed to register sensor sub-device: %d\n", ret);
 		goto error_media_entity;
 	}
-
 
 	/* Add debug message to verify control handler is still set */
 	if (rs300->sd.ctrl_handler) {
