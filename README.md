@@ -167,28 +167,39 @@ Mini2-640
 v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
 ```
 
-## gstreamer
+### gstreamer
 gstreamer and has been faster than ffmpeg for me
 first install this
 ```bash
-sudo apt install gstreamer1.0-gl
+sudo apt install gstreamer1.0-tools
 ```
 
 set test-overlay=false to remove fps counter
 
 Mini2-256
 ```bash  
-GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=256,height=192,framerate=50/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=256,height=192,framerate=50/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
 ```
 Mini2-384
 ```bash  
-GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=384,height=288,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=384,height=288,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
 ```
 Mini2-640
 ```bash  
-GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+```
+### Camera Controls
+use v4l2 controls
+
+this triggers the ffc shutter calibration
+```bash
+v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=ffc_trigger=0
 ```
 
+Change colormaps
+```bash
+v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
+```
 
 ### Common Issues and Solutions
 
