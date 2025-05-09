@@ -90,7 +90,7 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 ## Installation
 
 ### Prerequisites
-- Raspberry Pi with Raspbian/Raspberry Pi OS
+- Raspberry Pi with Raspbian/Raspberry Pi OS Bookworm (Bullseye not tested)
 - Linux headers installed
 - DKMS support
 
@@ -101,9 +101,18 @@ Install the needed headers:
 sudo apt install linux-headers dkms git
 ```
 
+MODIFY DRIVER BEFORE BUILDING.
+This will be improved soon so it can be set without modifying driver code 
+```c
+static int mode = 2; //0-640; 1-256; 2-384
+static int fps = 60; //256: 25/50fps, 384/640: 30/60fps  
+```
+
 Run the setup script:
 ```bash
 cd /rs300-v4l2-driver
+# modify driver to select module
+sudo nano rs300.c
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -113,9 +122,12 @@ In your config.txt file add the overlay
 ```bash
 sudo nano /boot/firmware/config.txt
 ```
+
 Then Add
 ```bash
-
+camera_auto_detect=0
+dtoverlay=rs300
+```
 
 Then reboot
 ```bash
@@ -140,11 +152,43 @@ v4l2-ctl -d /dev/v4l-subdev0 --list-ctrls
 
 ### Testing Video Capture
 
-Test the camera with v4l2-ctl:
+Set the format resolution for the appropriate module
 
+Mini2-256
 ```bash
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV --stream-mmap --stream-count=10
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=256,height=192,pixelformat=YUYV
 ```
+Mini2-384
+```bash
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=384,height=288,pixelformat=YUYV
+```
+Mini2-640
+```bash
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
+```
+
+## gstreamer
+gstreamer and has been faster than ffmpeg for me
+first install this
+```bash
+sudo apt install gstreamer1.0-gl
+```
+
+set test-overlay=false to remove fps counter
+
+Mini2-256
+```bash  
+GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=256,height=192,framerate=50/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+```
+Mini2-384
+```bash  
+GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=384,height=288,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+```
+Mini2-640
+```bash  
+GST_DEBUG=3 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
+```
+
 
 ### Common Issues and Solutions
 
@@ -276,5 +320,4 @@ ffplay -f video4linux2 -input_format yuyv422 -video_size 256x192 -i /dev/video0
 ffplay -f video4linux2 -input_format yuyv422 -video_size 640x512 -i /dev/video0
 ```
 
-## rs300-v4l2-driver
 
