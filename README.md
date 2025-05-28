@@ -33,7 +33,7 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 | ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
 | Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues |
 | Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
-| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | ⚠️ No video    | I2C commands work, but no MIPI video data. More Testing Needed |
+| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | *Working       | *Purple River tested the 256 with my driver and it worked. They believe my module's firmware is the issue and are sending me instructions to update it|
 | Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | In Progress    | New camera pipeline; requires driver and/or device tree changes |
 | Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
 
