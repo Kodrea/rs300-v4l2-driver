@@ -39,11 +39,9 @@
 #define DRIVER_VERSION			KERNEL_VERSION(0, 0x01, 0x1)
 #define DRIVER_NAME "rs300"
 //80M (clk)* 2(double ) *2 (lan) /8
-//80Mhz works for 640x512
-//400, 80, 40, and 20Mhz does not work for 256x192
+
 #define RS300_LINK_RATE (80 * 1000 * 1000)
 #define RS300_PIXEL_RATE	(40 * 1000 * 1000)
-//#define RS300_PIXEL_RATE_256	(20 * 1000 * 1000)
 #define RS300_BRIGHTNESS_MIN 0
 #define RS300_BRIGHTNESS_MAX 100
 #define RS300_BRIGHTNESS_STEP 10
@@ -86,7 +84,7 @@ static const char * const scene_mode_menu[] = {
 
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
-static int mode = 2; //0-640; 1-256; 2-384
+static int mode = 0; //0-640; 1-256; 2-384
 static int fps = 60;
 static int pWidth = 0;
 static int pHeight = 0;
@@ -1809,14 +1807,6 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 			rs300->fmt = fmt->format;
 			rs300->mode = mode;
 			
-			// Set link frequency based on the selected mode
-			if (rs300->link_frequency) {
-				int idx = (mode->width == 256 && mode->height == 192) ? 1 : 0;
-				__v4l2_ctrl_s_ctrl(rs300->link_frequency, idx);
-				dev_info(&client->dev, "Updated link frequency index to %d for %dx%d",
-						 idx, mode->width, mode->height);
-			}
-			
 			dev_info(&client->dev, "Set ACTIVE format: code=0x%x, %dx%d",
 				rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
 		}
@@ -1978,11 +1968,7 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
         // unicam driver handle the appropriate frequency settings
         
         // Just print debug info about what resolution we're using
-        if (rs300->mode->width == 256 && rs300->mode->height == 192) {
-            dev_info(&client->dev, "Using 256x192 resolution - reduced bandwidth mode");
-        } else {
-            dev_info(&client->dev, "Using 640x512 resolution - full bandwidth mode");
-        }
+        dev_info(&client->dev, "Using %dx%d resolution", rs300->mode->width, rs300->mode->height);
     }
 
     mutex_lock(&rs300->mutex);
