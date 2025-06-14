@@ -41,7 +41,8 @@
 //80M (clk)* 2(double ) *2 (lan) /8
 
 #define RS300_LINK_RATE (80 * 1000 * 1000)
-#define RS300_PIXEL_RATE	(40 * 1000 * 1000)
+#define RS300_PIXEL_RATE	(40 * 1000 * 1000)  /* Base pixel rate for 8-bit formats */
+#define RS300_PIXEL_RATE_16BIT	(80 * 1000 * 1000)  /* Pixel rate for 16-bit packed formats */
 #define RS300_BRIGHTNESS_MIN 0
 #define RS300_BRIGHTNESS_MAX 100
 #define RS300_BRIGHTNESS_STEP 10
@@ -85,7 +86,7 @@ static const char * const scene_mode_menu[] = {
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
 static int mode = 0; //0-640; 1-256; 2-384
-static int fps = 60;
+static int fps = 30;
 static int pWidth = 0;
 static int pHeight = 0;
 static int type = 16;
@@ -296,11 +297,11 @@ static const char * const rs300_supply_names[] = {
 #define rs300_NUM_SUPPLIES ARRAY_SIZE(rs300_supply_names)
 
 static const u32 codes[] = {
-	/* YUV 4:2:2 Formats*/
-	MEDIA_BUS_FMT_YUYV8_1X16,
-	MEDIA_BUS_FMT_UYVY8_1X16,
-	MEDIA_BUS_FMT_YUYV8_2X8,
-	MEDIA_BUS_FMT_UYVY8_2X8,
+	/* YUV 4:2:2 Formats - Prioritize 16-bit packed for Pi 5 RP1-CFE compatibility */
+	MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed - preferred for RP1-CFE */
+	MEDIA_BUS_FMT_UYVY8_1X16,  /* 16-bit packed - alternative */
+	MEDIA_BUS_FMT_YUYV8_2X8,   /* 8-bit dual lane - legacy */
+	MEDIA_BUS_FMT_UYVY8_2X8,   /* 8-bit dual lane - legacy */
 };
 
 struct rs300 {
@@ -343,23 +344,23 @@ struct rs300 {
 };
 
 static struct rs300_mode supported_modes[] = {
-    { /* 640*/
+    { /* 640 - Primary mode for Pi 5 */
         .width      = 640,
         .height     = 512,
         .max_fps = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
-    { /* 256*/ // MIPI video not currently working, but I2C commands are working
+    { /* 256 - MIPI video not currently working, but I2C commands are working */
         .width      = 256,
         .height     = 192,  
         .max_fps = {
             .numerator = 25,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
         { /* 384*/
         .width      = 384,
@@ -368,7 +369,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 30,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     }
 
 };
@@ -381,16 +382,24 @@ static inline struct rs300 *to_rs300(struct v4l2_subdev *sd)
 static u32 rs300_get_format_code(struct rs300 *rs300, u32 code)
 {
 	unsigned int i;
+	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
 
 	lockdep_assert_held(&rs300->mutex);	
 
-	for (i = 0; i < ARRAY_SIZE(codes); i++)
+	dev_info(&client->dev, "rs300_get_format_code: input code=0x%x", code);
+
+	for (i = 0; i < ARRAY_SIZE(codes); i++) {
+		dev_info(&client->dev, "  Checking supported code[%d]=0x%x", i, codes[i]);
 		if (codes[i] == code)
 			break;
+	}
 
-	if (i >= ARRAY_SIZE(codes))
-		i = 0;	
+	if (i >= ARRAY_SIZE(codes)) {
+		dev_warn(&client->dev, "Format code 0x%x not found, defaulting to 0x%x", code, codes[0]);
+		i = 0; /* Default to first supported code (YUYV8_1X16) */
+	}
 
+	dev_info(&client->dev, "rs300_get_format_code: returning code=0x%x", codes[i]);
 	return codes[i];
 }
 
@@ -435,12 +444,29 @@ static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 }
 static void rs300_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 {
-	fmt->colorspace = V4L2_COLORSPACE_SRGB;
-	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
-	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(false,
-							  fmt->colorspace,
-							  fmt->ycbcr_enc);
-	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
+	/* Use RAW colorspace for thermal imaging data instead of sRGB */
+	fmt->colorspace = V4L2_COLORSPACE_RAW;
+	fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
+	fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE; /* Full range for thermal data */
+	fmt->xfer_func = V4L2_XFER_FUNC_NONE; /* No transfer function for raw thermal data */
+}
+
+/* Calculate pixel rate based on format */
+static u64 rs300_get_pixel_rate(u32 format_code)
+{
+	switch (format_code) {
+	case MEDIA_BUS_FMT_YUYV8_1X16:
+	case MEDIA_BUS_FMT_UYVY8_1X16:
+		/* 16-bit packed formats require higher pixel rate */
+		return RS300_PIXEL_RATE_16BIT;
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		/* 8-bit dual lane formats use base pixel rate */
+		return RS300_PIXEL_RATE;
+	default:
+		/* Default to 16-bit rate for unknown formats */
+		return RS300_PIXEL_RATE_16BIT;
+	}
 }
 
 static void rs300_set_default_format(struct rs300 *rs300)
@@ -1614,23 +1640,37 @@ static int rs300_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct rs300 *rs300 = to_rs300(sd);
-	//struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	
-	if (code->pad >= NUM_PADS)
+	dev_info(&client->dev, "rs300_enum_mbus_code: pad=%d, index=%d", code->pad, code->index);
+	
+	if (code->pad >= NUM_PADS) {
+		dev_err(&client->dev, "Invalid pad %d (max %d)", code->pad, NUM_PADS-1);
 		return -EINVAL;
+	}
 
 	if (code->pad == IMAGE_PAD) {
-		if (code->index >= ARRAY_SIZE(supported_modes))
+		if (code->index >= ARRAY_SIZE(supported_modes)) {
+			dev_err(&client->dev, "Invalid index %d for IMAGE_PAD (max %lu)", 
+				code->index, ARRAY_SIZE(supported_modes)-1);
 			return -EINVAL;
+		}
 
 		mutex_lock(&rs300->mutex);
 		code->code = supported_modes[code->index].code;
+		dev_info(&client->dev, "IMAGE_PAD[%d]: returning format code 0x%x (%s)",
+			 code->index, code->code, 
+			 code->code == MEDIA_BUS_FMT_YUYV8_1X16 ? "YUYV8_1X16" :
+			 code->code == MEDIA_BUS_FMT_YUYV8_2X8 ? "YUYV8_2X8" : "OTHER");
 		mutex_unlock(&rs300->mutex);
 	} else {
-		if (code->index > 0)
+		if (code->index > 0) {
+			dev_err(&client->dev, "Invalid index %d for METADATA_PAD (only 0 supported)", code->index);
 			return -EINVAL;
+		}
 
 		code->code = MEDIA_BUS_FMT_SENSOR_DATA;
+		dev_info(&client->dev, "METADATA_PAD: returning SENSOR_DATA format (0x%x)", code->code);
 	}
 	
 	return 0;
@@ -1807,6 +1847,14 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 			rs300->fmt = fmt->format;
 			rs300->mode = mode;
 			
+			/* Update pixel rate control based on new format */
+			if (rs300->pixel_rate) {
+				u64 new_pixel_rate = rs300_get_pixel_rate(rs300->fmt.code);
+				v4l2_ctrl_s_ctrl_int64(rs300->pixel_rate, new_pixel_rate);
+				dev_info(&client->dev, "Updated pixel rate to %llu for format 0x%x",
+					 new_pixel_rate, rs300->fmt.code);
+			}
+			
 			dev_info(&client->dev, "Set ACTIVE format: code=0x%x, %dx%d",
 				rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
 		}
@@ -1827,23 +1875,30 @@ static int rs300_set_framefmt(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
     
-    dev_info(&client->dev, "Setting frame format: code=0x%x", rs300->fmt.code);
+    dev_info(&client->dev, "Setting frame format: code=0x%x, %dx%d", 
+             rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
     
     switch (rs300->fmt.code) {
     case MEDIA_BUS_FMT_YUYV8_1X16:
-        dev_info(&client->dev, "Using YUYV8_1X16 format");
-        // Add format-specific setup here if needed
+        dev_info(&client->dev, "Using YUYV8_1X16 format (16-bit packed, preferred for RP1-CFE)");
+        /* 16-bit packed format - should be compatible with Pi 5 RP1-CFE */
+        return 0;
+    case MEDIA_BUS_FMT_UYVY8_1X16:
+        dev_info(&client->dev, "Using UYVY8_1X16 format (16-bit packed alternative)");
         return 0;
     case MEDIA_BUS_FMT_YUYV8_2X8:
-        dev_info(&client->dev, "Using YUYV8_2X8 format");
+        dev_info(&client->dev, "Using YUYV8_2X8 format (8-bit dual lane, legacy)");
         return 0;
     case MEDIA_BUS_FMT_UYVY8_2X8:
-        dev_info(&client->dev, "Using UYVY8_2X8 format");
+        dev_info(&client->dev, "Using UYVY8_2X8 format (8-bit dual lane, legacy)");
         return 0;
+    default:
+        dev_err(&client->dev, "Unsupported format code: 0x%x", rs300->fmt.code);
+        dev_err(&client->dev, "Supported formats: YUYV8_1X16(0x%x), UYVY8_1X16(0x%x), YUYV8_2X8(0x%x), UYVY8_2X8(0x%x)",
+                MEDIA_BUS_FMT_YUYV8_1X16, MEDIA_BUS_FMT_UYVY8_1X16, 
+                MEDIA_BUS_FMT_YUYV8_2X8, MEDIA_BUS_FMT_UYVY8_2X8);
+        return -EINVAL;
     }        
-
-    dev_err(&client->dev, "Unsupported format code: 0x%x", rs300->fmt.code);
-    return -EINVAL;
 }
 
 static void rs300_stop_streaming(struct rs300 *rs300)
@@ -2367,10 +2422,12 @@ static int rs300_init_controls(struct rs300 *rs300)
     if (rs300->link_frequency)
         rs300->link_frequency->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
+    /* Initialize pixel rate based on default format (YUYV8_1X16) */
+    u64 pixel_rate = rs300_get_pixel_rate(MEDIA_BUS_FMT_YUYV8_1X16);
     rs300->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, NULL,
                                       V4L2_CID_PIXEL_RATE,
-                                      RS300_PIXEL_RATE, RS300_PIXEL_RATE, 1, 
-                                      RS300_PIXEL_RATE);
+                                      pixel_rate, pixel_rate, 1, 
+                                      pixel_rate);
     
     if (rs300->pixel_rate)
         rs300->pixel_rate->flags |= V4L2_CTRL_FLAG_READ_ONLY;
