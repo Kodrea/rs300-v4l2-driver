@@ -10,15 +10,16 @@ This is a Linux V4L2 driver for the RS300 thermal camera module (also known as "
 The recommended development workflow uses DKMS (Dynamic Kernel Module Support):
 
 1. **Install/reinstall driver**: `./setup.sh` (handles DKMS installation and rebuilding)
-2. **Check DKMS status**: `dkms status`
-3. **View loaded modules**: `lsmod | grep rs300`
-4. **Debug kernel messages**: `dmesg | grep rs300` or `dmesg -wH`
+2. **Reboot**: `sudo reboot`
+3. **Check DKMS status**: `dkms status`
+4. **View loaded modules**: `lsmod | grep rs300`
+5. **Debug kernel messages**: `dmesg | grep rs300` or `dmesg -wH`
 
 ## Driver Architecture
 - **Main driver file**: `rs300.c` - Complete V4L2 subdevice driver implementation
 - **Device tree overlay**: `rs300-overlay.dts` - Pi 5 BCM2712 hardware description for I2C and MIPI CSI-2 interface
 - **DKMS configuration**: `dkms.conf` and `dkms.postinst` - Dynamic module building setup
-- **I2C address**: 0x3c (thermal camera communication on i2c-6 bus)
+- **I2C address**: 0x3c (thermal camera communication on i2c-10 bus)
 - **MIPI interface**: Uses 2-lane CSI-2 with 80MHz link frequency on csi0 port
 
 ## Key Configuration Parameters
@@ -36,14 +37,30 @@ dtoverlay=rs300
 ```
 
 ## V4L2 Controls and Testing
-- **Main video device**: `/dev/video0` (Unicam bridge)
-- **Subdevice controls**: `/dev/v4l-subdev0` (camera-specific controls)
-- **I2C bus**: `/dev/i2c-6` (Pi 5 specific)
-- **Test video capture**: Use v4l2-ctl to set 640x512 format and gstreamer for live view
+- **Main video device**: `/dev/video0` (rp1-cfe platform)
+- **Subdevice controls**: `/dev/v4l-subdev2` (camera-specific controls)
+- **I2C bus**: `/dev/i2c-10` (Pi 5 specific - actual bus used)
+- **Media controller**: Required for Pi 5 - use `media-ctl` to configure pipeline
 - **Available controls**: FFC calibration, colormap selection, brightness adjustment
 
+## Media Controller Pipeline Configuration
+Pi 5 requires media controller API setup before video capture:
+```bash
+# Enable media links
+media-ctl -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0[1]"
+
+# Set formats throughout pipeline
+media-ctl -V "'rs300 10-003c':0 [fmt:YUYV8_2X8/640x512]"
+media-ctl -V "'csi2':0 [fmt:YUYV8_2X8/640x512]"
+media-ctl -V "'csi2':4 [fmt:YUYV8_2X8/640x512]"
+
+# Set video device format
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
+```
+
 ## Raspberry Pi 5 Specific Notes
-- Uses BCM2712 architecture with dedicated CSI0 port
-- I2C communication on bus 6 (i2c-6)
+- Uses BCM2712 architecture with dedicated CSI0 port via RP1 controller
+- I2C communication on bus 10 (i2c-10) through i2c_csi_dsi0
 - Configured for 640x512@60fps thermal imaging
 - Requires 22-pin to 15-pin adapter cable for camera module connection
+- Uses rp1-cfe (Camera Front End) driver instead of legacy Unicam

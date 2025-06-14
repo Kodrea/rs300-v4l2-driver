@@ -1,99 +1,98 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Definitions for RS300 camera module on VC I2C bus
+// Definitions for RS300 camera module on Raspberry Pi 5 (BCM2712)
 /dts-v1/;
 /plugin/;
 
 /{
-	compatible = "brcm,bcm2712";
-
-	fragment@0 {
-		target = <&i2c0if>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	clk_frag: fragment@1 {
-		target = <&cam0_clk>;
-		__overlay__ {
-			status = "okay";
-			clock-frequency = <24000000>;
-		};
-	};
-
-	fragment@2 {
-		target = <&i2c0mux>;
-		__overlay__ {
-			status = "okay";
-		};
-	};
-
-	i2c_frag: fragment@100 {
-		target = <&i2c_csi_dsi0>;
-		__overlay__ {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			clock-frequency = <400000>;
-
-			cam_node: rs300@3c {
-				compatible = "infisense,rs300";
-				reg = <0x3c>;
-				status = "disabled";
-
-				clocks = <&cam0_clk>;
-				clock-names = "xvclk";
-
-				reset-gpios = <&gpio 5 0>;
-
-				VANA-supply = <&cam0_reg>;	/* 2.8v */
-				VDIG-supply = <&cam_dummy_reg>;
-				VDDL-supply = <&cam_dummy_reg>;
-
-				port {
-					cam_endpoint: endpoint {
-						clock-lanes = <0>;
-						data-lanes = <1 2>;
-
-						link-frequencies =
-							/bits/ 64 <80000000>;
-					};
-				};
-			};
-		};
-	};
-
-	csi_frag: fragment@101 {
-		target = <&csi0>;
-		csi: __overlay__ {
-			status = "okay";
-			brcm,media-controller;
-
-			port {
-				csi_ep: endpoint {
-					remote-endpoint = <&cam_endpoint>;
-					clock-lanes = <0>;
-					data-lanes = <1 2>;
-					clock-noncontinuous;
-				};
-			};
-		};
-	};
-
-	__overrides__ {
-		media-controller = <&csi>,"brcm,media-controller?";
-		cam1 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi1>,
-		       <&csi_frag>, "target:0=",<&csi1>,
-		       <&clk_frag>, "target:0=",<&cam1_clk>,
-		       <&cam_node>, "clocks:0=",<&cam1_clk>,
-		       <&cam_node>, "VANA-supply:0=",<&cam1_reg>;
-	};
-};
-
-&cam_node {
-	status = "okay";
-};
-
-&cam_endpoint {
-	remote-endpoint = <&csi_ep>;
+    compatible = "brcm,bcm2712";
+    
+    // Fragment 0: Enable I2C0 interface
+    fragment@0 {
+        target = <&i2c0if>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+    
+    // Fragment 1: Enable I2C0 mux
+    fragment@1 {
+        target = <&i2c0mux>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+    
+    // Fragment 2: Configure clock
+    clk_frag: fragment@2 {
+        target = <&cam0_clk>;
+        __overlay__ {
+            status = "okay";
+            clock-frequency = <24000000>;
+        };
+    };
+    
+    // Fragment 3: Configure I2C and sensor
+    i2c_frag: fragment@3 {
+        target = <&i2c_csi_dsi0>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+            
+            cam_node: rs300@3c {
+                compatible = "infisense,rs300";
+                reg = <0x3c>;
+                status = "okay";
+                
+                clocks = <&cam0_clk>;
+                clock-names = "xvclk";
+                
+                reset-gpios = <&gpio 5 0>;
+                
+                VANA-supply = <&cam0_reg>;      /* 2.8v */
+                VDIG-supply = <&cam_dummy_reg>;
+                VDDL-supply = <&cam_dummy_reg>;
+                
+                port {
+                    cam_endpoint: endpoint {
+                        remote-endpoint = <&csi_ep>;
+                        bus-type = <4>; /* MIPI CSI-2 D-PHY */
+                        clock-lanes = <0>;
+                        data-lanes = <1 2>;
+                        link-frequencies = /bits/ 64 <80000000>;
+                        clock-noncontinuous;
+                    };
+                };
+            };
+        };
+    };
+    
+    // Fragment 4: Configure CSI
+    csi_frag: fragment@4 {
+        target = <&csi0>;
+        csi: __overlay__ {
+            status = "okay";
+            brcm,media-controller;
+            
+            port {
+                csi_ep: endpoint {
+                    remote-endpoint = <&cam_endpoint>;
+                    bus-type = <4>; /* MIPI CSI-2 D-PHY */
+                    clock-lanes = <0>;
+                    data-lanes = <1 2>;
+                    clock-noncontinuous;
+                };
+            };
+        };
+    };
+    
+    // Overrides
+    __overrides__ {
+        media-controller = <&csi>,"brcm,media-controller?";
+        cam1 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi1>,
+               <&csi_frag>, "target:0=",<&csi1>,
+               <&clk_frag>, "target:0=",<&cam1_clk>,
+               <&cam_node>, "clocks:0=",<&cam1_clk>,
+               <&cam_node>, "VANA-supply:0=",<&cam1_reg>;
+    };
 };
