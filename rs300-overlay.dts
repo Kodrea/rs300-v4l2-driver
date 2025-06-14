@@ -4,7 +4,7 @@
 /plugin/;
 
 /{
-	compatible = "brcm,bcm2835";
+	compatible = "brcm,bcm2712";
 
 	fragment@0 {
 		target = <&i2c0if>;
@@ -14,7 +14,7 @@
 	};
 
 	clk_frag: fragment@1 {
-		target = <&cam1_clk>;
+		target = <&cam0_clk>;
 		__overlay__ {
 			status = "okay";
 			clock-frequency = <24000000>;
@@ -29,7 +29,7 @@
 	};
 
 	i2c_frag: fragment@100 {
-		target = <&i2c_csi_dsi>;
+		target = <&i2c_csi_dsi0>;
 		__overlay__ {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -41,12 +41,12 @@
 				reg = <0x3c>;
 				status = "disabled";
 
-				clocks = <&cam1_clk>;
+				clocks = <&cam0_clk>;
 				clock-names = "xvclk";
 
 				reset-gpios = <&gpio 5 0>;
 
-				VANA-supply = <&cam1_reg>;	/* 2.8v */
+				VANA-supply = <&cam0_reg>;	/* 2.8v */
 				VDIG-supply = <&cam_dummy_reg>;
 				VDDL-supply = <&cam_dummy_reg>;
 
@@ -64,7 +64,7 @@
 	};
 
 	csi_frag: fragment@101 {
-		target = <&csi1>;
+		target = <&csi0>;
 		csi: __overlay__ {
 			status = "okay";
 			brcm,media-controller;
@@ -82,11 +82,11 @@
 
 	__overrides__ {
 		media-controller = <&csi>,"brcm,media-controller?";
-		cam0 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi0>,
-		       <&csi_frag>, "target:0=",<&csi0>,
-		       <&clk_frag>, "target:0=",<&cam0_clk>,
-		       <&cam_node>, "clocks:0=",<&cam0_clk>,
-		       <&cam_node>, "VANA-supply:0=",<&cam0_reg>;
+		cam1 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi1>,
+		       <&csi_frag>, "target:0=",<&csi1>,
+		       <&clk_frag>, "target:0=",<&cam1_clk>,
+		       <&cam_node>, "clocks:0=",<&cam1_clk>,
+		       <&cam_node>, "VANA-supply:0=",<&cam1_reg>;
 	};
 };
 
