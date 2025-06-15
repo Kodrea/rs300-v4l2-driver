@@ -40,9 +40,9 @@
 #define DRIVER_NAME "rs300"
 //80M (clk)* 2(double ) *2 (lan) /8
 
-#define RS300_LINK_RATE (80 * 1000 * 1000)
-#define RS300_PIXEL_RATE	(40 * 1000 * 1000)  /* Base pixel rate for 8-bit formats */
-#define RS300_PIXEL_RATE_16BIT	(80 * 1000 * 1000)  /* Pixel rate for 16-bit packed formats */
+#define RS300_LINK_RATE (400 * 1000 * 1000)      /* TEST: Conservative 60MHz link rate */
+#define RS300_PIXEL_RATE	(200 * 1000 * 1000)  /* TEST: Conservative 30MHz pixel rate for 8-bit */
+#define RS300_PIXEL_RATE_16BIT	(400 * 1000 * 1000)  /* TEST: Conservative 60MHz pixel rate for 16-bit */
 #define RS300_BRIGHTNESS_MIN 0
 #define RS300_BRIGHTNESS_MAX 100
 #define RS300_BRIGHTNESS_STEP 10
@@ -351,7 +351,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
+        .code = MEDIA_BUS_FMT_UYVY8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
     { /* 256 - MIPI video not currently working, but I2C commands are working */
         .width      = 256,
@@ -444,11 +444,12 @@ static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 }
 static void rs300_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 {
-	/* Use RAW colorspace for thermal imaging data instead of sRGB */
-	fmt->colorspace = V4L2_COLORSPACE_RAW;
-	fmt->ycbcr_enc = V4L2_YCBCR_ENC_DEFAULT;
-	fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE; /* Full range for thermal data */
-	fmt->xfer_func = V4L2_XFER_FUNC_NONE; /* No transfer function for raw thermal data */
+	/* Use video-compatible colorspace for RP1-CFE ISP pipeline compatibility */
+	/* Thermal data disguised as standard video YUV for ISP processing */
+	fmt->colorspace = V4L2_COLORSPACE_SMPTE170M;     /* Standard SDTV YUV colorspace */
+	fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;            /* ITU-R BT.601 YCbCr encoding */
+	fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE; /* Broadcast-legal limited range */
+	fmt->xfer_func = V4L2_XFER_FUNC_709;            /* Standard video transfer function */
 }
 
 /* Calculate pixel rate based on format */
@@ -703,6 +704,78 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
     }
     
     dev_err(&client->dev, "DDE command timed out");
+    return -ETIMEDOUT;
+}
+
+static int rs300_set_yuv_format(struct rs300 *rs300, int format)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+    
+    dev_info(&client->dev, "Setting YUV format to %d (0=UYVY, 1=VYUY, 2=YUYV, 3=YVYU)", format);
+    
+    /* Validate format range */
+    if (format < 0 || format > 3) {
+        dev_err(&client->dev, "Invalid YUV format: %d (valid range: 0-3)", format);
+        return -EINVAL;
+    }
+    
+    /* Construct the YUV format command buffer based on CSV data */
+    cmd_buffer[0] = 0x10;  /* Command Class */
+    cmd_buffer[1] = 0x03;  /* Module Command Index */
+    cmd_buffer[2] = 0x4D;  /* SubCmd - YUV format setting */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+    cmd_buffer[4] = format; /* Parameter: 0=UYVY, 1=VYUY, 2=YUYV, 3=YVYU */
+    
+    /* Fill remaining parameters with zeros */
+    memset(&cmd_buffer[5], 0, 11);
+    
+    /* Calculate CRC */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    cmd_buffer[16] = crc & 0xFF;
+    cmd_buffer[17] = (crc >> 8) & 0xFF;
+    
+    dev_info(&client->dev, "YUV format command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write YUV format command: %d", ret);
+        return ret;
+    }
+    
+    /* Wait for completion with timeout and retry */
+    while (retry_count < max_retries) {
+        msleep(50);
+        
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+        
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+        
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "YUV format command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "YUV format set to %d successfully", format);
+            return 0;
+        }
+        
+        retry_count++;
+    }
+    
+    /* If we get here, we've exceeded max retries */
+    dev_err(&client->dev, "YUV format command timed out after %d retries", max_retries);
     return -ETIMEDOUT;
 }
 
@@ -1760,11 +1833,18 @@ static int __rs300_get_pad_fmt(struct rs300 *rs300,
                 dev_info(&client->dev, "No active mode set yet");
             }
 		} else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
-			/* Set metadata format if needed */
-			fmt->format.code = MEDIA_BUS_FMT_SENSOR_DATA;
-			fmt->format.width = 0;  /* Set appropriate width for metadata */
-			fmt->format.height = 0; /* Set appropriate height for metadata */
+			/* Set metadata format to match image format for RP1-CFE compatibility */
+			fmt->format.code = rs300->fmt.code;  /* Use same format as image pad */
+			fmt->format.width = 16384;  /* Standard metadata width for CSI-2 */
+			fmt->format.height = 1;     /* Single line metadata */
 			fmt->format.field = V4L2_FIELD_NONE;
+			/* Copy colorspace parameters from image format */
+			fmt->format.colorspace = rs300->fmt.colorspace;
+			fmt->format.ycbcr_enc = rs300->fmt.ycbcr_enc;
+			fmt->format.quantization = rs300->fmt.quantization;
+			fmt->format.xfer_func = rs300->fmt.xfer_func;
+			dev_info(&client->dev, "Get METADATA format: code=0x%x, %dx%d",
+				fmt->format.code, fmt->format.width, fmt->format.height);
 		}
 	}
 	return 0;
@@ -2000,6 +2080,21 @@ static int rs300_set_fps(struct rs300 *rs300, int fps)
     return 0;  // Changed from return -ETIMEDOUT
 }
 
+static void rs300_debug_pipeline_state(struct rs300 *rs300, const char *context)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    
+    dev_err(&client->dev, "=== PIPELINE STATE [%s] ===", context);
+    dev_err(&client->dev, "Streaming: %d", rs300->streaming);
+    dev_err(&client->dev, "Active format: 0x%x (%dx%d)", 
+            rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
+    dev_err(&client->dev, "Current mode: %dx%d @ %d/%d fps", 
+            rs300->mode->width, rs300->mode->height,
+            rs300->mode->max_fps.denominator, rs300->mode->max_fps.numerator);
+    dev_err(&client->dev, "Pixel rate for format: %llu", rs300_get_pixel_rate(rs300->fmt.code));
+    dev_err(&client->dev, "=== END PIPELINE STATE ===");
+}
+
 static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
 {
     struct i2c_client *client = v4l2_get_subdevdata(sd);
@@ -2008,22 +2103,28 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
     u8 status_buffer[1];
     int ret = 0;
 
-    dev_info(&client->dev, "Setting stream to %d", enable);
+    dev_err(&client->dev, "=== RS300_SET_STREAM CALLED: enable=%d ===", enable);
+    dev_err(&client->dev, "STREAM DEBUG: Current streaming state=%d", rs300->streaming);
+    
+    rs300_debug_pipeline_state(rs300, "STREAM_ENTRY");
     
     // Add detailed format info when streaming starts
     if (enable) {
-        dev_info(&client->dev, "Stream starting with format: %dx%d, code=0x%x", 
-            rs300->fmt.width, rs300->fmt.height, rs300->fmt.code);
-        dev_info(&client->dev, "Using mode: %dx%d @ %d/%d fps", 
+        dev_err(&client->dev, "=== STREAM START DEBUG ===");
+        dev_err(&client->dev, "Format: 0x%x (%s), Resolution: %dx%d", 
+            rs300->fmt.code,
+            rs300->fmt.code == MEDIA_BUS_FMT_YUYV8_1X16 ? "YUYV8_1X16" :
+            rs300->fmt.code == MEDIA_BUS_FMT_YUYV8_2X8 ? "YUYV8_2X8" : "OTHER",
+            rs300->fmt.width, rs300->fmt.height);
+        dev_err(&client->dev, "Mode: %dx%d @ %d/%d fps", 
             rs300->mode->width, rs300->mode->height,
             rs300->mode->max_fps.denominator, rs300->mode->max_fps.numerator);
-        
-        // Instead of trying to directly set the link frequency, we'll just
-        // notify the media pipeline about our current format and let the
-        // unicam driver handle the appropriate frequency settings
-        
-        // Just print debug info about what resolution we're using
-        dev_info(&client->dev, "Using %dx%d resolution", rs300->mode->width, rs300->mode->height);
+        dev_err(&client->dev, "Pixel rate: %llu Hz, Link rate: %d Hz", 
+            rs300_get_pixel_rate(rs300->fmt.code), RS300_LINK_RATE);
+        dev_err(&client->dev, "Colorspace: %d, Quantization: %d, Transfer: %d",
+            rs300->fmt.colorspace, rs300->fmt.quantization, rs300->fmt.xfer_func);
+    } else {
+        dev_err(&client->dev, "=== STREAM STOP DEBUG ===");
     }
 
     mutex_lock(&rs300->mutex);
@@ -2138,17 +2239,19 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
             }
         }
     } else {
-        dev_info(&client->dev, "Stopping stream");
+        dev_err(&client->dev, "Stopping stream");
         rs300_stop_streaming(rs300);
-        dev_info(&client->dev, "Stream stopped");
+        dev_err(&client->dev, "Stream stopped");
     }
 
     rs300->streaming = enable;
+    dev_err(&client->dev, "=== STREAM FUNCTION COMPLETE: enable=%d, ret=%d ===", enable, ret);
     mutex_unlock(&rs300->mutex);
 
     return ret;
 
 error_unlock:
+    dev_err(&client->dev, "=== STREAM ERROR EXIT: ret=%d ===", ret);
     mutex_unlock(&rs300->mutex);
     return ret;
 }
@@ -2710,6 +2813,13 @@ static int rs300_probe(struct i2c_client *client)
 
 	/* Initialize default format */
 	rs300_set_default_format(rs300);
+
+	/* Configure hardware YUV format to match driver expectation */
+	ret = rs300_set_yuv_format(rs300, 0); /* 0 = UYVY format */
+	if (ret) {
+		dev_warn(dev, "Failed to set YUV format to UYVY: %d (continuing anyway)", ret);
+		/* Don't fail probe on this error, as it's not critical for basic operation */
+	}
 
 	/* Initialize mutex */
 	mutex_init(&rs300->mutex);
