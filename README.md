@@ -110,6 +110,7 @@ static int fps = 60; //256: 25/50fps, 384/640: 30/60fps
 
 Run the setup script:
 ```bash
+git clone https://github.com/Kodrea/rs300-v4l2-driver.git
 cd /rs300-v4l2-driver
 # modify driver to select module
 sudo nano rs300.c
