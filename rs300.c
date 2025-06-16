@@ -351,7 +351,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_UYVY8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
     { /* 256 - MIPI video not currently working, but I2C commands are working */
         .width      = 256,
@@ -463,7 +463,6 @@ static u64 rs300_get_pixel_rate(u32 format_code)
 	case MEDIA_BUS_FMT_YUYV8_2X8:
 	case MEDIA_BUS_FMT_UYVY8_2X8:
 		/* 8-bit dual lane formats use base pixel rate */
-        dev_info(&client->dev, "8-bit dual lane formats use base pixel rate");
 		return RS300_PIXEL_RATE;
 	default:
 		/* Default to 16-bit rate for unknown formats */
@@ -2816,7 +2815,7 @@ static int rs300_probe(struct i2c_client *client)
 	rs300_set_default_format(rs300);
 
 	/* Configure hardware YUV format to match driver expectation */
-	ret = rs300_set_yuv_format(rs300, 0); /* 0 = UYVY format */
+	ret = rs300_set_yuv_format(rs300, 2); /* 0 = UYVY format, 1=VYUY format, 2 = YUYV format, 3=YVYU format */
 	if (ret) {
 		dev_warn(dev, "Failed to set YUV format to UYVY: %d (continuing anyway)", ret);
 		/* Don't fail probe on this error, as it's not critical for basic operation */
