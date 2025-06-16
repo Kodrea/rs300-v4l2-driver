@@ -232,8 +232,35 @@ if [ -z "$MEDIA_DEV" ]; then
     exit 1
 fi
 
-# Interactive confirmation
+# Interactive format selection and confirmation
 if [ "$INTERACTIVE" = true ]; then
+    echo ""
+    echo "=== Format Selection ==="
+    echo "Choose pixel format:"
+    echo "1) UYVY (default - recommended)"
+    echo "2) YUYV"
+    echo ""
+    read -p "Select format (1-2, default: 1): " -n 1 -r
+    echo
+    
+    case $REPLY in
+        2)
+            FORMAT="YUYV8_1X16"
+            PIXELFORMAT="YUYV"
+            print_success "Selected YUYV format"
+            ;;
+        1|"")
+            FORMAT="UYVY8_1X16"
+            PIXELFORMAT="UYVY"
+            print_success "Selected UYVY format (default)"
+            ;;
+        *)
+            print_warning "Invalid selection, using UYVY (default)"
+            FORMAT="UYVY8_1X16"
+            PIXELFORMAT="UYVY"
+            ;;
+    esac
+    
     echo ""
     echo "About to configure media pipeline:"
     echo "  Device: $MEDIA_DEV"
