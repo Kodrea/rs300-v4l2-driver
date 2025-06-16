@@ -85,16 +85,12 @@ static const char * const scene_mode_menu[] = {
 
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
-static int mode = 0; //0-640; 1-256; 2-384
+static int mode = 2; //0-640; 1-256; 2-384
 static int fps = 30;
-static int pWidth = 0;
-static int pHeight = 0;
 static int type = 16;
 static int debug = 1;
 module_param(mode, int, 0644);
 module_param(fps, int, 0644);
-module_param(pWidth, int, 0644);
-module_param(pHeight, int, 0644);
 module_param(type, int, 0644);
 module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
@@ -1339,29 +1335,8 @@ static int rs300_brightness_correct(struct rs300 *rs300, int brightness_value)
     const int max_retries = 5;
     int current_brightness;
     
-    /* Map 0-100 brightness to appropriate parameter values */
-    if (brightness_value == 0)
-        brightness_param = 0x00;
-    else if (brightness_value <= 10)
-        brightness_param = 0x0A;
-    else if (brightness_value <= 20)
-        brightness_param = 0x14;
-    else if (brightness_value <= 30)
-        brightness_param = 0x1E;
-    else if (brightness_value <= 40)
-        brightness_param = 0x28;
-    else if (brightness_value <= 50)
-        brightness_param = 0x32;
-    else if (brightness_value <= 60)
-        brightness_param = 0x3C;
-    else if (brightness_value <= 70)
-        brightness_param = 0x46;
-    else if (brightness_value <= 80)
-        brightness_param = 0x50;
-    else if (brightness_value <= 90)
-        brightness_param = 0x5A;
-    else
-        brightness_param = 0x64;
+    /* Map 0-100 brightness to parameter values (simple linear mapping) */
+    brightness_param = (brightness_value > 100) ? 0x64 : brightness_value;
     
     dev_info(&client->dev, "Setting brightness correctly to %d (param: 0x%02X)", 
              brightness_value, brightness_param);
