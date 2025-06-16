@@ -323,8 +323,7 @@ v4l2-ctl -d /dev/video0 --list-formats-ext
 vcgencmd get_camera
 
 
-v4l2-ctl -d /dev/v4l-subdev0 --all
-sudo cat /dev/kmsg | grep rs300
+rsudo cat /dev/kmsg | grep rs300
 v4l2-ctl -d /dev/video0 --stream-mmap -o test.yuv
 sudo dmesg -wH
 ffplay -f video4linux2 -input_format yuyv422 -video_size 256x192 -i /dev/video0

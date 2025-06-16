@@ -40,7 +40,7 @@
 #define DRIVER_NAME "rs300"
 //80M (clk)* 2(double ) *2 (lan) /8
 
-#define RS300_LINK_RATE (400 * 1000 * 1000)      /* TEST: Conservative 60MHz link rate */
+#define RS300_LINK_RATE (80 * 1000 * 1000)       /* 80MHz link rate matching device tree */
 #define RS300_PIXEL_RATE	(200 * 1000 * 1000)  /* TEST: Conservative 30MHz pixel rate for 8-bit */
 #define RS300_PIXEL_RATE_16BIT	(400 * 1000 * 1000)  /* TEST: Conservative 60MHz pixel rate for 16-bit */
 #define RS300_BRIGHTNESS_MIN 0
@@ -463,6 +463,7 @@ static u64 rs300_get_pixel_rate(u32 format_code)
 	case MEDIA_BUS_FMT_YUYV8_2X8:
 	case MEDIA_BUS_FMT_UYVY8_2X8:
 		/* 8-bit dual lane formats use base pixel rate */
+        dev_info(&client->dev, "8-bit dual lane formats use base pixel rate");
 		return RS300_PIXEL_RATE;
 	default:
 		/* Default to 16-bit rate for unknown formats */

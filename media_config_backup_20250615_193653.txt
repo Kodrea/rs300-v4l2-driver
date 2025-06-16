@@ -1,0 +1,145 @@
+# Media Controller Backup - Sun 15 Jun 19:36:53 EDT 2025
+# Device: /dev/media3
+
+=== Topology ===
+Media controller API version 6.12.25
+
+Media device information
+------------------------
+driver          rp1-cfe
+model           rp1-cfe
+serial          
+bus info        platform:1f00110000.csi
+hw revision     0x114666
+driver version  6.12.25
+
+Device topology
+- entity 1: csi2 (8 pads, 9 links)
+            type V4L2 subdev subtype Unknown flags 0
+            device node name /dev/v4l-subdev0
+	pad0: Sink
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		<- "rs300 10-003c":0 [ENABLED,IMMUTABLE]
+	pad1: Sink
+		[fmt:unknown/16384x1 field:none]
+		<- "rs300 10-003c":1 [ENABLED,IMMUTABLE]
+	pad2: Sink
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+	pad3: Sink
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+	pad4: Source
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		-> "rp1-cfe-csi2_ch0":0 []
+		-> "pisp-fe":0 []
+	pad5: Source
+		[fmt:unknown/16384x1 field:none]
+		-> "rp1-cfe-embedded":0 []
+	pad6: Source
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		-> "rp1-cfe-csi2_ch2":0 []
+		-> "pisp-fe":0 []
+	pad7: Source
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		-> "rp1-cfe-csi2_ch3":0 []
+		-> "pisp-fe":0 []
+
+- entity 10: pisp-fe (5 pads, 7 links)
+             type V4L2 subdev subtype Unknown flags 0
+             device node name /dev/v4l-subdev1
+	pad0: Sink
+		[fmt:SRGGB16_1X16/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		<- "csi2":4 []
+		<- "csi2":6 []
+		<- "csi2":7 []
+	pad1: Sink
+		[fmt:FIXED/16384x1 field:none]
+		<- "rp1-cfe-fe_config":0 []
+	pad2: Source
+		[fmt:SRGGB16_1X16/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		-> "rp1-cfe-fe_image0":0 []
+	pad3: Source
+		[fmt:SRGGB16_1X16/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		-> "rp1-cfe-fe_image1":0 []
+	pad4: Source
+		[fmt:FIXED/16384x1 field:none]
+		-> "rp1-cfe-fe_stats":0 []
+
+- entity 16: rs300 10-003c (2 pads, 2 links)
+             type V4L2 subdev subtype Sensor flags 0
+             device node name /dev/v4l-subdev2
+	pad0: Source
+		[fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range
+		 crop:(0,0)/640x512]
+		-> "csi2":0 [ENABLED,IMMUTABLE]
+	pad1: Source
+		[fmt:UYVY8_1X16/16384x1 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range
+		 crop:(0,0)/640x512]
+		-> "csi2":1 [ENABLED,IMMUTABLE]
+
+- entity 19: rp1-cfe-csi2_ch0 (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video0
+	pad0: Sink
+		<- "csi2":4 []
+
+- entity 23: rp1-cfe-embedded (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video1
+	pad0: Sink
+		<- "csi2":5 []
+
+- entity 27: rp1-cfe-csi2_ch2 (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video2
+	pad0: Sink
+		<- "csi2":6 []
+
+- entity 31: rp1-cfe-csi2_ch3 (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video3
+	pad0: Sink
+		<- "csi2":7 []
+
+- entity 35: rp1-cfe-fe_image0 (1 pad, 1 link)
+             type Node subtype V4L flags 1
+             device node name /dev/video4
+	pad0: Sink
+		<- "pisp-fe":2 []
+
+- entity 39: rp1-cfe-fe_image1 (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video5
+	pad0: Sink
+		<- "pisp-fe":3 []
+
+- entity 43: rp1-cfe-fe_stats (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video6
+	pad0: Sink
+		<- "pisp-fe":4 []
+
+- entity 47: rp1-cfe-fe_config (1 pad, 1 link)
+             type Node subtype V4L flags 0
+             device node name /dev/video7
+	pad0: Source
+		-> "pisp-fe":1 []
+
+
+=== Current Formats ===
+		[fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range
+		 crop:(0,0)/640x512]
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+		[fmt:SRGGB10_1X10/640x480 field:none colorspace:raw xfer:none ycbcr:601 quantization:full-range]
+
+=== Video Device Format ===
+Format Video Capture:
+	Width/Height      : 640/480
+	Pixel Format      : 'pRAA' (10-bit Bayer RGRG/GBGB Packed)
+	Field             : None
+	Bytes per Line    : 800
+	Size Image        : 384000
+	Colorspace        : Raw
+	Transfer Function : None
+	YCbCr/HSV Encoding: ITU-R 601
+	Quantization      : Full Range
+	Flags             : 

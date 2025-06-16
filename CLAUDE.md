@@ -45,17 +45,20 @@ dtoverlay=rs300
 
 ## Media Controller Pipeline Configuration
 Pi 5 requires media controller API setup before video capture:
+
+**IMPORTANT**: Pi 5 RP1-CFE only supports 16-bit packed formats (`*8_1X16`), not 8-bit dual lane formats (`*8_2X8`).
+
 ```bash
 # Enable media links
 media-ctl -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0[1]"
 
-# Set formats throughout pipeline
-media-ctl -V "'rs300 10-003c':0 [fmt:YUYV8_2X8/640x512]"
-media-ctl -V "'csi2':0 [fmt:YUYV8_2X8/640x512]"
-media-ctl -V "'csi2':4 [fmt:YUYV8_2X8/640x512]"
+# Set formats throughout pipeline (using Pi 5 compatible 16-bit packed format)
+media-ctl -V "'rs300 10-003c':0 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
+media-ctl -V "'csi2':0 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
+media-ctl -V "'csi2':4 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
 
 # Set video device format
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY,colorspace=smpte170m,xfer=709,ycbcr=601,quantization=lim-range
 ```
 
 ## Raspberry Pi 5 Specific Notes
@@ -64,3 +67,4 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
 - Configured for 640x512@60fps thermal imaging
 - Requires 22-pin to 15-pin adapter cable for camera module connection
 - Uses rp1-cfe (Camera Front End) driver instead of legacy Unicam
+- **Format Compatibility**: Only supports 16-bit packed formats (`UYVY8_1X16`, `YUYV8_1X16`) - 8-bit dual lane formats (`*8_2X8`) will cause "Format mismatch!" errors

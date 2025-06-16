@@ -6,7 +6,7 @@
 echo "=== RS300 Media Controller Configuration ==="
 
 # Configuration options
-DEFAULT_FORMAT="UYVY8_2X8"
+DEFAULT_FORMAT="UYVY8_1X16"
 DEFAULT_PIXELFORMAT="UYVY"
 DEFAULT_WIDTH=640
 DEFAULT_HEIGHT=512
@@ -142,9 +142,11 @@ while [[ $# -gt 0 ]]; do
             echo "Note: RS300 camera format and resolution are read-only (set by driver module parameters)."
             echo "      The script will auto-detect and use the RS300's current format for pipeline configuration."
             echo ""
-            echo "Common formats:"
-            echo "  Mediabus: UYVY8_2X8 (default), YUYV8_2X8, YUYV8_1X16"
-            echo "  Pixel:    UYVY (default), YUYV"
+            echo "Pi 5 Compatible formats (16-bit packed only):"
+            echo "  Mediabus: UYVY8_1X16 (default), YUYV8_1X16, YVYU8_1X16, VYUY8_1X16"
+            echo "  Pixel:    UYVY (default), YUYV, YVYU, VYUY"
+            echo ""
+            echo "WARNING: 8-bit dual lane formats (*8_2X8) are NOT supported on Pi 5 and will cause format mismatch errors!"
             exit 0
             ;;
         *)
@@ -160,6 +162,18 @@ echo "  Format: $FORMAT"
 echo "  Pixel Format: $PIXELFORMAT"
 echo "  Resolution: ${WIDTH}x${HEIGHT}"
 echo ""
+
+# Validate Pi 5 format compatibility
+if [[ "$FORMAT" == *"2X8"* ]]; then
+    print_error "Format '$FORMAT' is not supported on Raspberry Pi 5"
+    print_error "Pi 5 RP1-CFE only supports 16-bit packed formats (*8_1X16)"
+    echo ""
+    echo "Supported formats:"
+    echo "  UYVY8_1X16, YUYV8_1X16, YVYU8_1X16, VYUY8_1X16"
+    echo ""
+    echo "Use --format UYVY8_1X16 or similar 1X16 format"
+    exit 1
+fi
 
 # Check prerequisites
 print_step "Checking prerequisites"
@@ -181,19 +195,42 @@ print_success "media-ctl available"
 # Find RS300 media controller device
 print_step "Locating RS300 media controller device"
 
+print_step "Available media devices:"
+for i in {0..5}; do
+    if [ -e "/dev/media$i" ]; then
+        DEVICE_INFO=$(media-ctl -d "/dev/media$i" --info 2>/dev/null | grep -E "(driver|model)" | head -2 | paste -sd ' ' | tr -s ' ')
+        echo "  /dev/media$i: $DEVICE_INFO"
+    fi
+done
+
 MEDIA_DEV=""
 for i in {0..5}; do
     if [ -e "/dev/media$i" ] && media-ctl -d "/dev/media$i" --print-topology 2>/dev/null | grep -q "rs300 10-003c"; then
         MEDIA_DEV="/dev/media$i"
+        print_success "Found RS300 on $MEDIA_DEV"
+        
+        # Verify the topology structure we expect
+        if media-ctl -d "$MEDIA_DEV" --print-topology 2>/dev/null | grep -q "rp1-cfe-csi2_ch0"; then
+            print_success "Pipeline structure validated: RS300 → CSI-2 → rp1-cfe-csi2_ch0 → /dev/video0"
+        else
+            print_warning "Expected pipeline structure not found in $MEDIA_DEV"
+        fi
         break
     fi
 done
 
 if [ -z "$MEDIA_DEV" ]; then
     print_error "RS300 not found in any media controller device"
+    echo ""
+    echo "Available entities in media controllers:"
+    for i in {0..5}; do
+        if [ -e "/dev/media$i" ]; then
+            echo "  /dev/media$i:"
+            media-ctl -d "/dev/media$i" --print-topology 2>/dev/null | grep -E "entity.*:" | head -5 | sed 's/^/    /'
+        fi
+    done
     exit 1
 fi
-print_success "Found RS300 on $MEDIA_DEV"
 
 # Interactive confirmation
 if [ "$INTERACTIVE" = true ]; then
