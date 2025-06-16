@@ -1,0 +1,53 @@
+digraph MediaTopology {
+  rankdir=LR;
+  node [shape=box, style=rounded];
+  edge [fontsize=10];
+
+  subgraph cluster_legend {
+    label="Status Legend";
+    style=filled;
+    color=lightgrey;
+    legend_enabled [label="ENABLED", style=filled, fillcolor=lightgreen];
+    legend_disabled [label="DISABLED", style=filled, fillcolor=lightcoral];
+    legend_unknown [label="No Status", style=filled, fillcolor=lightyellow];
+  }
+
+  csi2 [label="csi2\n(/dev/v4l-subdev0)\npad0: YUYV8_1X16\n(640x512)\npad1: YUYV8_1X16\n(16384x1)\npad2: SRGGB10_1X10\n(640x480)\npad3: SRGGB10_1X10\n(640x480)\npad4: YUYV8_1X16\n(640x512)\npad5: YUYV8_1X16\n(16384x1)\npad6: SRGGB10_1X10\n(640x480)\npad7: SRGGB10_1X10\n(640x480)", shape=hexagon, style=filled, fillcolor=lightcyan];
+  pisp_fe [label="pisp-fe\n(/dev/v4l-subdev1)", shape=box, style=filled, fillcolor=white];
+  rs300_10_003c [label="rs300 10-003c\n(/dev/v4l-subdev2)\npad0: YUYV8_1X16\n(640x512)\npad1: YUYV8_1X16\n(16384x1)", shape=doubleoctagon, style=filled, fillcolor=lightblue];
+  rp1_cfe_csi2_ch0 [label="rp1-cfe-csi2_ch0\n(/dev/video0)", shape=hexagon, style=filled, fillcolor=lightcyan];
+  rp1_cfe_embedded [label="rp1-cfe-embedded\n(/dev/video1)", shape=box, style=filled, fillcolor=lightgreen];
+  rp1_cfe_csi2_ch2 [label="rp1-cfe-csi2_ch2\n(/dev/video2)", shape=hexagon, style=filled, fillcolor=lightcyan];
+  rp1_cfe_csi2_ch3 [label="rp1-cfe-csi2_ch3\n(/dev/video3)", shape=hexagon, style=filled, fillcolor=lightcyan];
+  rp1_cfe_fe_image0 [label="rp1-cfe-fe_image0\n(/dev/video4)", shape=box, style=filled, fillcolor=lightgreen];
+  rp1_cfe_fe_image1 [label="rp1-cfe-fe_image1\n(/dev/video5)", shape=box, style=filled, fillcolor=lightgreen];
+  rp1_cfe_fe_stats [label="rp1-cfe-fe_stats\n(/dev/video6)", shape=box, style=filled, fillcolor=lightgreen];
+  rp1_cfe_fe_config [label="rp1-cfe-fe_config\n(/dev/video7)", shape=box, style=filled, fillcolor=lightgreen];
+
+  rs300_10_003c -> csi2 [label="pad0→pad0\n[ENABLED,IMMUTABLE]", color=green, style=solid, penwidth=2];
+  rs300_10_003c -> csi2 [label="pad1→pad1\n[ENABLED,IMMUTABLE]", color=green, style=solid, penwidth=2];
+  csi2 -> rp1_cfe_csi2_ch0 [label="pad4→pad0\n[ENABLED]", color=green, style=solid, penwidth=2];
+  csi2 -> pisp_fe [label="pad4→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> rp1_cfe_embedded [label="pad5→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> rp1_cfe_csi2_ch2 [label="pad6→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> pisp_fe [label="pad6→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> rp1_cfe_csi2_ch3 [label="pad7→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> pisp_fe [label="pad7→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> pisp_fe [label="pad4→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> pisp_fe [label="pad6→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> pisp_fe [label="pad7→pad0", color=gray, style=dotted, penwidth=1];
+  rp1_cfe_fe_config -> pisp_fe [label="pad0→pad1", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_image0 [label="pad2→pad0", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_image1 [label="pad3→pad0", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_stats [label="pad4→pad0", color=gray, style=dotted, penwidth=1];
+  rs300_10_003c -> csi2 [label="pad0→pad0\n[ENABLED,IMMUTABLE]", color=green, style=solid, penwidth=2];
+  rs300_10_003c -> csi2 [label="pad1→pad1\n[ENABLED,IMMUTABLE]", color=green, style=solid, penwidth=2];
+  csi2 -> rp1_cfe_csi2_ch0 [label="pad4→pad0\n[ENABLED]", color=green, style=solid, penwidth=2];
+  csi2 -> rp1_cfe_embedded [label="pad5→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> rp1_cfe_csi2_ch2 [label="pad6→pad0", color=gray, style=dotted, penwidth=1];
+  csi2 -> rp1_cfe_csi2_ch3 [label="pad7→pad0", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_image0 [label="pad2→pad0", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_image1 [label="pad3→pad0", color=gray, style=dotted, penwidth=1];
+  pisp_fe -> rp1_cfe_fe_stats [label="pad4→pad0", color=gray, style=dotted, penwidth=1];
+  rp1_cfe_fe_config -> pisp_fe [label="pad0→pad1", color=gray, style=dotted, penwidth=1];
+}
