@@ -6,8 +6,8 @@
 echo "=== RS300 Media Controller Configuration ==="
 
 # Configuration options
-DEFAULT_FORMAT="UYVY8_1X16"
-DEFAULT_PIXELFORMAT="UYVY"
+DEFAULT_FORMAT="YUYV8_1X16"
+DEFAULT_PIXELFORMAT="YUYV"
 DEFAULT_WIDTH=640
 DEFAULT_HEIGHT=512
 
@@ -119,6 +119,10 @@ while [[ $# -gt 0 ]]; do
             HEIGHT="$2"
             shift 2
             ;;
+        --mode)
+            MODE="$2"
+            shift 2
+            ;;
         --non-interactive)
             INTERACTIVE=false
             shift
@@ -135,6 +139,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --pixelformat FORMAT   V4L2 pixel format (default: $DEFAULT_PIXELFORMAT)"
             echo "  --width WIDTH          Target width (default: $DEFAULT_WIDTH, auto-detected from RS300)"
             echo "  --height HEIGHT        Target height (default: $DEFAULT_HEIGHT, auto-detected from RS300)"
+            echo "  --mode MODE            RS300 mode: 0=640x512, 1=256x192, 2=384x288 (will prompt if not specified)"
             echo "  --non-interactive      Run without user prompts"
             echo "  --visualize            Generate PNG visualization of pipeline"
             echo "  --help                 Show this help"
@@ -142,9 +147,14 @@ while [[ $# -gt 0 ]]; do
             echo "Note: RS300 camera format and resolution are read-only (set by driver module parameters)."
             echo "      The script will auto-detect and use the RS300's current format for pipeline configuration."
             echo ""
+            echo "RS300 Mode Configuration (driver mode parameter):"
+            echo "  Mode 0: 640x512 @ 60fps (high resolution)"
+            echo "  Mode 1: 256x192 @ 25fps (low resolution, I2C only)"
+            echo "  Mode 2: 384x288 @ 30fps (medium resolution - default)"
+            echo ""
             echo "Pi 5 Compatible formats (16-bit packed only):"
-            echo "  Mediabus: UYVY8_1X16 (default), YUYV8_1X16, YVYU8_1X16, VYUY8_1X16"
-            echo "  Pixel:    UYVY (default), YUYV, YVYU, VYUY"
+            echo "  Mediabus: YUYV8_1X16 (automatically selected)"
+            echo "  Pixel:    YUYV (automatically selected)"
             echo ""
             echo "WARNING: 8-bit dual lane formats (*8_2X8) are NOT supported on Pi 5 and will cause format mismatch errors!"
             exit 0
@@ -232,40 +242,109 @@ if [ -z "$MEDIA_DEV" ]; then
     exit 1
 fi
 
-# Interactive format selection and confirmation
-if [ "$INTERACTIVE" = true ]; then
+# Detect current RS300 mode from driver
+print_step "Detecting RS300 driver mode"
+CURRENT_MODE=""
+if [ -f "/sys/module/rs300/parameters/mode" ]; then
+    CURRENT_MODE=$(cat /sys/module/rs300/parameters/mode 2>/dev/null)
+    if [ -n "$CURRENT_MODE" ]; then
+        case $CURRENT_MODE in
+            0)
+                print_success "Detected mode 0: 640x512 @ 60fps"
+                EXPECTED_WIDTH=640
+                EXPECTED_HEIGHT=512
+                ;;
+            1)
+                print_success "Detected mode 1: 256x192 @ 25fps"
+                EXPECTED_WIDTH=256
+                EXPECTED_HEIGHT=192
+                ;;
+            2)
+                print_success "Detected mode 2: 384x288 @ 30fps"
+                EXPECTED_WIDTH=384
+                EXPECTED_HEIGHT=288
+                ;;
+            *)
+                print_warning "Unknown mode $CURRENT_MODE, will auto-detect from RS300"
+                ;;
+        esac
+    else
+        print_warning "Could not read mode parameter"
+    fi
+else
+    print_warning "Mode parameter not accessible, will auto-detect from RS300"
+fi
+
+# Mode selection prompt if not specified
+if [ "$INTERACTIVE" = true ] && [ -z "$MODE" ] && [ -z "$CURRENT_MODE" ]; then
     echo ""
-    echo "=== Format Selection ==="
-    echo "Choose pixel format:"
-    echo "1) UYVY (default - recommended)"
-    echo "2) YUYV"
+    echo "=== Mode Selection ==="
+    echo "Choose RS300 mode (this will require driver reload):"
+    echo "0) 640x512 @ 60fps (high resolution)"
+    echo "1) 256x192 @ 25fps (low resolution)" 
+    echo "2) 384x288 @ 30fps (medium resolution)"
     echo ""
-    read -p "Select format (1-2, default: 1): " -n 1 -r
+    read -p "Select mode (0-2): " -n 1 -r
     echo
     
     case $REPLY in
-        2)
-            FORMAT="YUYV8_1X16"
-            PIXELFORMAT="YUYV"
-            print_success "Selected YUYV format"
+        0)
+            MODE=0
+            print_success "Selected mode 0: 640x512"
+            print_warning "Driver needs to be reloaded with mode=$MODE"
+            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Configuration cancelled - reload driver first"
+                exit 0
+            fi
             ;;
-        1|"")
-            FORMAT="UYVY8_1X16"
-            PIXELFORMAT="UYVY"
-            print_success "Selected UYVY format (default)"
+        1)
+            MODE=1
+            print_success "Selected mode 1: 256x192"
+            print_warning "Driver needs to be reloaded with mode=$MODE"
+            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Configuration cancelled - reload driver first"
+                exit 0
+            fi
+            ;;
+        2)
+            MODE=2
+            print_success "Selected mode 2: 384x288"
+            print_warning "Driver needs to be reloaded with mode=$MODE"
+            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                echo "Configuration cancelled - reload driver first"
+                exit 0
+            fi
             ;;
         *)
-            print_warning "Invalid selection, using UYVY (default)"
-            FORMAT="UYVY8_1X16"
-            PIXELFORMAT="UYVY"
+            print_error "Invalid selection"
+            exit 1
             ;;
     esac
-    
+fi
+
+# Always use YUYV format (no user choice)
+FORMAT="YUYV8_1X16"
+PIXELFORMAT="YUYV"
+
+# Interactive confirmation
+if [ "$INTERACTIVE" = true ]; then
     echo ""
     echo "About to configure media pipeline:"
     echo "  Device: $MEDIA_DEV"
-    echo "  Format: $FORMAT -> $PIXELFORMAT"
+    echo "  Format: $FORMAT -> $PIXELFORMAT (automatically selected)"
     echo "  Resolution: ${WIDTH}x${HEIGHT}"
+    if [ -n "$CURRENT_MODE" ]; then
+        echo "  Driver Mode: $CURRENT_MODE (expected: ${EXPECTED_WIDTH}x${EXPECTED_HEIGHT})"
+    fi
     echo ""
     read -p "Continue? (y/N): " -n 1 -r
     echo
@@ -334,6 +413,16 @@ if [ $? -eq 0 ] && [ -n "$RS300_ACTUAL_FORMAT" ]; then
             print_warning "Using RS300's native resolution: $RS300_RESOLUTION"
             WIDTH=$(echo "$RS300_RESOLUTION" | cut -dx -f1 | tr -d '\n\r\t ')
             HEIGHT=$(echo "$RS300_RESOLUTION" | cut -dx -f2 | tr -d '\n\r\t ')
+        fi
+        
+        # Check if detected resolution matches expected mode
+        if [ -n "$EXPECTED_WIDTH" ] && [ -n "$EXPECTED_HEIGHT" ]; then
+            if [ "$WIDTH" != "$EXPECTED_WIDTH" ] || [ "$HEIGHT" != "$EXPECTED_HEIGHT" ]; then
+                print_warning "RS300 actual resolution (${WIDTH}x${HEIGHT}) doesn't match mode $CURRENT_MODE expected (${EXPECTED_WIDTH}x${EXPECTED_HEIGHT})"
+                print_warning "This may indicate driver mode parameter doesn't match hardware configuration"
+            else
+                print_success "RS300 resolution matches driver mode $CURRENT_MODE"
+            fi
         fi
     else
         print_warning "Could not parse RS300 format details, using requested format"
@@ -443,7 +532,14 @@ if [ "$ROLLBACK_NEEDED" = false ]; then
     print_success "Media pipeline successfully configured!"
     echo ""
     echo "Configuration saved. To reproduce this setup:"
-    echo "  $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT --non-interactive"
+    if [ -n "$CURRENT_MODE" ]; then
+        echo "  $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT --mode $CURRENT_MODE --non-interactive"
+        echo ""
+        echo "To use a different mode, reload driver with:"
+        echo "  sudo rmmod rs300 && sudo modprobe rs300 mode=X  # where X is 0 (640x512), 1 (256x192), or 2 (384x288)"
+    else
+        echo "  $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT --non-interactive"
+    fi
     echo ""
     echo "Next steps:"
     echo "1. Test streaming: v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10"
