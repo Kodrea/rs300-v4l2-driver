@@ -2,6 +2,7 @@
 
 # RS300 Thermal Camera Streaming Test Script for Pi 5
 # This script configures the complete media controller pipeline and tests streaming
+# Uses Pi 5 compatible 16-bit packed UYVY format
 
 echo "=== RS300 Pi 5 Streaming Test ==="
 
@@ -37,15 +38,15 @@ else
     echo "⚠ Link enable failed, but continuing..."
 fi
 
-# Set formats throughout the pipeline
+# Set formats throughout the pipeline (using Pi 5 compatible format with complete colorspace)
 echo "Setting pipeline formats..."
-media-ctl -d $MEDIA_DEV -V "'rs300 10-003c':0 [fmt:YUYV8_1X16/640x512]"
-media-ctl -d $MEDIA_DEV -V "'csi2':0 [fmt:YUYV8_1X16/640x512]"
-media-ctl -d $MEDIA_DEV -V "'csi2':4 [fmt:YUYV8_1X16/640x512]"
+media-ctl -d $MEDIA_DEV -V "'rs300 10-003c':0 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
+media-ctl -d $MEDIA_DEV -V "'csi2':0 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
+media-ctl -d $MEDIA_DEV -V "'csi2':4 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m xfer:709 ycbcr:601 quantization:lim-range]"
 
 # Set video device format
 echo "Setting video device format..."
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY,colorspace=smpte170m,xfer=709,ycbcr=601,quantization=lim-range
 
 # Verify configuration
 echo "=== Verifying Configuration ==="
