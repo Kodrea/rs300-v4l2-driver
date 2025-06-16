@@ -34,16 +34,16 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 | Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues |
 | Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
 | Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | *Working       | *Purple River tested the 256 with my driver and it worked. They believe my module's firmware is the issue and are sending me instructions to update it|
-| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | In Progress    | New camera pipeline; requires driver and/or device tree changes |
+| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | ✅ **WORKING** | 60fps thermal streaming with media controller pipeline |
 | Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
 
 - For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB.
 - For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable.
 
 ## TODO
-- Raspberry Pi 5 compatibility
-- Test 384 module when it arrives
-- Continue Troubleshooting 256 mipi data
+- Test 384 and 256 modules on Pi 5
+- Continue Troubleshooting 256 mipi data on Pi 4
+- ISP integration for hardware denoising (Pi 5)
 
 
 ## Where I got the module
@@ -94,7 +94,50 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 - Linux headers installed
 - DKMS support
 
-### Build and Install
+### Raspberry Pi 5 - Quick Setup (Recommended)
+
+**Pi 5 uses the new RP1-CFE camera system with media controller pipeline configuration.**
+
+Install dependencies:
+```bash
+sudo apt install linux-headers dkms git v4l-utils
+```
+
+Clone and build:
+```bash
+git clone https://github.com/your-repo/rs300-v4l2-driver.git
+cd rs300-v4l2-driver
+chmod +x setup.sh
+./setup.sh
+```
+
+Add to config.txt:
+```bash
+sudo nano /boot/firmware/config.txt
+```
+Add these lines:
+```bash
+camera_auto_detect=0
+dtoverlay=rs300
+```
+
+Reboot and configure:
+```bash
+sudo reboot
+./configure_media.sh
+```
+
+The configuration script will:
+- Auto-detect your RS300 camera
+- Let you choose UYVY or YUYV format
+- Configure the media controller pipeline
+- Test streaming automatically
+
+**That's it! Your thermal camera should now be streaming at 60fps.**
+
+### Raspberry Pi 4 - Manual Setup
+
+**Pi 4 uses the legacy Unicam driver system.**
 
 Install the needed headers:
 ```bash
@@ -136,7 +179,43 @@ sudo reboot
 
 ## Usage
 
-### Viewing Device Information
+### Raspberry Pi 5 Usage
+
+**For Pi 5, use the automated configuration script:**
+```bash
+./configure_media.sh
+```
+
+**Manual streaming commands for Pi 5:**
+```bash
+# Basic stream test
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10
+
+# Live viewing with ffplay
+ffplay -f v4l2 -video_size 640x512 -pixel_format yuyv422 /dev/video0
+
+# GStreamer pipeline
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512 ! videoconvert ! autovideosink
+```
+
+**Camera controls (Pi 5):**
+```bash
+# List available controls
+v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
+
+# Trigger FFC calibration
+v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=ffc_trigger=0
+
+# Change colormap
+v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=colormap=3
+
+# Adjust brightness
+v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=brightness=50
+```
+
+### Raspberry Pi 4 Usage
+
+**Viewing Device Information**
 The camera should now be linked to the Raspberry Pi's Unicam driver and available on /dev/video0
 Get basic information about the Unicam bridge driver:
 ```bash
@@ -188,7 +267,7 @@ Mini2-640
 ```bash  
 gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! videoconvert ! fpsdisplaysink video-sink=autovideosink text-overlay=true
 ```
-### Camera Controls
+### Camera Controls (Pi 4)
 use v4l2 controls
 
 this triggers the ffc shutter calibration
@@ -201,12 +280,48 @@ Change colormaps
 v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 ```
 
-### Common Issues and Solutions
+## Troubleshooting
+
+### Raspberry Pi 5 Troubleshooting
+
+**1. Media Pipeline Issues**
+```bash
+# Check if driver loaded
+dmesg | grep rs300
+lsmod | grep rs300
+
+# Verify camera detection
+./configure_media.sh
+
+# Check media controller topology
+media-ctl -p
+
+# Generate pipeline visualization
+python3 media-topology-visualizer.py --check-formats
+```
+
+**2. Format Issues**
+- Pi 5 only supports 16-bit packed formats (`YUYV8_1X16`, `UYVY8_1X16`)
+- 8-bit dual lane formats (`*8_2X8`) will cause "Format mismatch!" errors
+- Use `./configure_media.sh` to ensure proper format configuration
+
+**3. No Video Stream**
+```bash
+# Check I2C communication (should be bus 10 on Pi 5)
+i2cdetect -y 10
+
+# Verify media links are enabled
+media-ctl --print-topology | grep ENABLED
+
+# Test basic streaming
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=1
+```
+
+### Raspberry Pi 4 Troubleshooting
+
+**Common Issues and Solutions:**
 
 1. **Wrong resolution**: Make sure to set the stream to your modules resolution. By default the Unicam driver will have it as 640x480
-
-
-## Troubleshooting
 
 If experiencing issues:
 
@@ -221,113 +336,61 @@ If experiencing issues:
 sudo sh /usr/src/rs300-0.0.1/dkms.postinst
 ```
 
-# Various Other Commands I used for troubleshooting
-TODO: Cleanup this section
+## Current Status
 
+### ✅ **Raspberry Pi 5 - FULLY WORKING**
+- **Driver**: RS300 module loads successfully 
+- **I2C**: Communication working on i2c-10 bus at 0x3c
+- **Media Pipeline**: Automatic configuration with `./configure_media.sh`
+- **Streaming**: 60fps thermal video confirmed working
+- **Formats**: YUYV8_1X16 and UYVY8_1X16 both supported
+- **Controls**: FFC calibration, colormap, brightness accessible
+- **Tools**: Visualization and diagnostic scripts included
 
+### ✅ **Raspberry Pi 4 - WORKING**  
+- **Driver**: Tested and working with Unicam
+- **Resolutions**: 640x512 and 384x288 confirmed
+- **Performance**: 60Hz video with minimal issues
+- **Note**: Requires manual driver configuration for resolution
+
+### 🚧 **Development Status**
+- **256x192 Module**: I2C working, MIPI video troubleshooting in progress
+- **Pi Zero 2W**: Hardware power limitations prevent reliable operation
+- **ISP Integration**: Future Pi 5 enhancement for hardware denoising
+
+---
+
+## Advanced Usage
+
+### Media Controller Visualization (Pi 5)
 ```bash
-cd rs300-v4l2-driver
+# Generate pipeline diagram
+python3 media-topology-visualizer.py --check-formats --show-links
+
+# Configure with visualization
+./configure_media.sh --visualize
 ```
 
-- make them executable
-
+### Manual Pipeline Configuration (Pi 5)
 ```bash
-chmod +x setup.sh dkms.postinst
-```
-
-# Install DKMS if not already installed
-
-```bash
-sudo apt install linux-headers dkms git
-```
-
-# Run the setup script
-
-```bash
-./setup.sh
-```
-
-# Check DKMS status and if module is loaded
-
-```bash
-dkms status
-lsmod | grep rs300
-modinfo rs300
-```
-
-# check i2c devices
-
-```bash
-ls /dev/i2c*
-i2cdetect -l
-i2cdetect -y 10 # right now it's bus 10 for me
-i2cdump -f -y 10 0x3c  # i2c 10, 0x3c is your device address
-```
-
-# check v4l2 devices
-
-```bash
-ls /dev/video*
-v4l2-ctl --list-devices
-v4l2-ctl -d /dev/video0 --all
-# List supported formats
-v4l2-ctl -d /dev/video0 --list-formats-ext
-# List supported controls
-v4l2-ctl -d /dev/video0 --list-ctrls
-# Show current input/output
-v4l2-ctl -d /dev/video0 --info
-```
-
-## set v4l2 parameters manually; resolution, fps, etc   
-
-```bash
-v4l2-ctl -d /dev/video0 --set-fmt-video width=256,height=192,pixelformat=YUYV
+# For advanced users - manual media controller setup
+media-ctl -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0[1]"
+media-ctl -V "'csi2':0 [fmt:YUYV8_1X16/640x512]"
 v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
-v4l2-ctl --stream-mmap -d /dev/video0 -o test.yuv
-
 ```
 
-ffplay -f v4l2 -input_format yuyv422 -video_size 256x192 -i /dev/video0
-
-ffplay -f v4l2 -input_format yuyv422 -video_size 640x512 -i /dev/video0
-
-
-# Rebuild the module
-
+### Diagnostic Commands
 ```bash
-cd rs300-v4l2-driver
-./setup.sh
-```
-
-# Check after rebuild and reboot
-- check if the module is on i2c
-- check if the video node is created
-
-```bash
-i2cdetect -l 
-i2cdetect -y 10
+# Check driver status
+dkms status | grep rs300
 lsmod | grep rs300
-dmesg | grep -i rs300
-modinfo rs300
 
-media-ctl -p
-ls /dev/v4l-subdev*
+# I2C verification
+i2cdetect -y 10  # Pi 5
+i2cdetect -y 1   # Pi 4
 
-v4l2-ctl --list-devices
-v4l2-ctl -d /dev/video0 --all
-
-v4l2-ctl -d /dev/video0 --list-ctrls
-v4l2-ctl -d /dev/v4l-subdev0 --list-ctrls
-
-v4l2-ctl -d /dev/video0 --list-formats-ext
-vcgencmd get_camera
-
-
-rsudo cat /dev/kmsg | grep rs300
-v4l2-ctl -d /dev/video0 --stream-mmap -o test.yuv
-sudo dmesg -wH
-ffplay -f video4linux2 -input_format yuyv422 -video_size 256x192 -i /dev/video0
-ffplay -f video4linux2 -input_format yuyv422 -video_size 640x512 -i /dev/video0
+# Media controller status (Pi 5)
+media-ctl --print-topology
 ```
 
 
