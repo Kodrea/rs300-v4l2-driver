@@ -31,20 +31,26 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 
 | Raspberry Pi Model | Module Resolution | Connection Type | OS & Kernel | Status         | Notes                                                          |
 | ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
-| Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues |
+| Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Power over 5V 3v3 issues:(Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues) |
 | Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
-| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | *Working       | *Purple River tested the 256 with my driver and it worked. They believe my module's firmware is the issue and are sending me instructions to update it|
-| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | In Progress    | New camera pipeline; requires driver and/or device tree changes |
-| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
+| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | Working        | 50hz video                     |
+| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video, now exploring ISP integration for hardware accelerate image processing |
+| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | *Working       | *with a simple modification to disconnect the 3v3 line to the camera you can power via the 5V to the 5V pin on the camera. New boards will have this modifcation already made|
 
-- For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB.
-- For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable.
+- <s> For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB. </s>
+   - The issue was with my specific module and has now been verified to work with 2 other 256 modules.
+- <s> For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable. </s>
+   - Using the 5V pin in the analog/uart port solves the issue <b>BUT</b> you will need to modify the board or block the 3v3 pin with tape. If the 3v3 line is connected the camera will not use the 5V power and will get stuck in a boot loop while the camera tries to          draw too much power over 3v3.
+   - Any board purchased after mid-August 2025 will already have a fix applied.
 
-## TODO
+## TODO (10/08/2025)
 - Raspberry Pi 5 compatibility
-- Test 384 module when it arrives
-- Continue Troubleshooting 256 mipi data
-
+   - <s> Video streaming </s>
+   - Camera ISP integration
+- <s> Test 384 module when it arrives </s>
+   - Tested and working!
+- <s> Continue Troubleshooting 256 mipi data </s>
+   - Issue was with my specific module. driver verified working with 256 on 2 seperate modules.
 
 ## Where I got the module
 I've bought from two stores on Alibaba who sell the same module
