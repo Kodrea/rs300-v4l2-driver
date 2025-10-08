@@ -47,10 +47,8 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 - Raspberry Pi 5 compatibility
    - <s> Video streaming </s>
    - Camera ISP integration
-- <s> Test 384 module when it arrives </s>
-   - Tested and working!
-- <s> Continue Troubleshooting 256 mipi data </s>
-   - Issue was with my specific module. driver verified working with 256 on 2 seperate modules.
+- <s> Test 384 module when it arrives </s>   --->  Tested and working!
+- <s> Continue Troubleshooting 256 mipi data </s>   --->  Issue was with my specific module. driver verified working with 256 on 2 seperate modules.
 
 ## Where I got the module
 I've bought from two stores on Alibaba who sell the same module
