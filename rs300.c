@@ -85,7 +85,7 @@ static const char * const scene_mode_menu[] = {
 
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
-static int mode = 2; //0-640; 1-256; 2-384
+static int mode = 0; // 0-640; 1-256; 2-384
 static int fps = 30;
 static int type = 16;
 static int debug = 1;
@@ -1772,23 +1772,29 @@ static void rs300_update_image_pad_format(struct rs300 *rs300,
 
 // Restore and fix __rs300_get_pad_fmt
 static int __rs300_get_pad_fmt(struct rs300 *rs300,
-				struct v4l2_subdev_state *sd_state,
-				struct v4l2_subdev_format *fmt)
+                               struct v4l2_subdev_state *sd_state,
+                               struct v4l2_subdev_format *fmt)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    struct v4l2_mbus_framefmt *try_fmt;
-	if (fmt->pad >= NUM_PADS)
-		return -EINVAL;	
+        struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+        struct v4l2_mbus_framefmt *try_fmt;
+        if (fmt->pad >= NUM_PADS)
+                return -EINVAL;
 
-	dev_info(&client->dev, "rs300_get_pad_fmt: pad=%d, which=%d", 
-		fmt->pad, fmt->which);
+        dev_info(&client->dev, "rs300_get_pad_fmt: pad=%d, which=%d",
+                fmt->pad, fmt->which);
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-        // Use v4l2_subdev_get_fmt instead of v4l2_subdev_get_try_format
-        try_fmt = v4l2_subdev_get_fmt(&rs300->sd, sd_state, fmt->pad);
+        if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_TRY,
+                        .pad = fmt->pad,
+                };
+                int ret = v4l2_subdev_get_fmt(&rs300->sd, sd_state, &fmt_req);
+                if (ret < 0)
+                        return ret;
 
-        // Copy the format from userspace (fmt->format) to that location (*try_fmt)
-        *try_fmt = fmt->format;
+                /* Copy the format from userspace (fmt->format) to that location (*try_fmt) */
+                try_fmt = &fmt_req.format;
+                *try_fmt = fmt->format;
 
 		dev_info(&client->dev, "Get TRY format: code=0x%x, %dx%d",
 			fmt->format.code, fmt->format.width, fmt->format.height);
@@ -1891,10 +1897,19 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 
 		rs300_update_image_pad_format(rs300, mode, fmt);
 
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			/* Just update the try format */
-			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
-			*framefmt = fmt->format;
+                if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                        /* Just update the try format */
+                        struct v4l2_subdev_format fmt_req = {
+                                .which = V4L2_SUBDEV_FORMAT_TRY,
+                                .pad = fmt->pad,
+                        };
+                        int ret = v4l2_subdev_get_fmt(sd, sd_state, &fmt_req);
+                        if (ret < 0) {
+                                mutex_unlock(&rs300->mutex);
+                                return ret;
+                        }
+                        framefmt = &fmt_req.format;
+                        *framefmt = fmt->format;
 			dev_info(&client->dev, "Set TRY format: code=0x%x, %dx%d",
 				framefmt->code, framefmt->width, framefmt->height);
 		} else {
@@ -1913,14 +1928,23 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 			dev_info(&client->dev, "Set ACTIVE format: code=0x%x, %dx%d",
 				rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
 		}
-	} else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
-		/* Handle metadata pad format if needed */
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
-			*framefmt = fmt->format;
-		}
-		/* For active format, we don't change anything as metadata format is fixed */
-	}
+        } else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
+                /* Handle metadata pad format if needed */
+                if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                        struct v4l2_subdev_format fmt_req = {
+                                .which = V4L2_SUBDEV_FORMAT_TRY,
+                                .pad = fmt->pad,
+                        };
+                        int ret = v4l2_subdev_get_fmt(sd, sd_state, &fmt_req);
+                        if (ret < 0) {
+                                mutex_unlock(&rs300->mutex);
+                                return ret;
+                        }
+                        framefmt = &fmt_req.format;
+                        *framefmt = fmt->format;
+                }
+                /* For active format, we don't change anything as metadata format is fixed */
+        }
 
 	mutex_unlock(&rs300->mutex);
 	return 0;
@@ -2248,27 +2272,44 @@ static const s64 link_freq_menu_items[] = {
  * is opened.
  */
 static int rs300_init_cfg(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_state *state)
+                           struct v4l2_subdev_state *state)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct v4l2_mbus_framefmt *format;
+        struct i2c_client *client = v4l2_get_subdevdata(sd);
+        struct v4l2_mbus_framefmt *format;
+        int ret;
 
-	dev_info(&client->dev, "rs300_init_cfg");
+        dev_info(&client->dev, "rs300_init_cfg");
 
-	/* Initialize the format for the image pad */
-	format = v4l2_subdev_get_fmt(sd, state, IMAGE_PAD);
-	format->code = supported_modes[mode].code;
-	format->width = supported_modes[mode].width;
-	format->height = supported_modes[mode].height;
-	format->field = V4L2_FIELD_NONE;
-	rs300_reset_colorspace(format);
+        /* Initialize the format for the image pad */
+        {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_ACTIVE,
+                        .pad = IMAGE_PAD,
+                };
+                ret = v4l2_subdev_get_fmt(sd, state, &fmt_req);
+                if (ret < 0)
+                        return ret;
+                format = &fmt_req.format;
+        }
+        format->code = supported_modes[mode].code;
+        format->width = supported_modes[mode].width;
+        format->height = supported_modes[mode].height;
+        format->field = V4L2_FIELD_NONE;
+        rs300_reset_colorspace(format);
 
-	/* Initialize the format for the metadata pad if needed */
-	if (NUM_PADS > 1) {
-		format = v4l2_subdev_get_fmt(sd, state, METADATA_PAD);
-		format->code = MEDIA_BUS_FMT_SENSOR_DATA;
-		format->width = 0;  /* Set appropriate width for metadata */
-		
+        /* Initialize the format for the metadata pad if needed */
+        if (NUM_PADS > 1) {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_ACTIVE,
+                        .pad = METADATA_PAD,
+                };
+                ret = v4l2_subdev_get_fmt(sd, state, &fmt_req);
+                if (ret < 0)
+                        return ret;
+                format = &fmt_req.format;
+                format->code = MEDIA_BUS_FMT_SENSOR_DATA;
+                format->width = 0;  /* Set appropriate width for metadata */
+
 		format->height = 0; /* Set appropriate height for metadata */
 		format->field = V4L2_FIELD_NONE;
 	}
