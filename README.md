@@ -105,7 +105,7 @@ sudo apt install linux-headers dkms git v4l-utils
 
 Clone and build:
 ```bash
-git clone https://github.com/your-repo/rs300-v4l2-driver.git
+git clone https://github.com/Kodrea/rs300-v4l2-driver.git
 cd rs300-v4l2-driver
 chmod +x setup.sh
 ./setup.sh
