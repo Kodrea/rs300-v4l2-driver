@@ -718,7 +718,7 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
 static int rs300_set_output_mode(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
+    u8 cmd_buffer[23];  /* This command uses 23 bytes (21 data + 2 CRC) instead of standard 18 */
     u8 status_buffer[1];
     int ret;
     int retry_count = 0;
@@ -745,13 +745,13 @@ static int rs300_set_output_mode(struct rs300 *rs300, int value)
     cmd_buffer[8] = 0x00;  /* Fixed parameter */
     cmd_buffer[9] = value; /* Output mode: 0=IR, 1=KBC, 2=TNR, 3=SNR, 4=DDE, 5=YUV */
 
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[10], 0, 6);
+    /* Fill remaining parameters with zeros (bytes 10-20) */
+    memset(&cmd_buffer[10], 0, 11);
 
-    /* Calculate CRC */
-    crc = do_crc(cmd_buffer, 16);
-    cmd_buffer[16] = crc & 0xFF;
-    cmd_buffer[17] = (crc >> 8) & 0xFF;
+    /* Calculate CRC over first 21 bytes (not standard 16) */
+    crc = do_crc(cmd_buffer, 21);
+    cmd_buffer[21] = crc & 0xFF;
+    cmd_buffer[22] = (crc >> 8) & 0xFF;
 
     dev_info(&client->dev, "Output mode command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
 
