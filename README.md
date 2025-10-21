@@ -100,7 +100,7 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 Install dependencies:
 ```bash
-sudo apt install linux-headers dkms git v4l-utils
+sudo apt install raspberrypi-kernel-headers dkms git v4l-utils
 ```
 
 Clone and build:
@@ -135,13 +135,15 @@ The configuration script will:
 
 **That's it! Your thermal camera should now be streaming at 60fps.**
 
+**Note:** The media configuration needs to run after every reboot. To automate this, see [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md) for systemd/udev setup options.
+
 ### Raspberry Pi 4 - Manual Setup
 
 **Pi 4 uses the legacy Unicam driver system.**
 
 Install the needed headers:
 ```bash
-sudo apt install linux-headers dkms git
+sudo apt install raspberrypi-kernel-headers dkms git
 ```
 
 MODIFY DRIVER BEFORE BUILDING.
