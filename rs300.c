@@ -81,6 +81,17 @@ static const char * const scene_mode_menu[] = {
     NULL
 };
 
+/* Define output mode menu items */
+static const char * const output_mode_menu[] = {
+    "IR Output (Raw)",    /* 0 */
+    "KBC Output",         /* 1 */
+    "TNR Output",         /* 2 */
+    "SNR Output",         /* 3 */
+    "DDE Output",         /* 4 */
+    "YUV Output",         /* 5 */
+    NULL
+};
+
 #define NUM_COLORMAP_ITEMS (ARRAY_SIZE(colormap_menu) - 1) // Account for NULL terminator
 
 // Mode must be set before running setup.sh
@@ -325,7 +336,7 @@ struct rs300 {
 	struct v4l2_ctrl *contrast;
 	struct v4l2_ctrl *spatial_nr;
 	struct v4l2_ctrl *temporal_nr;
-	struct v4l2_ctrl *raw_data_output;  /* Detector raw data output control */
+	struct v4l2_ctrl *output_mode;  /* Output mode selection control */
 
 	/* Current mode */
 	const struct rs300_mode *mode;
@@ -704,7 +715,7 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
     return -ETIMEDOUT;
 }
 
-static int rs300_set_raw_data_output(struct rs300 *rs300, int value)
+static int rs300_set_output_mode(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
     u8 cmd_buffer[18];
@@ -714,38 +725,40 @@ static int rs300_set_raw_data_output(struct rs300 *rs300, int value)
     const int max_retries = 5;
     unsigned short crc;
 
-    dev_info(&client->dev, "Setting detector raw data output to %d", value);
+    dev_info(&client->dev, "Setting output mode to %d", value);
 
-    /* Validate value range (boolean: 0 or 1) */
-    if (value < 0 || value > 1) {
-        dev_err(&client->dev, "Invalid raw data output value: %d (valid: 0 or 1)", value);
+    /* Validate value range (0-5: IR/KBC/TNR/SNR/DDE/YUV) */
+    if (value < 0 || value > 5) {
+        dev_err(&client->dev, "Invalid output mode value: %d (valid: 0-5)", value);
         return -EINVAL;
     }
 
-    /* Construct the command buffer for detector raw data output */
+    /* Construct the command buffer for output mode selection */
     cmd_buffer[0] = 0x55;  /* Command Class */
     cmd_buffer[1] = 0x43;  /* Module Command Index */
     cmd_buffer[2] = 0x49;  /* SubCmd */
-    cmd_buffer[3] = 0x12;  /* Reserved/Parameter */
-    cmd_buffer[4] = value; /* Parameter: 0=disable, 1=enable */
-    cmd_buffer[5] = 0x10;  /* Parameter 2 */
-    cmd_buffer[6] = 0x10;  /* Parameter 3 */
-    cmd_buffer[7] = 0x45;  /* Parameter 4 */
+    cmd_buffer[3] = 0x12;  /* Reserved */
+    cmd_buffer[4] = 0x00;  /* Fixed parameter */
+    cmd_buffer[5] = 0x10;  /* Fixed parameter */
+    cmd_buffer[6] = 0x10;  /* Fixed parameter */
+    cmd_buffer[7] = 0x45;  /* Fixed parameter */
+    cmd_buffer[8] = 0x00;  /* Fixed parameter */
+    cmd_buffer[9] = value; /* Output mode: 0=IR, 1=KBC, 2=TNR, 3=SNR, 4=DDE, 5=YUV */
 
     /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[8], 0, 8);
+    memset(&cmd_buffer[10], 0, 6);
 
     /* Calculate CRC */
     crc = do_crc(cmd_buffer, 16);
     cmd_buffer[16] = crc & 0xFF;
     cmd_buffer[17] = (crc >> 8) & 0xFF;
 
-    dev_info(&client->dev, "Raw data output command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    dev_info(&client->dev, "Output mode command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
 
     /* Write command */
     ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
     if (ret) {
-        dev_err(&client->dev, "Failed to write raw data output command: %d", ret);
+        dev_err(&client->dev, "Failed to write output mode command: %d", ret);
         return ret;
     }
 
@@ -765,17 +778,17 @@ static int rs300_set_raw_data_output(struct rs300 *rs300, int value)
 
         if (!is_busy) {
             if (has_failed) {
-                dev_err(&client->dev, "Raw data output command failed with error code: 0x%02X", error_code);
+                dev_err(&client->dev, "Output mode command failed with error code: 0x%02X", error_code);
                 return -EIO;
             }
-            dev_info(&client->dev, "Raw data output set successfully to %d", value);
+            dev_info(&client->dev, "Output mode set successfully to %d", value);
             return 0;
         }
 
         retry_count++;
     }
 
-    dev_err(&client->dev, "Raw data output command timed out");
+    dev_err(&client->dev, "Output mode command timed out");
     return -ETIMEDOUT;
 }
 
@@ -1747,8 +1760,8 @@ static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
     case V4L2_CID_CUSTOM_BASE + 6:  /* Temporal NR */
         ret = rs300_set_temporal_nr(rs300, ctrl->val);
         break;
-    case V4L2_CID_CUSTOM_BASE + 7:  /* Detector Raw Data Output */
-        ret = rs300_set_raw_data_output(rs300, ctrl->val);
+    case V4L2_CID_CUSTOM_BASE + 7:  /* Output Mode */
+        ret = rs300_set_output_mode(rs300, ctrl->val);
         break;
     default:
         dev_err(&client->dev, "Invalid control %d", ctrl->id);
@@ -2588,15 +2601,16 @@ static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .def = 50,
 };
 
-static const struct v4l2_ctrl_config raw_data_output_ctrl = {
+static const struct v4l2_ctrl_config output_mode_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 7,
-    .name = "Detector Raw Data Output",
-    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .name = "Output Mode",
+    .type = V4L2_CTRL_TYPE_MENU,
+    .qmenu = output_mode_menu,
     .min = 0,
-    .max = 1,
+    .max = 5,
     .step = 1,
-    .def = 0,
+    .def = 5,  /* Default to YUV output */
 };
 
 static int rs300_init_controls(struct rs300 *rs300)
@@ -2660,7 +2674,7 @@ static int rs300_init_controls(struct rs300 *rs300)
     rs300->dde = v4l2_ctrl_new_custom(ctrl_hdlr, &dde_ctrl, NULL);
     rs300->spatial_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &spatial_nr_ctrl, NULL);
     rs300->temporal_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &temporal_nr_ctrl, NULL);
-    rs300->raw_data_output = v4l2_ctrl_new_custom(ctrl_hdlr, &raw_data_output_ctrl, NULL);
+    rs300->output_mode = v4l2_ctrl_new_custom(ctrl_hdlr, &output_mode_ctrl, NULL);
 
     /* Check for errors */
     if (ctrl_hdlr->error) {
