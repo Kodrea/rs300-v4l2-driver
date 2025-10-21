@@ -723,7 +723,6 @@ static int rs300_set_output_mode(struct rs300 *rs300, int value)
     int ret;
     int retry_count = 0;
     const int max_retries = 5;
-    unsigned short crc;
 
     dev_info(&client->dev, "Setting output mode to %d", value);
 
@@ -748,10 +747,19 @@ static int rs300_set_output_mode(struct rs300 *rs300, int value)
     /* Fill remaining parameters with zeros (bytes 10-20) */
     memset(&cmd_buffer[10], 0, 11);
 
-    /* Calculate CRC over first 21 bytes (not standard 16) */
-    crc = do_crc(cmd_buffer, 21);
-    cmd_buffer[21] = crc & 0xFF;
-    cmd_buffer[22] = (crc >> 8) & 0xFF;
+    /* Use pre-calculated CRC values for each mode (23-byte format uses different CRC) */
+    /* CRC lookup table: [mode][low_byte, high_byte] */
+    static const u8 mode_crc[6][2] = {
+        {0xFB, 0xC0},  /* Mode 0 (IR):  FB C0 */
+        {0x8E, 0xC3},  /* Mode 1 (KBC): 8E C3 */
+        {0x11, 0xC6},  /* Mode 2 (TNR): 11 C6 */
+        {0x64, 0xC5},  /* Mode 3 (SNR): 64 C5 */
+        {0x2F, 0xCD},  /* Mode 4 (DDE): 2F CD */
+        {0x5A, 0xCE},  /* Mode 5 (YUV): 5A CE */
+    };
+
+    cmd_buffer[21] = mode_crc[value][0];  /* CRC low byte */
+    cmd_buffer[22] = mode_crc[value][1];  /* CRC high byte */
 
     dev_info(&client->dev, "Output mode command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
 
