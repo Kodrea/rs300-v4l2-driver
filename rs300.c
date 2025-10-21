@@ -325,6 +325,7 @@ struct rs300 {
 	struct v4l2_ctrl *contrast;
 	struct v4l2_ctrl *spatial_nr;
 	struct v4l2_ctrl *temporal_nr;
+	struct v4l2_ctrl *raw_data_output;  /* Detector raw data output control */
 
 	/* Current mode */
 	const struct rs300_mode *mode;
@@ -700,6 +701,81 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
     }
     
     dev_err(&client->dev, "DDE command timed out");
+    return -ETIMEDOUT;
+}
+
+static int rs300_set_raw_data_output(struct rs300 *rs300, int value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+    unsigned short crc;
+
+    dev_info(&client->dev, "Setting detector raw data output to %d", value);
+
+    /* Validate value range (boolean: 0 or 1) */
+    if (value < 0 || value > 1) {
+        dev_err(&client->dev, "Invalid raw data output value: %d (valid: 0 or 1)", value);
+        return -EINVAL;
+    }
+
+    /* Construct the command buffer for detector raw data output */
+    cmd_buffer[0] = 0x55;  /* Command Class */
+    cmd_buffer[1] = 0x43;  /* Module Command Index */
+    cmd_buffer[2] = 0x49;  /* SubCmd */
+    cmd_buffer[3] = 0x12;  /* Reserved/Parameter */
+    cmd_buffer[4] = value; /* Parameter: 0=disable, 1=enable */
+    cmd_buffer[5] = 0x10;  /* Parameter 2 */
+    cmd_buffer[6] = 0x10;  /* Parameter 3 */
+    cmd_buffer[7] = 0x45;  /* Parameter 4 */
+
+    /* Fill remaining parameters with zeros */
+    memset(&cmd_buffer[8], 0, 8);
+
+    /* Calculate CRC */
+    crc = do_crc(cmd_buffer, 16);
+    cmd_buffer[16] = crc & 0xFF;
+    cmd_buffer[17] = (crc >> 8) & 0xFF;
+
+    dev_info(&client->dev, "Raw data output command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write raw data output command: %d", ret);
+        return ret;
+    }
+
+    /* Wait for completion */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "Raw data output command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "Raw data output set successfully to %d", value);
+            return 0;
+        }
+
+        retry_count++;
+    }
+
+    dev_err(&client->dev, "Raw data output command timed out");
     return -ETIMEDOUT;
 }
 
@@ -1671,6 +1747,9 @@ static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
     case V4L2_CID_CUSTOM_BASE + 6:  /* Temporal NR */
         ret = rs300_set_temporal_nr(rs300, ctrl->val);
         break;
+    case V4L2_CID_CUSTOM_BASE + 7:  /* Detector Raw Data Output */
+        ret = rs300_set_raw_data_output(rs300, ctrl->val);
+        break;
     default:
         dev_err(&client->dev, "Invalid control %d", ctrl->id);
         ret = -EINVAL;
@@ -2509,6 +2588,17 @@ static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .def = 50,
 };
 
+static const struct v4l2_ctrl_config raw_data_output_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 7,
+    .name = "Detector Raw Data Output",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 0,
+};
+
 static int rs300_init_controls(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
@@ -2520,9 +2610,9 @@ static int rs300_init_controls(struct rs300 *rs300)
     int ret;
 
     dev_info(&client->dev, "Initializing controls");
-    
+
     ctrl_hdlr = &rs300->ctrl_handler;
-    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 11);
+    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 12);
     if (ret) {
         dev_err(&client->dev, "Failed to init ctrl handler: %d", ret);
         return ret;
@@ -2570,6 +2660,7 @@ static int rs300_init_controls(struct rs300 *rs300)
     rs300->dde = v4l2_ctrl_new_custom(ctrl_hdlr, &dde_ctrl, NULL);
     rs300->spatial_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &spatial_nr_ctrl, NULL);
     rs300->temporal_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &temporal_nr_ctrl, NULL);
+    rs300->raw_data_output = v4l2_ctrl_new_custom(ctrl_hdlr, &raw_data_output_ctrl, NULL);
 
     /* Check for errors */
     if (ctrl_hdlr->error) {
