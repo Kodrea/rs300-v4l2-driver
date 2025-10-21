@@ -11,9 +11,20 @@ The recommended development workflow uses DKMS (Dynamic Kernel Module Support):
 
 1. **Install/reinstall driver**: `./setup.sh` (handles DKMS installation and rebuilding)
 2. **Reboot**: `sudo reboot`
-3. **Check DKMS status**: `dkms status`
-4. **View loaded modules**: `lsmod | grep rs300`
-5. **Debug kernel messages**: `dmesg | grep rs300` or `dmesg -wH`
+3. **Configure media pipeline**: `./configure_media.sh` (required after each reboot, or see boot configuration options below)
+4. **Check DKMS status**: `dkms status`
+5. **View loaded modules**: `lsmod | grep rs300`
+6. **Debug kernel messages**: `dmesg | grep rs300` or `dmesg -wH`
+
+### Boot-Time Configuration
+The media controller pipeline configuration does not persist across reboots. You have several options:
+
+- **Manual (default)**: Run `./configure_media.sh` after each reboot
+- **Automatic (systemd)**: Install systemd service via `./setup.sh` for boot-time auto-configuration
+- **Automatic (udev)**: Install udev rule via `./setup.sh` for event-driven auto-configuration
+- **Hybrid**: Install both systemd + udev for maximum reliability
+
+See [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md) for detailed setup instructions and technical explanation.
 
 ## Driver Architecture
 - **Main driver file**: `rs300.c` - Complete V4L2 subdevice driver implementation
