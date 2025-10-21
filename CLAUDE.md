@@ -9,7 +9,19 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 **What**: V4L2 driver for RS300 thermal camera (640×512@60fps) on Raspberry Pi 5
 **Architecture**: Linux kernel driver via MIPI CSI-2 + I2C
 **Platform**: Raspberry Pi 5 (BCM2712/RP1-CFE)
-**Status**: Production Ready, 50 files, ~15,580 lines total
+**Status**: Active Development (testing deadlock fix), 90 files, ~18,000 lines total
+
+## ⚠️ Critical Known Issues
+
+### rp1-cfe Driver Deadlock (Mitigated - Testing Pending)
+- **Symptom:** Camera intermittently reports hardware error status 0x0e (~25% of stream starts)
+- **Impact:** Triggers upstream rp1-cfe driver deadlock, creates stuck processes in 'D' state, requires system reboot
+- **Root Cause:** Upstream bug in rp1-cfe `csi2_stop_channel()` cleanup code
+- **Fix:** Retry logic implemented (3 attempts, exponential backoff) - commit eb99791
+- **Status:** Code committed and built, testing pending after reboot
+- **Testing:** See [POST_REBOOT_TESTING.md](POST_REBOOT_TESTING.md) for validation procedures
+- **Documentation:** [ISSUE_SUMMARY_20251021.md](ISSUE_SUMMARY_20251021.md), [UPSTREAM_BUG_REPORT.md](UPSTREAM_BUG_REPORT.md)
+- **Expected:** Success rate improves from ~75% to ≥95%, no stuck processes
 
 ## File Organization Principle
 
@@ -27,6 +39,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 | Task | Start Here | Time |
 |------|-----------|------|
 | **Check project status** | [START_HERE.md](START_HERE.md) | 30s |
+| **Test retry logic fix** | [POST_REBOOT_TESTING.md](POST_REBOOT_TESTING.md) | 25min |
 | **Install the driver** | [docs/getting-started/](docs/getting-started/) | 10min |
 | **First thermal capture** | [docs/getting-started/first-capture.md](docs/getting-started/first-capture.md) | 5min |
 | **Learn camera controls** | [docs/guides/camera-controls.md](docs/guides/camera-controls.md) | 15min |
@@ -347,39 +360,39 @@ Problem Occurs
 | Category | Function | Lines | Purpose |
 |----------|----------|-------|---------|
 | **Initialization** |
-| Driver probe | `rs300_probe()` | 2759-2893 | Driver initialization, I2C detection |
-| Control init | `rs300_init_controls()` | 2512-2594 | Register all 11 V4L2 controls |
-| Format setup | `rs300_set_default_format()` | 469-489 | Initialize default 640×512 format |
+| Driver probe | `rs300_probe()` | 2484+ | Driver initialization, I2C detection |
+| Control init | `rs300_init_controls()` | 2236+ | Register all 11 V4L2 controls |
+| Format setup | `rs300_set_default_format()` | 620+ | Initialize default 640×512 format |
 | **Video Streaming** |
-| Stream control | `rs300_set_stream()` | 2097-2256 | Start/stop video streaming |
-| FPS config | `rs300_set_fps()` | 1997-2080 | Set frame rate (25/30/50/60) |
-| Stop streaming | `rs300_stop_streaming()` | 1983-1995 | Send stop command |
+| Stream control | `rs300_set_stream()` | 1754+ | Start/stop video streaming (includes retry logic) |
+| FPS config | `rs300_set_fps()` | 1710+ | Set frame rate (25/30/50/60) |
+| Stop streaming | `rs300_stop_streaming()` | 1696+ | Send stop command |
 | **Format Operations** |
-| Set format | `rs300_set_pad_fmt()` | 1850-1951 | Negotiate and set pad format |
-| Get format | `rs300_get_pad_fmt()` | 1835-1847 | Query current format |
-| Format code | `rs300_get_format_code()` | 378-400 | Validate media bus format |
+| Set format | `rs300_set_pad_fmt()` | 1563+ | Negotiate and set pad format |
+| Get format | `rs300_get_pad_fmt()` | 1548+ | Query current format |
+| Format code | `rs300_get_format_code()` | 529+ | Validate media bus format |
 | **V4L2 Controls** |
-| Control handler | `rs300_set_ctrl()` | 1626-1680 | Dispatch control operations |
-| Brightness | `rs300_brightness_correct()` | 1327-1456 | Set brightness (0-100) |
-| Colormap | `rs300_set_colormap()` | 1081-1213 | Set color palette (0-11) |
-| FFC trigger | `rs300_shutter_cal()` | 1215-1325 | Flat field calibration |
-| Zoom | `rs300_set_zoom()` | 1458-1539 | Digital zoom (1-8x) |
-| Scene mode | `rs300_set_scene_mode()` | 1541-1624 | Set scene mode (0-9) |
-| Contrast | `rs300_set_contrast()` | 778-847 | Set contrast (0-100) |
-| DDE | `rs300_set_dde()` | 635-704 | Digital detail enhancement |
+| Control handler | `rs300_set_ctrl()` | 1336+ | Dispatch control operations |
+| Brightness | `rs300_brightness_correct()` | 1161+ | Set brightness (0-100) |
+| Colormap | `rs300_set_colormap()` | 1109+ | Set color palette (0-11) |
+| FFC trigger | `rs300_shutter_cal()` | 1151+ | Flat field calibration |
+| Zoom | `rs300_set_zoom()` | 1294+ | Digital zoom (1-8x) |
+| Scene mode | `rs300_set_scene_mode()` | 1316+ | Set scene mode (0-9) |
+| Contrast | `rs300_set_contrast()` | 962+ | Set contrast (0-100) |
+| DDE | `rs300_set_dde()` | 786+ | Digital detail enhancement |
 | **I2C Communication** |
-| Read registers | `read_regs()` | 205-231 | I2C read transaction |
-| Write registers | `write_regs()` | 233-267 | I2C write transaction |
-| CRC calculation | `do_crc()` | 152-170 | CRC-16-CCITT checksum |
+| Read registers | `read_regs()` | 184 | I2C read transaction (forward declaration) |
+| Write registers | `write_regs()` | 185 | I2C write transaction (forward declaration) |
+| CRC calculation | `do_crc()` | 163+ | CRC-16-CCITT checksum |
 
 ### Key Data Structures
 
 | Structure | Location | Purpose |
 |-----------|----------|---------|
-| `struct rs300` | rs300.c:303-340 | Main driver state (V4L2 subdev, controls, format, mode) |
-| `struct rs300_mode` | rs300.c:275-280 | Video mode definition (width, height, fps, format code) |
-| `supported_modes[]` | rs300.c:342-371 | 3 available modes: 640×512, 256×192, 384×288 |
-| `codes[]` | rs300.c:295-301 | 4 supported media bus formats (16-bit packed for Pi 5) |
+| `struct rs300` | rs300.c:222+ | Main driver state (V4L2 subdev, controls, format, mode) |
+| `struct rs300_mode` | rs300.c:194+ | Video mode definition (width, height, fps, format code) |
+| `supported_modes[]` | rs300.c:493+ | 3 available modes: 640×512, 256×192, 384×288 |
+| `codes[]` | rs300.c:214+ | 4 supported media bus formats (16-bit packed for Pi 5) |
 
 ### Module Parameters
 
@@ -495,7 +508,7 @@ When information conflicts or authoritative answer needed:
    └─ Understand polling and timeout logic
 3. If still stuck → DRIVER_ANALYSIS.md → Section 2 (I2C Protocol)
    └─ Deep dive into communication patterns
-4. Check code → rs300.c:205-267 (read_regs, write_regs functions)
+4. Check code → rs300.c:184-185 (read_regs, write_regs forward declarations)
 ```
 
 **Task: "Add new V4L2 control for temperature readout"**
@@ -507,10 +520,10 @@ When information conflicts or authoritative answer needed:
 3. I2C_PROTOCOL.md → Section 6 (Command Reference)
    └─ Find temperature command (if exists) or design new one
 4. Code locations:
-   - Add control config: rs300.c:2444-2510 (after temporal_nr_ctrl)
-   - Add to handler: rs300.c:1626-1680 (new case in rs300_set_ctrl)
-   - Register control: rs300.c:2512-2594 (in rs300_init_controls)
-   - Implement command: Follow pattern from brightness (rs300.c:1327-1456)
+   - Add control config: rs300.c:2168+ (after temporal_nr_ctrl)
+   - Add to handler: rs300.c:1336+ (new case in rs300_set_ctrl)
+   - Register control: rs300.c:2236+ (in rs300_init_controls)
+   - Implement command: Follow pattern from brightness (rs300.c:1161+)
 ```
 
 **Task: "Understand complete streaming flow from start to first frame"**
@@ -518,7 +531,7 @@ When information conflicts or authoritative answer needed:
 1. DRIVER_ANALYSIS.md → Section 5.5 (Stream Start Sequence)
    └─ Read complete flow diagram with 9 steps
 2. See detailed explanation of each step with timing
-3. Code walk-through: rs300.c:2097-2256 (rs300_set_stream function)
+3. Code walk-through: rs300.c:1754+ (rs300_set_stream function with retry logic)
 4. Cross-reference: I2C_PROTOCOL.md for start_regs command structure
 ```
 
@@ -638,6 +651,16 @@ dtoverlay=rs300
 ---
 
 ## Document Change Log
+
+**2025-10-21**: CRITICAL ACCURACY FIXES (commit eb99791 aftermath)
+- Fixed: All function line numbers after struct reorganization (18 functions updated)
+- Fixed: Project status "Production Ready" → "Active Development (testing deadlock fix)"
+- Fixed: File count 50 → 90 (actual current count)
+- Added: ⚠️ Critical Known Issues section (rp1-cfe deadlock warning)
+- Added: POST_REBOOT_TESTING.md to Quick Navigation
+- Updated: rs300_set_stream now noted as including retry logic
+- Impact: Line numbers were off by ~300-500 lines, now accurate
+- See: CLAUDE_MD_AUDIT.md for complete analysis
 
 **2025-10-21**: Added START_HERE.md workflow guidance
 - Added: START_HERE.md to Quick Navigation (top entry)
