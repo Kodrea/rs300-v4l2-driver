@@ -142,6 +142,7 @@ struct ioctl_data{
 #define I2C_VD_BUFFER_DATA_LEN		256
 #define I2C_OUT_BUFFER_MAX			64 // IN buffer set equal to I2C_VD_BUFFER_DATA_LEN(256)
 #define I2C_TRANSFER_WAIT_TIME_2S	2000
+#define MAX_I2C_TRANSFER_SIZE		256  /* Maximum I2C transfer size (security limit) */
 
 #define I2C_VD_BUFFER_STATUS			0x0200
 #define VCMD_BUSY_STS_BIT				0x01
@@ -391,38 +392,18 @@ static int rs300_send_command(struct rs300 *rs300,
     return -ETIMEDOUT;
 }
 
-static  u8 start_regs[] = {
-		0x01, 0x30, 0xc1, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x0a, 0x00,
-		0x00, 0x00, //crc [16]
-		0x2F, 0x0D, //crc [18]
-		0x00, //path
-		0x16, //src
-		0x03, //dst
-		0x3c, // 60 fps
-		0x80, 0x02, //width&0xff, width>>8
-		0x00, 0x02, //height&0xff, height>>8
-		0x00, 0x00
-};
-
-static  u8 stop_regs[]={
-		0x01, 0x30, 0xc2, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x0a, 0x00,
-		0x00, 0x00, //crc [16]
-		0x2F, 0x0D, //crc [18]
-		0x01, //path
-		0x16, //src
-		0x00, //dst
-		0x3c, //fps
-		0x80, 0x02, //width&0xff, width>>8
-		0x00, 0x02, //height&0xff, height>>8
-		0x00, 0x00
-    
-};
+/*
+ * SECURITY FIX: Removed static global buffers to prevent race conditions
+ * These are now allocated as local variables in rs300_set_stream()
+ * to ensure thread-safety in multi-camera scenarios.
+ *
+ * Previous vulnerable code (CRITICAL-001):
+ * static u8 start_regs[] = { ... };
+ * static u8 stop_regs[] = { ... };
+ *
+ * Issue: Multiple camera instances would modify the same global arrays,
+ * causing data corruption in multi-camera setups.
+ */
 
 static int read_regs(struct i2c_client *client,  u32 reg, u8 *val ,int len )
 {
@@ -553,35 +534,107 @@ static u32 rs300_get_format_code(struct rs300 *rs300, u32 code)
 static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct ioctl_data ioctl_data_kernel;  /* Kernel copy - SECURITY CRITICAL */
+	unsigned char *data = NULL;
+	unsigned char *user_data_ptr;
 	long ret = 0;
-	unsigned char *data;
-	struct ioctl_data * valp;
 
-	valp=(struct ioctl_data *)arg;
-	if((cmd==CMD_GET)||(cmd==CMD_SET)){
-		if((valp!=NULL) &&(valp->data!=NULL) ){
-			dev_info(&client->dev,"rs300 %d %d %d  \n",cmd, valp->wIndex,valp->wLength);
-		}else{
-			dev_err(&client->dev, "rs300 args error \n");
+	/* SECURITY FIX: Copy from userspace first - prevents direct pointer dereference */
+	if (copy_from_user(&ioctl_data_kernel, (struct ioctl_data __user *)arg,
+			   sizeof(struct ioctl_data))) {
+		dev_err(&client->dev, "Failed to copy ioctl data from userspace\n");
+		return -EFAULT;
+	}
+
+	/* Validate command type */
+	if ((cmd == CMD_GET) || (cmd == CMD_SET)) {
+		/* Check for NULL data pointer */
+		if (ioctl_data_kernel.data == NULL) {
+			dev_err(&client->dev, "NULL data pointer in ioctl\n");
+			return -EINVAL;
+		}
+
+		/* SECURITY FIX: Validate transfer length to prevent integer overflow */
+		if (ioctl_data_kernel.wLength == 0 ||
+		    ioctl_data_kernel.wLength > MAX_I2C_TRANSFER_SIZE) {
+			dev_err(&client->dev,
+				"Invalid I2C transfer length: %u (max %d)\n",
+				ioctl_data_kernel.wLength, MAX_I2C_TRANSFER_SIZE);
+			return -EINVAL;
+		}
+
+		/* SECURITY FIX: Validate register address */
+		if (ioctl_data_kernel.wIndex > 0xFFFF) {
+			dev_err(&client->dev, "Invalid I2C register address: 0x%x\n",
+				ioctl_data_kernel.wIndex);
+			return -EINVAL;
+		}
+
+		dev_info(&client->dev, "rs300 ioctl: cmd=%d reg=0x%x len=%u\n",
+			 cmd, ioctl_data_kernel.wIndex, ioctl_data_kernel.wLength);
+	}
+
+	switch (cmd) {
+	case CMD_GET:
+		/* SECURITY FIX: Allocate kernel buffer with NULL check */
+		data = kmalloc(ioctl_data_kernel.wLength, GFP_KERNEL);
+		if (!data) {
+			dev_err(&client->dev,
+				"Failed to allocate %u byte transfer buffer\n",
+				ioctl_data_kernel.wLength);
+			return -ENOMEM;
+		}
+
+		/* Read I2C registers into kernel buffer */
+		ret = read_regs(client, ioctl_data_kernel.wIndex, data,
+				ioctl_data_kernel.wLength);
+		if (ret) {
+			dev_err(&client->dev, "I2C read failed: %ld\n", ret);
+			kfree(data);
+			return ret;
+		}
+
+		/* Copy kernel buffer to userspace */
+		if (copy_to_user(ioctl_data_kernel.data, data,
+				 ioctl_data_kernel.wLength)) {
+			dev_err(&client->dev, "Failed to copy data to userspace\n");
+			kfree(data);
 			return -EFAULT;
 		}
-	}
-	switch (cmd) {
 
-	case CMD_GET:
-		data = kmalloc(valp->wLength, GFP_KERNEL);
-		read_regs(client,valp->wIndex,data,valp->wLength);
-
-		if (copy_to_user(valp->data, data, valp->wLength))
-		{
-			ret = -EFAULT;
-			dev_err(&client->dev, "error stop rs300\n");
-		}
-		kfree(data);                                                                                                                                               
+		kfree(data);
 		break;
+
 	case CMD_SET:
-		write_regs(client,valp->wIndex,valp->data,valp->wLength);
+		/* SECURITY FIX: Allocate kernel buffer and copy from userspace */
+		data = kmalloc(ioctl_data_kernel.wLength, GFP_KERNEL);
+		if (!data) {
+			dev_err(&client->dev,
+				"Failed to allocate %u byte transfer buffer\n",
+				ioctl_data_kernel.wLength);
+			return -ENOMEM;
+		}
+
+		/* Save userspace pointer before copying */
+		user_data_ptr = ioctl_data_kernel.data;
+
+		/* Copy data from userspace to kernel buffer */
+		if (copy_from_user(data, user_data_ptr, ioctl_data_kernel.wLength)) {
+			dev_err(&client->dev, "Failed to copy data from userspace\n");
+			kfree(data);
+			return -EFAULT;
+		}
+
+		/* Write kernel buffer to I2C registers */
+		ret = write_regs(client, ioctl_data_kernel.wIndex, data,
+				 ioctl_data_kernel.wLength);
+		if (ret) {
+			dev_err(&client->dev, "I2C write failed: %ld\n", ret);
+		}
+
+		kfree(data);
 		break;
+
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -1697,6 +1750,23 @@ static void rs300_stop_streaming(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
 
+    /* SECURITY FIX: Use local buffer instead of static global (prevents race condition) */
+    u8 stop_regs[28] = {
+        0x01, 0x30, 0xc2, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x0a, 0x00,
+        0x00, 0x00, //crc [14]
+        0x2F, 0x0D, //crc [16]
+        0x01, //path [18]
+        0x16, //src [19]
+        0x00, //dst [20]
+        0x3c, //fps [21]
+        0x80, 0x02, //width&0xff, width>>8 [22-23]
+        0x00, 0x02, //height&0xff, height>>8 [24-25]
+        0x00, 0x00
+    };
+
     dev_info(&client->dev, "Stopping streaming");
 
     /* Write stop registers */
@@ -1791,6 +1861,22 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
     }
 
     if (enable) {
+        /* SECURITY FIX: Use local buffer instead of static global (prevents race condition) */
+        u8 start_regs[28] = {
+            0x01, 0x30, 0xc1, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x0a, 0x00,
+            0x00, 0x00, //crc [14]
+            0x00, 0x00, //crc [16]
+            0x00, //path [18]
+            0x16, //src [19]
+            0x03, //dst [20]
+            0x3c, // 60 fps [21]
+            0x80, 0x02, //width&0xff, width>>8 [22-23]
+            0x00, 0x02, //height&0xff, height>>8 [24-25]
+            0x00, 0x00
+        };
 
         // Set FPS first
         ret = rs300_set_fps(rs300, fps);
@@ -1800,7 +1886,8 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
         }
         dev_info(&client->dev, "FPS is set to %d", fps);
 
-        rs300->streaming = enable;
+        /* SECURITY FIX: Don't set streaming flag yet - wait for hardware success */
+        /* Removed: rs300->streaming = enable; (was set too early) */
         start_regs[19] = type;
         start_regs[21] = fps;  // Add this line to set the FPS from the module parameter
         start_regs[22] = rs300->mode->width & 0xff;
@@ -1949,14 +2036,19 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
             ret = -EIO;
             goto error_unlock;
         }
+
+        /* SECURITY FIX: Only set streaming flag AFTER successful hardware start */
+        rs300->streaming = true;
+        dev_info(&client->dev, "Stream started successfully, streaming flag set");
     } else {
         dev_err(&client->dev, "Stopping stream");
         rs300_stop_streaming(rs300);
-        dev_err(&client->dev, "Stream stopped");
+        rs300->streaming = false;
+        dev_err(&client->dev, "Stream stopped, streaming flag cleared");
     }
 
-    rs300->streaming = enable;
-    dev_err(&client->dev, "=== STREAM FUNCTION COMPLETE: enable=%d, ret=%d ===", enable, ret);
+    dev_err(&client->dev, "=== STREAM FUNCTION COMPLETE: enable=%d, streaming=%d, ret=%d ===",
+            enable, rs300->streaming, ret);
     mutex_unlock(&rs300->mutex);
 
     return ret;
@@ -2075,10 +2167,16 @@ static int rs300_power_off(struct device *dev)
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct rs300 *rs300 = to_rs300(sd);
 
-	gpiod_set_value_cansleep(rs300->reset_gpio, 1); //logic high -> device tree defines reset: logic high = 0V (active low)
-    dev_info(dev, "Resetting rs300");
+	/* SECURITY FIX: Only access GPIO if initialized (prevents NULL deref on rmmod) */
+	if (rs300->reset_gpio) {
+		gpiod_set_value_cansleep(rs300->reset_gpio, 1); //logic high -> device tree defines reset: logic high = 0V (active low)
+		dev_info(dev, "Resetting rs300");
+	} else {
+		dev_info(dev, "No reset GPIO configured, skipping reset");
+	}
+
 	regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
-    dev_info(dev, "Regulators disabled");
+	dev_info(dev, "Regulators disabled");
 
 	return 0;
 }
