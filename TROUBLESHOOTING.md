@@ -256,6 +256,40 @@ v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 
 ## Video Capture Issues
 
+### Symptom: Captured images are uniformly dark/constant data pattern
+
+⚠️ **MOST COMMON ISSUE** - Camera warm-up timing (October 2025)
+
+**Symptom**: Captured thermal images appear uniformly dark or show no thermal gradients. Raw data shows constant byte patterns like `36 80 36 80...` instead of varying thermal data.
+
+**Root Cause**: Camera requires **~2 seconds warm-up** after stream start before outputting valid thermal data.
+
+**Evidence**:
+- Frame 1 (0.0s): 2 unique patterns ❌ (initialization)
+- Frame 30 (1.0s): 2 unique patterns ❌ (warming up)
+- Frame 60 (2.0s): 4,133+ unique patterns ✅ (VALID)
+
+**Solution**:
+```bash
+# CORRECT METHOD - Capture with warm-up
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=90 \
+  --stream-to=/tmp/thermal.yuyv
+
+# Extract frame 60+ (after 2-second warm-up)
+dd if=/tmp/thermal.yuyv of=/tmp/thermal_valid.yuyv \
+  bs=655360 count=1 skip=59
+
+# Convert to image
+ffmpeg -y -f rawvideo -pix_fmt yuyv422 -s 640x512 \
+  -i /tmp/thermal_valid.yuyv ~/thermal.png
+```
+
+**Verify data variation**:
+```bash
+# Check for data variation (should be >1000 for valid thermal data)
+hexdump -C /tmp/thermal_valid.yuyv | awk '{print $2,$3,$4,$5}' | sort -u | wc -l
+```
+
 ### Symptom: `v4l2-ctl --stream-mmap` fails or hangs
 
 **Diagnosis**:

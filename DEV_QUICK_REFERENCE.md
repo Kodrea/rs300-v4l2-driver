@@ -42,8 +42,10 @@ v4l2-ctl -d /dev/video0 --get-fmt-video
 # Test brightness control
 v4l2-ctl -d /dev/v4l-subdev2 -c brightness=75
 
-# Capture test frame
-v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=1 --stream-to=test.yuv
+# Capture test frame (with warm-up - IMPORTANT!)
+# Camera needs 2-second warm-up before valid thermal data
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=90 --stream-to=test.yuv
+# Extract frame 60+ (after warm-up): dd if=test.yuv of=frame.yuv bs=655360 count=1 skip=59
 ```
 
 ---
@@ -102,15 +104,23 @@ v4l2-ctl -d /dev/v4l-subdev2 -c scene_mode=3
 ```
 
 ### Video Capture
-```bash
-# Capture 10 frames to file
-v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10 --stream-to=capture.yuv
 
-# Capture with verbose output
-v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=1 --stream-to=test.yuv --verbose
+⚠️ **IMPORTANT**: Camera requires 2-second warm-up before valid thermal data!
+
+```bash
+# Capture with warm-up (90 frames = 3 seconds at 30fps)
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=90 --stream-to=capture.yuv
+
+# Extract frame 60+ (after 2-second warm-up)
+dd if=capture.yuv of=thermal_valid.yuv bs=655360 count=1 skip=59
 
 # Convert YUV to viewable format (requires ffmpeg)
-ffmpeg -f rawvideo -pix_fmt uyvy422 -s 640x512 -i capture.yuv output.png
+ffmpeg -f rawvideo -pix_fmt uyvy422 -s 640x512 -i thermal_valid.yuv output.png
+
+# For live display with colormaps (most reliable method)
+gst-launch-1.0 v4l2src device=/dev/video0 ! \
+  video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! \
+  videoconvert ! autovideosink
 ```
 
 ### I2C Direct Access
@@ -177,6 +187,8 @@ i2cdump -y 10 0x3c
 # Set to Ironbow palette
 v4l2-ctl -d /dev/v4l-subdev2 -c colormap=3
 ```
+
+⚠️ **Colormap Quirk**: Colormap changes work reliably for **live GStreamer display** but may be inconsistent when capturing to files. For best results with colormaps, use GStreamer for live viewing.
 
 ### Scene Mode Options (0-9)
 
