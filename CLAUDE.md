@@ -57,6 +57,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 | Task | Start Here | Time |
 |------|-----------|------|
 | **Check project status** | [START_HERE.md](START_HERE.md) | 30s |
+| **⚠️ Camera quirks & workarounds** | [~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) | 5min |
 | **✅ Security audit & fixes** | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | 15min |
 | **Install the driver** | [docs/getting-started/](docs/getting-started/) | 10min |
 | **First thermal capture** | [docs/getting-started/first-capture.md](docs/getting-started/first-capture.md) | 5min |

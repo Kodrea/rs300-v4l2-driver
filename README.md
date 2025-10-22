@@ -373,7 +373,7 @@ sudo sh /usr/src/rs300-0.0.1/dkms.postinst
 
 ## Current Status
 
-### ⚠️ **Raspberry Pi 5 - EXPERIMENTAL (Security Issues)**
+### ✅ **Raspberry Pi 5 - BETA (Production Testing Recommended)**
 - **Driver**: RS300 module loads successfully
 - **I2C**: Communication working on i2c-10 bus at 0x3c
 - **Media Pipeline**: Automatic configuration with `./configure_media.sh`
@@ -381,11 +381,12 @@ sudo sh /usr/src/rs300-0.0.1/dkms.postinst
 - **Formats**: YUYV8_1X16 and UYVY8_1X16 both supported
 - **Controls**: FFC calibration, colormap, brightness accessible
 - **Stability**: Retry logic prevents rp1-cfe deadlocks (100% success in testing)
-- **Security**: ⚠️ **CRITICAL vulnerabilities present** - see [SECURITY_AUDIT.md](SECURITY_AUDIT.md)
-  - ioctl handler exploitable by unprivileged users
-  - Module removal crashes kernel
-  - Multi-camera data corruption
-- **Status**: Development/testing only - **NOT production-ready**
+- **Security**: ✅ **All CRITICAL/HIGH vulnerabilities FIXED** (October 22, 2025)
+  - ioctl handler rewritten with bounds checking
+  - Module removal (rmmod) safe with NULL checks
+  - Multi-camera race conditions eliminated
+  - All memory management issues fixed
+- **Status**: **Production ready for testing** - Security validated, quirks documented
 
 ### ✅ **Raspberry Pi 4 - WORKING**  
 - **Driver**: Tested and working with Unicam
@@ -397,6 +398,61 @@ sudo sh /usr/src/rs300-0.0.1/dkms.postinst
 - **256x192 Module**: I2C working, MIPI video troubleshooting in progress
 - **Pi Zero 2W**: Hardware power limitations prevent reliable operation
 - **ISP Integration**: Future Pi 5 enhancement for hardware denoising
+
+---
+
+## ⚠️ Known Camera Quirks
+
+**Important hardware behaviors to be aware of** (October 2025):
+
+### 1. Warm-Up Timing Requirement (CRITICAL)
+
+The RS300 camera requires **~2 seconds warm-up** after stream start before outputting valid thermal data.
+
+**Symptom**: Capturing frames immediately results in constant data patterns (e.g., `36 80 36 80...`) instead of real thermal data.
+
+**Solution**: Always wait 2+ seconds or skip first 60 frames at 30fps before capturing.
+
+```bash
+# Correct method - capture with warm-up
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=90 \
+  --stream-to=/tmp/thermal.yuyv
+
+# Extract frame 60+ (after 2-second warm-up)
+dd if=/tmp/thermal.yuyv of=/tmp/thermal_valid.yuyv bs=655360 count=1 skip=59
+
+# Convert to image
+ffmpeg -y -f rawvideo -pix_fmt yuyv422 -s 640x512 \
+  -i /tmp/thermal_valid.yuyv ~/thermal.png
+```
+
+### 2. Colormap Behavior
+
+**GStreamer Live Display** (Works Reliably):
+```bash
+# Start GStreamer display
+gst-launch-1.0 v4l2src device=/dev/video0 ! \
+  video/x-raw,format=YUY2,width=640,height=512,framerate=60/1 ! \
+  videoconvert ! autovideosink &
+
+# Wait for warm-up
+sleep 3
+
+# Change colormaps (instant effect on display)
+v4l2-ctl -d /dev/v4l-subdev2 -c colormap=3  # Ironbow
+v4l2-ctl -d /dev/v4l-subdev2 -c colormap=4  # Rainbow
+```
+
+**File Capture**: Colormap behavior is inconsistent when capturing to files. For colorized images, use GStreamer for live display or post-process captured grayscale thermal data with colormap LUTs.
+
+### 3. FFC (Flat Field Calibration) Timing
+
+- FFC takes ~1.5 seconds to complete
+- Camera blocks other commands during FFC execution
+- Can be triggered during streaming or when idle
+- Not needed between colormap changes
+
+**See [CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) for complete details and workarounds.**
 
 ---
 
