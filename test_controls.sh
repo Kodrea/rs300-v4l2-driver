@@ -324,30 +324,45 @@ monitor_kernel_messages() {
 test_capture() {
     print_header "Testing Video Capture"
 
-    local capture_file="test_capture_$(date +%Y%m%d_%H%M%S).yuv"
+    # IMPORTANT: Camera requires 2-second warm-up before valid thermal data
+    # Capture 90 frames (3 seconds at 30fps) and extract frame 60+ after warm-up
+    local full_capture="test_full_$(date +%Y%m%d_%H%M%S).yuv"
+    local test_frame="test_frame_$(date +%Y%m%d_%H%M%S).yuv"
 
     ((TESTS_RUN++))
-    print_test "Capturing 1 frame to $capture_file"
+    print_test "Capturing 90 frames with warm-up (extracting frame 60)"
+    print_info "Camera needs 2-second warm-up for valid thermal data"
 
-    if v4l2-ctl -d $VIDEO_DEV --stream-mmap --stream-count=1 --stream-to=$capture_file 2>&1 | tee -a $LOG_FILE; then
-        if [ -f "$capture_file" ] && [ -s "$capture_file" ]; then
-            local filesize=$(stat -c%s "$capture_file")
-            print_pass "Captured frame successfully (${filesize} bytes)"
+    # Capture 90 frames (includes warm-up period)
+    if v4l2-ctl -d $VIDEO_DEV --stream-mmap --stream-count=90 --stream-to=$full_capture 2>&1 | tee -a $LOG_FILE; then
+        if [ -f "$full_capture" ] && [ -s "$full_capture" ]; then
+            # Extract frame 60 (after 2-second warm-up) using dd
+            # Frame size: 640x512x2 = 655360 bytes
+            # Skip 59 frames (0-indexed), extract 1 frame
+            dd if=$full_capture of=$test_frame bs=655360 count=1 skip=59 2>/dev/null
 
-            # Calculate expected size for 640x512 UYVY (2 bytes per pixel)
-            local expected_size=$((640 * 512 * 2))
-            if [ $filesize -eq $expected_size ]; then
-                print_pass "Frame size matches expected 640x512 UYVY"
+            if [ -f "$test_frame" ] && [ -s "$test_frame" ]; then
+                local filesize=$(stat -c%s "$test_frame")
+                print_pass "Extracted frame 60 successfully (${filesize} bytes)"
+
+                # Calculate expected size for 640x512 UYVY (2 bytes per pixel)
+                local expected_size=$((640 * 512 * 2))
+                if [ $filesize -eq $expected_size ]; then
+                    print_pass "Frame size matches expected 640x512 UYVY"
+                else
+                    print_info "Frame size: $filesize bytes (expected: $expected_size bytes)"
+                fi
             else
-                print_info "Frame size: $filesize bytes (expected: $expected_size bytes)"
+                print_fail "Failed to extract frame 60"
             fi
 
-            rm -f $capture_file
+            # Clean up temporary files
+            rm -f $full_capture $test_frame
         else
             print_fail "Capture file is empty or missing"
         fi
     else
-        print_fail "Failed to capture frame"
+        print_fail "Failed to capture frames"
     fi
 
     echo

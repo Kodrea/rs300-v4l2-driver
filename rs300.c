@@ -1836,6 +1836,21 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
     
     // Add detailed format info when streaming starts
     if (enable) {
+        /*
+         * IMPORTANT: Camera warm-up timing requirement
+         *
+         * The RS300 thermal camera requires approximately 2 seconds (60 frames at 30fps)
+         * of warm-up time after stream start before outputting valid thermal data.
+         *
+         * - Frames 1-60: Initialization data (constant patterns like 0x36 0x80)
+         * - Frame 60+: Valid thermal data (>1000 unique patterns)
+         *
+         * User-space applications should either:
+         * 1. Capture 90+ frames and extract frame 60+ for processing
+         * 2. Start stream, wait 2+ seconds, then begin capturing
+         *
+         * See documentation: ~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt
+         */
         dev_err(&client->dev, "=== STREAM START DEBUG ===");
         dev_err(&client->dev, "Format: 0x%x (%s), Resolution: %dx%d", 
             rs300->fmt.code,

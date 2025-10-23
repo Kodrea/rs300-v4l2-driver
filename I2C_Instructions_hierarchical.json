@@ -1,0 +1,7003 @@
+{
+  "metadata": {
+    "device": "RS300 Thermal Camera",
+    "protocol": "I2C",
+    "i2c_address": {
+      "7bit": "0x3c",
+      "write_address": "0x78",
+      "read_address": "0x79"
+    },
+    "buffer_address": "0x1d00",
+    "status_address": "0x0200",
+    "total_commands": 224,
+    "total_categories": 7
+  },
+  "categories": [
+    {
+      "name": "Shutter related",
+      "command_count": 15,
+      "commands": [
+        {
+          "name": "Shutter Correction",
+          "setting": null,
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCF",
+            "0xC8"
+          ],
+          "hex_command": "10 02 43 00 00 00 00 00 00 00 00 00 00 00 00 00 CF C8"
+        },
+        {
+          "name": "Background Correction",
+          "setting": null,
+          "remarks": null,
+          "command_class": "0x01",
+          "command_index": "0x10",
+          "subcmd": "0x52",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x24",
+            "0xFD"
+          ],
+          "hex_command": "01 10 52 00 00 00 00 00 00 00 00 00 00 00 00 00 24 FD"
+        },
+        {
+          "name": "Close the shutter",
+          "setting": null,
+          "remarks": null,
+          "command_class": "0x01",
+          "command_index": "0x0F",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8D",
+            "0x5A"
+          ],
+          "hex_command": "01 0F 45 00 00 00 00 00 00 00 00 00 00 00 00 00 8D 5A"
+        },
+        {
+          "name": "Open shutter",
+          "setting": null,
+          "remarks": null,
+          "command_class": "0x01",
+          "command_index": "0x0F",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xF8",
+            "0x59"
+          ],
+          "hex_command": "01 0F 45 00 01 00 00 00 00 00 00 00 00 00 00 00 F8 59"
+        },
+        {
+          "name": "Auto Shutter",
+          "setting": "Settings - Off",
+          "remarks": " Return when getting: BE AA 02 00 0000 AD FA EB AA: Indicates off BE AA 02 00 00 01 8C EA EB AA: indicates open",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0D",
+            "0x3E"
+          ],
+          "hex_command": "10 02 41 00 00 00 00 00 00 00 00 00 00 00 00 00 0D 3E"
+        },
+        {
+          "name": "Automatic shutter switch",
+          "setting": "Setting-On",
+          "remarks": " Return when getting: BE AA 02 00 0000 AD FA EB AA: Indicates off BE AA 02 00 00 01 8C EA EB AA: indicates open",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x78",
+            "0x3D"
+          ],
+          "hex_command": "10 02 41 00 01 00 00 00 00 00 00 00 00 00 00 00 78 3D"
+        },
+        {
+          "name": "Automatic shutter switch",
+          "setting": "Get",
+          "remarks": " Return when getting: BE AA 02 00 0000 AD FA EB AA: Indicates off BE AA 02 00 00 01 8C EA EB AA: indicates open",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x78",
+            "0x34"
+          ],
+          "hex_command": "10 02 81 00 00 00 00 00 00 00 00 00 01 00 00 00 78 34"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Setting - Temperature 10",
+          "remarks": "Configuration values are: Para1[2], Para1[1] 0x0a 0x00 represents 10 temperature values, approximately 10/32=0.3125 degrees",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x0A",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x93",
+            "0xb1"
+          ],
+          "hex_command": "10 02 42 00 00 0A 00 00 00 00 00 00 00 00 00 00 93 b1"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Setting - Temperature 50",
+          "remarks": "Configuration values are: Para1[2], Para1[1] 0x32 0x00 means 50 temperature values, about 50/32=1.56 degrees",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x32",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5A",
+            "0xEC"
+          ],
+          "hex_command": "10 02 42 00 00 32 00 00 00 00 00 00 00 00 00 00 5A EC"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Setting - minimum interval time 1s",
+          "remarks": "Configuration value: Para1[2], Para1[1] 0x01 0x00 means 1s",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x92",
+            "0x68"
+          ],
+          "hex_command": "10 02 42 00 01 01 00 00 00 00 00 00 00 00 00 00 92 68"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Setting - Maximum interval time 120s",
+          "remarks": "Configuration value: Para1[2], Para1[1] 0x78 0x00 means 120s",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x78",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x58",
+            "0xac"
+          ],
+          "hex_command": "10 02 42 00 02 78 00 00 00 00 00 00 00 00 00 00 58 ac"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Setting - Maximum interval time 360s",
+          "remarks": "Configuration value: Para1[2], Para1[1] 0x68 0x01 means 360s",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x68",
+              "0x01",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x20",
+            "0x96"
+          ],
+          "hex_command": "10 02 42 00 02 68 01 00 00 00 00 00 00 00 00 00 20 96"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Get-Temperature",
+          "remarks": " BE AA 03 00 005A 00 70 A8 EB AA: means 0x005A=90. Approximately 90/32=2.81 degrees",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4E",
+            "0xFA"
+          ],
+          "hex_command": "10 02 82 00 00 01 00 00 00 00 00 00 02 00 00 00 4E FA"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Get-Minimum Interval Time",
+          "remarks": "BE AA 03 00 00 05 00 F1 B6 EB AA: means 0x0005=5s",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x3B",
+            "0xF9"
+          ],
+          "hex_command": "10 02 82 00 01 01 00 00 00 00 00 00 02 00 00 00 3B F9"
+        },
+        {
+          "name": "Automatic shutter parameters",
+          "setting": "Get-Maximum Interval Time",
+          "remarks": " BE AA 03 00 002C 01 AE 1A EB AA: means 0x012C=300s",
+          "command_class": "0x10",
+          "command_index": "0x02",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x02",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA4",
+            "0xFC"
+          ],
+          "hex_command": "10 02 82 00 02 01 00 00 00 00 00 00 02 00 00 00 A4 FC"
+        }
+      ]
+    },
+    {
+      "name": "Calibration related instructions",
+      "command_count": 24,
+      "commands": [
+        {
+          "name": "k value",
+          "setting": "Calibrate k value - collect low temperature first",
+          "remarks": "Calibration step 1: Aim at a low-temperature black body, the black body temperature is 25? or below, and the picture flashes to complete",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA2",
+            "0x93"
+          ],
+          "hex_command": "10 11 41 00 00 00 00 00 00 00 00 00 00 00 00 00 A2 93"
+        },
+        {
+          "name": "k value",
+          "setting": "Calibrate k value-collect high temperature again",
+          "remarks": "Calibration step 2: Aim at a high-temperature black body. The black body temperature is 60°C or above. The image flashes and the calibration is complete.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD7",
+            "0x90"
+          ],
+          "hex_command": "10 11 41 00 01 00 00 00 00 00 00 00 00 00 00 00 D7 90"
+        },
+        {
+          "name": "k value",
+          "setting": "Calibrate k value-collection and calculation",
+          "remarks": "Calibration step 3: perform calculations and check the calibration results after completion",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x48",
+            "0x95"
+          ],
+          "hex_command": "10 11 41 00 02 00 00 00 00 00 00 00 00 00 00 00 48 95"
+        },
+        {
+          "name": "k value",
+          "setting": "Save k value",
+          "remarks": "Calibration step 4: If the result is OK, save the result.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x60",
+            "0x65"
+          ],
+          "hex_command": "10 11 43 00 00 00 00 00 00 00 00 00 00 00 00 00 60 65"
+        },
+        {
+          "name": "k value",
+          "setting": "Cancel calibration results",
+          "remarks": "If the effect is not OK, cancel the calibration and restore to the state before calibration.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x01",
+            "0x1E"
+          ],
+          "hex_command": "10 11 42 00 00 00 00 00 00 00 00 00 00 00 00 00 01 1E"
+        },
+        {
+          "name": "k value",
+          "setting": "Clear k value",
+          "remarks": "Used to test the effect of no K value calibration",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x44",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x66",
+            "0x15"
+          ],
+          "hex_command": "10 11 44 00 00 00 00 00 00 00 00 00 00 00 00 00 66 15"
+        },
+        {
+          "name": "k value",
+          "setting": "Restore factory K value data",
+          "remarks": "After restoring the factory data, save",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x07",
+            "0x6E"
+          ],
+          "hex_command": "10 11 45 00 00 00 00 00 00 00 00 00 00 00 00 00 07 6E"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Automatic blind calibration",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x51",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x55",
+            "0x55"
+          ],
+          "hex_command": "10 11 51 00 00 00 00 00 00 00 00 00 00 00 00 00 55 55"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Cursor switch setting-enable",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x57",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x47",
+            "0x5D"
+          ],
+          "hex_command": "10 11 57 00 01 00 00 00 00 00 00 00 00 00 00 00 47 5D"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Cursor switch setting - ing",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x57",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x32",
+            "0x5E"
+          ],
+          "hex_command": "10 11 57 00 00 00 00 00 00 00 00 00 00 00 00 00 32 5E"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Cursor switch acquisition",
+          "remarks": " BE AA 02 00 0001 8C EA EB AA: Indicates enabling BE AA 02 00 0000 AD FA EB AA: Indicates ing",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD7",
+            "0x99"
+          ],
+          "hex_command": "10 11 81 00 00 00 00 00 00 00 00 00 01 00 00 00 D7 99"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Cursor position setting - (300, 280) - Example",
+          "remarks": "Para1[1]+Para1[0]: x-axis coordinate 0x012C represents 300 Para1[3]+Para1[2]: y-axis coordinate 0x0118 represents 280",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x58",
+          "parameters": {
+            "para1": [
+              "0x2C",
+              "0x01",
+              "0x18",
+              "0x01"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x34",
+            "0x50"
+          ],
+          "hex_command": "10 11 58 00 2C 01 18 01 00 00 00 00 00 00 00 00 34 50"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Get cursor position",
+          "remarks": " BE AA 05 00 002C 01 18 01 42 83 EB AA",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x04",
+            "0x00"
+          ],
+          "crc16": [
+            "0x31",
+            "0xA8"
+          ],
+          "hex_command": "10 11 82 00 00 00 00 00 00 00 00 00 04 00 00 00 31 A8"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Set the cursor point to the blind pixel (manual calibration) - (300, 280) - Example",
+          "remarks": "After setting the blind pixel, it will take effect immediately, that is, the blind pixel point disappears on the screen but will not be automatically saved. After all the blind pixels are calibrated, call the save blind pixel command.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x52",
+          "parameters": {
+            "para1": [
+              "0x2C",
+              "0x01",
+              "0x18",
+              "0x01"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9D",
+            "0x4D"
+          ],
+          "hex_command": "10 11 52 00 2C 01 18 01 00 00 00 00 00 00 00 00 9D 4D"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Set the cursor point to a non-blind element (manual calibration) - (300, 280) - Example",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x52",
+          "parameters": {
+            "para1": [
+              "0x2C",
+              "0x01",
+              "0x18",
+              "0x01"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFE",
+            "0x08"
+          ],
+          "hex_command": "10 11 52 01 2C 01 18 01 00 00 00 00 00 00 00 00 FE 08"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Cancel this calibration data",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x53",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x97",
+            "0xA3"
+          ],
+          "hex_command": "10 11 53 00 00 00 00 00 00 00 00 00 00 00 00 00 97 A3"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Saving blind data",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x54",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x91",
+            "0xD3"
+          ],
+          "hex_command": "10 11 54 00 00 00 00 00 00 00 00 00 00 00 00 00 91 D3"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Clear blind data",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x55",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xF0",
+            "0xA8"
+          ],
+          "hex_command": "10 11 55 00 00 00 00 00 00 00 00 00 00 00 00 00 F0 A8"
+        },
+        {
+          "name": "Blind Element",
+          "setting": "Restore factory blind data",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x56",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x53",
+            "0x25"
+          ],
+          "hex_command": "10 11 56 00 00 00 00 00 00 00 00 00 00 00 00 00 53 25"
+        },
+        {
+          "name": "Pot lid",
+          "setting": "Calibration lid",
+          "remarks": "Step 1: Aim at the uniform surface and issue this command. The screen will freeze and will be completed after thawing.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x61",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x6D",
+            "0x0E"
+          ],
+          "hex_command": "10 11 61 00 00 00 00 00 00 00 00 00 00 00 00 00 6D 0E"
+        },
+        {
+          "name": "Pot lid",
+          "setting": "Save the lid",
+          "remarks": "Step 2: If the result is OK, save the file.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x63",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xAF",
+            "0xF8"
+          ],
+          "hex_command": "10 11 63 00 00 00 00 00 00 00 00 00 00 00 00 00 AF F8"
+        },
+        {
+          "name": "Pot lid",
+          "setting": "Cancel calibration results",
+          "remarks": "If the effect is not OK, cancel the calibration and restore to the state before calibration.",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x62",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCE",
+            "0x83"
+          ],
+          "hex_command": "10 11 62 00 00 00 00 00 00 00 00 00 00 00 00 00 CE 83"
+        },
+        {
+          "name": "Pot lid",
+          "setting": "Empty the lid",
+          "remarks": "Used to test the effect of completely no pot lid calibration",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x64",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA9",
+            "0x88"
+          ],
+          "hex_command": "10 11 64 00 00 00 00 00 00 00 00 00 00 00 00 00 A9 88"
+        },
+        {
+          "name": "Pot lid",
+          "setting": "Restore the factory data of the pot cover",
+          "remarks": "After restoring the factory data, save",
+          "command_class": "0x10",
+          "command_index": "0x11",
+          "subcmd": "0x65",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC8",
+            "0xF3"
+          ],
+          "hex_command": "10 11 65 00 00 00 00 00 00 00 00 00 00 00 00 00 C8 F3"
+        }
+      ]
+    },
+    {
+      "name": "System Features",
+      "command_count": 15,
+      "commands": [
+        {
+          "name": "Firmware Update",
+          "setting": null,
+          "remarks": "Before updating the firmware, you need to send this command to put the module into update mode.",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA5",
+            "0xDB"
+          ],
+          "hex_command": "01 01 42 00 00 00 00 00 00 00 00 00 00 00 00 00 A5 DB"
+        },
+        {
+          "name": "Anti-burn protection switch",
+          "setting": "Settings - Off",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x58",
+            "0x8D"
+          ],
+          "hex_command": "10 03 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 58 8D"
+        },
+        {
+          "name": "Anti-burn protection switch",
+          "setting": "Setting-On",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2D",
+            "0x8E"
+          ],
+          "hex_command": "10 03 4B 00 01 00 00 00 00 00 00 00 00 00 00 00 2D 8E"
+        },
+        {
+          "name": "Anti-burn protection switch",
+          "setting": "Get",
+          "remarks": " BE AA 02 00 0000 AD FA EB AA: Indicates off BE AA 02 00 0001 8C EA EB AA: indicates open",
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x8B",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2D",
+            "0x87"
+          ],
+          "hex_command": "10 03 8B 00 00 00 00 00 00 00 00 00 01 00 00 00 2D 87"
+        },
+        {
+          "name": "Module sleep",
+          "setting": "Settings-Wake-up",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x48",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x54",
+            "0xAD"
+          ],
+          "hex_command": "10 10 48 00 00 00 00 00 00 00 00 00 00 00 00 00 54 AD"
+        },
+        {
+          "name": "Module sleep",
+          "setting": "Settings - Sleep",
+          "remarks": "After sleeping, the video is frozen and only responds to the wake-up command, and does not respond to other commands.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x48",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x21",
+            "0xAE"
+          ],
+          "hex_command": "10 10 48 00 01 00 00 00 00 00 00 00 00 00 00 00 21 AE"
+        },
+        {
+          "name": "Module sleep",
+          "setting": "Get",
+          "remarks": " BE AA 02 00 00 00 AD FA EB AA: Indicates working status BE AA 02 00 00 018C EA EB AA: Indicates sleep state",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x88",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x21",
+            "0xA7"
+          ],
+          "hex_command": "10 10 88 00 00 00 00 00 00 00 00 00 01 00 00 00 21 A7"
+        },
+        {
+          "name": "Boot logo",
+          "setting": "Settings - Off",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5E",
+            "0x3D"
+          ],
+          "hex_command": "10 10 41 00 00 00 00 00 00 00 00 00 00 00 00 00 5E 3D"
+        },
+        {
+          "name": "Boot logo",
+          "setting": "Setting-On",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x41",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2B",
+            "0x3E"
+          ],
+          "hex_command": "10 10 41 00 01 00 00 00 00 00 00 00 00 00 00 00 2B 3E"
+        },
+        {
+          "name": "Boot logo",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2B",
+            "0x37"
+          ],
+          "hex_command": "10 10 81 00 00 00 00 00 00 00 00 00 01 00 00 00 2B 37"
+        },
+        {
+          "name": "DVP/I2C Voltage Switching",
+          "setting": "Setting -1.8V",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x39",
+            "0x36"
+          ],
+          "hex_command": "10 10 47 00 00 00 00 00 00 00 00 00 00 00 00 00 39 36"
+        },
+        {
+          "name": "DVP/I2C Voltage Switching",
+          "setting": "Setup - 3.3V",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4C",
+            "0x35"
+          ],
+          "hex_command": "10 10 47 00 01 00 00 00 00 00 00 00 00 00 00 00 4C 35"
+        },
+        {
+          "name": "DVP/I2C Voltage Switching",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x87",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4C",
+            "0x3C"
+          ],
+          "hex_command": "10 10 87 00 00 00 00 00 00 00 00 00 01 00 00 00 4C 3C"
+        },
+        {
+          "name": "Parameter save-restore",
+          "setting": "Parameter preservation",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x51",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA9",
+            "0xFB"
+          ],
+          "hex_command": "10 10 51 00 00 00 00 00 00 00 00 00 00 00 00 00 A9 FB"
+        },
+        {
+          "name": "Parameter save-restore",
+          "setting": "Parameter recovery",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x52",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0A",
+            "0x76"
+          ],
+          "hex_command": "10 10 52 00 00 00 00 00 00 00 00 00 00 00 00 00 0A 76"
+        }
+      ]
+    },
+    {
+      "name": "Get device information",
+      "command_count": 10,
+      "commands": [
+        {
+          "name": "Get module information",
+          "setting": "Device Name",
+          "remarks": " Receipt: BE AA 21 00 0043 61 6D 65 72 61 20 4D 49 4E 49 32 33 38 34 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 16 1A EB AA Device name: Camera MINI2384, the device name of mini2 series is 15 valid bytes",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x20",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFC",
+            "0x1E"
+          ],
+          "hex_command": "01 01 81 00 01 00 00 00 00 00 00 00 20 00 00 00 FC 1E"
+        },
+        {
+          "name": "Get module information",
+          "setting": "Firmware version",
+          "remarks": " Receipt: BE AA 0C 00 0030 30 2E 30 30 2E 30 31 2E 31 31 0A FE EB AA FW version:00.00.01.11",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x0B",
+            "0x00"
+          ],
+          "crc16": [
+            "0x32",
+            "0x32"
+          ],
+          "hex_command": "01 01 81 00 02 00 00 00 00 00 00 00 0B 00 00 00 32 32"
+        },
+        {
+          "name": "Get module information",
+          "setting": "VID",
+          "remarks": " Receipt: BE AA 03 00 0074 34 4E FB EB AA vid: 0x3474",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x04",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7B",
+            "0xCA"
+          ],
+          "hex_command": "01 01 81 00 04 00 00 00 00 00 00 00 02 00 00 00 7B CA"
+        },
+        {
+          "name": "Get module information",
+          "setting": "PID",
+          "remarks": " Receipt: BE AA 03 00 0020 00 E2 4F EB AA pid?0x0020",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x05",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0E",
+            "0xC9"
+          ],
+          "hex_command": "01 01 81 00 05 00 00 00 00 00 00 00 02 00 00 00 0E C9"
+        },
+        {
+          "name": "Get module information",
+          "setting": "PN",
+          "remarks": "Receipt: BE AA 21 00 00 4D 49 4E 49 32 33 38 34 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 30 68 EB AA pn: MINI2384xxxxxxxxxxxxxxxxxxxxxxxx",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x06",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x20",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB7",
+            "0x16"
+          ],
+          "hex_command": "01 01 81 00 06 00 00 00 00 00 00 00 20 00 00 00 B7 16"
+        },
+        {
+          "name": "Get module information",
+          "setting": "SN",
+          "remarks": " Receipt: BE AA 21 00 006D 69 6E 69 32 33 38 34 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 7855 EA EB AA sn: mini2384xxxxxxxxxxxxxxxxxxxxxxxx",
+          "command_class": "0x01",
+          "command_index": "0x01",
+          "subcmd": "0x81",
+          "parameters": {
+            "para1": [
+              "0x07",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x20",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC2",
+            "0x15"
+          ],
+          "hex_command": "01 01 81 00 07 00 00 00 00 00 00 00 20 00 00 00 C2 15"
+        },
+        {
+          "name": "Get module temperature",
+          "setting": null,
+          "remarks": " BE AA 03 00 00 0C3D 7A EB AA: means 0x0CAA=3242, i.e. 32.42 degrees Note that this temperature is for reference only and the accuracy error may be more than ±10 degrees Celsius",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x91",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x00",
+            "0x6A"
+          ],
+          "hex_command": "10 10 91 00 00 00 00 00 00 00 00 00 02 00 00 00 00 6A"
+        },
+        {
+          "name": "Get the coordinates of the highest temperature point in the area of interest",
+          "setting": null,
+          "remarks": "Example: Select the range (0, 0) to (383, 287): 0x011f = 287; 0x017f = 383 1. When setting the coordinates, pay attention to the upper left (x1, y1) first and then the lower right (x2, y2). That is, x1< x2, y1<y2 2. When getting: min value, average value, max value, min x, min y, max x, max y. All are uint16 type",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x92",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x7f",
+              "0x01",
+              "0x1f",
+              "0x01"
+            ]
+          },
+          "response_length": [
+            "0X0e",
+            "0x00"
+          ],
+          "crc16": [
+            "0xe8",
+            "0x0c"
+          ],
+          "hex_command": "10 10 92 00 00 00 00 00 7f 01 1f 01 0e 00 00 00 e8 0c"
+        },
+        {
+          "name": "Get the coordinates of the highest temperature point in the area of interest",
+          "setting": null,
+          "remarks": "Example: Select the range (50, 50) to (333, 237): 0x0032=50; 0x014d=333; 0x00ed=237 Receipt: BE AA 0F 00 00D4 1F AE 6F E0 79 4C 00 D2 00 39 00 33 00 D3 F0 EB AA 0x1FD4 is the minimum value, 0x6FAE is the average value, and 0x79E0 is the maximum value. 0x004c, 0x00D2 are the minimum value coordinates, that is, (76, 210), 0x0039 and 0x0033 are the maximum value coordinates, that is, (51, 57)",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x92",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x32",
+              "0x00"
+            ],
+            "para2": [
+              "0x4d",
+              "0x01",
+              "0xed",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X0e",
+            "0x00"
+          ],
+          "crc16": [
+            "0x34",
+            "0x59"
+          ],
+          "hex_command": "10 10 92 00 32 00 32 00 4d 01 ed 00 0e 00 00 00 34 59"
+        },
+        {
+          "name": "Get the power-on time",
+          "setting": null,
+          "remarks": " BE AA 05 00 00D7 01 00 00 EB 98 EB AA: means 0x000001D7=471s",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x93",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X04",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5B",
+            "0xBB"
+          ],
+          "hex_command": "10 10 93 00 00 00 00 00 00 00 00 00 04 00 00 00 5B BB"
+        }
+      ]
+    },
+    {
+      "name": "Video output related",
+      "command_count": 60,
+      "commands": [
+        {
+          "name": "Digital video formats",
+          "setting": "Settings - USB - Progressive - 30hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is enabled; Para1[1]: 0x00, indicating USB line-by-line output; Para1[2]: 0x1e, indicating 30 Hz output. The array size is consistent with the detector output. Note that the maximum frame rate of mini2 640 in USB output mode is 30 Hz.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x1E",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4f",
+            "0xe3"
+          ],
+          "hex_command": "10 10 46 00 01 00 1E 00 00 00 00 00 00 00 00 00 4f e3"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Settings - USB - Progressive - 60hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on; Para1[1]: 0x00, indicating USB line-by-line output; Para1[2]: 0x3c, indicating 60 Hz output. The array size is consistent with the detector output. Note that mini2 640 will return an error if this command is set",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x3C",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xc8",
+            "0x04"
+          ],
+          "hex_command": "10 10 46 00 01 00 3C 00 00 00 00 00 00 00 00 00 c8 04"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings-dvp-progressive-30hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on; Para1[1]: 0x01, indicating DVP line-by-line output; Para1[2]: 0x1e, indicating 30 Hz output; the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x1E",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x06",
+            "0x3b"
+          ],
+          "hex_command": "10 10 46 00 01 01 1E 00 00 00 00 00 00 00 00 00 06 3b"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings-dvp-progressive-60hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on; Para1[1]: 0x01, indicating DVP line-by-line output; Para1[2]: 0x3c, indicating 60 Hz output; the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x3C",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x81",
+            "0xdc"
+          ],
+          "hex_command": "10 10 46 00 01 01 3C 00 00 00 00 00 00 00 00 00 81 dc"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings -bt656 -progressive -30hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x02, indicating bt656 line-by-line output, Para1[2]: 0x1e, indicating 30hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x02",
+              "0x1E",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xfc",
+            "0x43"
+          ],
+          "hex_command": "10 10 46 00 01 02 1E 00 00 00 00 00 00 00 00 00 fc 43"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings -bt656-progressive-60hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x02, indicating bt656 line-by-line output, Para1[2]: 0x3c, indicating 60hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x02",
+              "0x3C",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7b",
+            "0xa4"
+          ],
+          "hex_command": "10 10 46 00 01 02 3C 00 00 00 00 00 00 00 00 00 7b a4"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings -bt656 -interlaced -25hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is enabled, Para1[1]: 0x12, indicating bt656 interlaced output, Para1[2]: 0x00, invalid, the array size is fixed720*576, the frame rate is fixed at 25hz, which is the standard BT656 interlaced timing",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x12",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xa3",
+            "0xbb"
+          ],
+          "hex_command": "10 10 46 00 01 12 00 00 00 00 00 00 00 00 00 00 a3 bb"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings-mipi-progressive-30hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x03, indicating mipi line-by-line output, Para1[2]: 0x1e, indicating 30 Hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x03",
+              "0x1E",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xb5",
+            "0x9b"
+          ],
+          "hex_command": "10 10 46 00 01 03 1E 00 00 00 00 00 00 00 00 00 b5 9b"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "settings-mipi-progressive-60hz",
+          "remarks": "Para1[0]: 0x01, indicating digital output is enabled; Para1[1]: 0x03, indicating mipi line-by-line output; Para1[2]: 0x3c, indicating 60 Hz output; the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x03",
+              "0x3C",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x32",
+            "0x7c"
+          ],
+          "hex_command": "10 10 46 00 01 03 3C 00 00 00 00 00 00 00 00 00 32 7c"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Settings - USB - Progressive - 25hz (for mini2 256)",
+          "remarks": " Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x00, indicating USB line-by-line output, Para1[2]: 0x19, indicating 25 Hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x19",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xb5",
+            "0xff"
+          ],
+          "hex_command": "10 10 46 00 01 00 19 00 00 00 00 00 00 00 00 00 b5 ff"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Settings - USB - Progressive - 50hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x00, indicating USB line-by-line output, Para1[2]: 0x32, indicating 50 Hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x32",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x3c",
+            "0x3d"
+          ],
+          "hex_command": "10 10 46 00 01 00 32 00 00 00 00 00 00 00 00 00 3c 3d"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting -dvp-progressive-25hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on; Para1[1]: 0x01, indicating DVP line-by-line output; Para1[2]: 0x19, indicating 25 Hz output; the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x19",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xfc",
+            "0x27"
+          ],
+          "hex_command": "10 10 46 00 01 01 19 00 00 00 00 00 00 00 00 00 fc 27"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting -dvp-progressive-50hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on; Para1[1]: 0x01, indicating DVP line-by-line output; Para1[2]: 0x32, indicating 50 Hz output; the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x32",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x75",
+            "0xe5"
+          ],
+          "hex_command": "10 10 46 00 01 01 32 00 00 00 00 00 00 00 00 00 75 e5"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting-bt656-progressive-25hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x02, indicating bt656 line-by-line output, Para1[2]: 0x19, indicating 25hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x02",
+              "0x19",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x06",
+            "0x5f"
+          ],
+          "hex_command": "10 10 46 00 01 02 19 00 00 00 00 00 00 00 00 00 06 5f"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting-bt656-progressive-50hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x02, indicating bt656 line-by-line output, Para1[2]: 0x32, indicating 50hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x02",
+              "0x32",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8f",
+            "0x9d"
+          ],
+          "hex_command": "10 10 46 00 01 02 32 00 00 00 00 00 00 00 00 00 8f 9d"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting-mipi-progressive-25hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x03, indicating mipi line-by-line output, Para1[2]: 0x19, indicating 25 Hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x03",
+              "0x19",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4f",
+            "0x87"
+          ],
+          "hex_command": "10 10 46 00 01 03 19 00 00 00 00 00 00 00 00 00 4f 87"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting-mipi-progressive-50hz (for mini2 256)",
+          "remarks": "Para1[0]: 0x01, indicating digital output is turned on, Para1[1]: 0x03, indicating mipi line-by-line output, Para1[2]: 0x32, indicating 50 Hz output, the array size is consistent with the detector output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x03",
+              "0x32",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xc6",
+            "0x45"
+          ],
+          "hex_command": "10 10 46 00 01 03 32 00 00 00 00 00 00 00 00 00 c6 45"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Setting - Turning off digital output",
+          "remarks": "Para1[0]: 0x00, indicating that the digital output is turned off",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x46",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x58",
+            "0x4d"
+          ],
+          "hex_command": "10 10 46 00 00 00 00 00 00 00 00 00 00 00 00 00 58 4d"
+        },
+        {
+          "name": "Digital video formats",
+          "setting": "Get",
+          "remarks": " BE AA 05 00 0000 00 00 00 f5 56 EB AA: 00 means digital output is off BE AA 05 00 00 01 00 1e00 3d 00 EB AA: 01 means digital output is on, 00 means USB output, 1e means the output frame rate is 30hz BE AA 05 00 00 01 00 3C 00 B9 60 EB AA: 01 means digital output is on, 00 means USB output, 3c means the output frame rate is 60hz BE AA 05 00 0001 01 1e 00 0d 37 EB AA: 01 means digital output is on, 01 means DVP output, 1e means the output frame rate is 30hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x86",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X04",
+            "0x00"
+          ],
+          "crc16": [
+            "0x68",
+            "0xfb"
+          ],
+          "hex_command": "10 10 86 00 00 00 00 00 00 00 00 00 04 00 00 00 68 fb"
+        },
+        {
+          "name": "Analog video formats",
+          "setting": "Settings - Enable ntsc",
+          "remarks": "To switch from PAL to NTSC, you must first send the command to turn off simulation, and then send this command",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xe3",
+            "0x58"
+          ],
+          "hex_command": "10 10 4A 00 01 00 00 00 00 00 00 00 00 00 00 00 e3 58"
+        },
+        {
+          "name": "Analog video formats",
+          "setting": "Settings - Enable PAL",
+          "remarks": "To switch from NTSC to PAL, you must first send the command to turn off simulation, and then send this command",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xaa",
+            "0x80"
+          ],
+          "hex_command": "10 10 4A 00 01 01 00 00 00 00 00 00 00 00 00 00 aa 80"
+        },
+        {
+          "name": "Analog video formats",
+          "setting": "Settings - Disable Simulation",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x96",
+            "0x5b"
+          ],
+          "hex_command": "10 10 4A 00 00 00 00 00 00 00 00 00 00 00 00 00 96 5b"
+        },
+        {
+          "name": "Analog video formats",
+          "setting": "Get",
+          "remarks": "BE AA 03 00 00 00 00 04 49 EB AA: Analog off BE AA 03 00 0001 00 35 7a EB AA: The first 01 means on, 00 means ntsc BE AA 03 00 0001 01 14 6a EB AA: The first 01 means open, 01 means pal",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x8A",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x02",
+            "0x00"
+          ],
+          "crc16": [
+            "0x3f",
+            "0xca"
+          ],
+          "hex_command": "10 10 8A 00 00 00 00 00 00 00 00 00 02 00 00 00 3f ca"
+        },
+        {
+          "name": "Save digital-analog output format",
+          "setting": "set up",
+          "remarks": "Send this command to save both the digital video output format and the analog video output format. This state cannot be reset by the \"parameter restore\" command after being saved, and can only be overwritten by the next save.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x49",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x35",
+            "0xD6"
+          ],
+          "hex_command": "10 10 49 00 00 00 00 00 00 00 00 00 00 00 00 00 35 D6"
+        },
+        {
+          "name": "Detector frame rate",
+          "setting": "Setting -30hz",
+          "remarks": "mini2 384/640 can be set, the detector output is cut to 30hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x44",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5C",
+            "0x9C"
+          ],
+          "hex_command": "10 10 44 00 1E 00 00 00 00 00 00 00 00 00 00 00 5C 9C"
+        },
+        {
+          "name": "Detector frame rate",
+          "setting": "Setting -60hz",
+          "remarks": "mini2 384/640 can be set, the detector output is cut to 60hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x44",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x16",
+            "0xF4"
+          ],
+          "hex_command": "10 10 44 00 3C 00 00 00 00 00 00 00 00 00 00 00 16 F4"
+        },
+        {
+          "name": "Detector frame rate",
+          "setting": "Setting -25Hz",
+          "remarks": "Mini2 256 can be set, the detector output is cut to 25hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x44",
+          "parameters": {
+            "para1": [
+              "0x19",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x17",
+            "0x94"
+          ],
+          "hex_command": "10 10 44 00 19 00 00 00 00 00 00 00 00 00 00 00 17 94"
+        },
+        {
+          "name": "Detector frame rate",
+          "setting": "Setting -50hz",
+          "remarks": "Mini2 256 can be set, the detector output is cut to 50hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x44",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x80",
+            "0xE4"
+          ],
+          "hex_command": "10 10 44 00 32 00 00 00 00 00 00 00 00 00 00 00 80 E4"
+        },
+        {
+          "name": "Detector frame rate",
+          "setting": "Get",
+          "remarks": " BE AA 02 00 001E 52 09 EB AA ?0x1E means 30hz BE AA 02 00 003C 72 0D EB AA: 0x3C means 60hz",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x84",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xEF",
+            "0xB1"
+          ],
+          "hex_command": "10 10 84 00 00 00 00 00 00 00 00 00 01 00 00 00 EF B1"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Setup - IR",
+          "remarks": "Detector raw data output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFB",
+            "0xC0"
+          ],
+          "hex_command": "10 10 45 00 00 00 00 00 00 00 00 00 00 00 00 00 FB C0"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Settings - KBC",
+          "remarks": "Data output after KB correction",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8E",
+            "0xC3"
+          ],
+          "hex_command": "10 10 45 00 01 00 00 00 00 00 00 00 00 00 00 00 8E C3"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Setting - TNR",
+          "remarks": "Data output after removing time domain noise",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x11",
+            "0xC6"
+          ],
+          "hex_command": "10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Setting - SNR",
+          "remarks": "Data output after spatial noise removal",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x03",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x64",
+            "0xC5"
+          ],
+          "hex_command": "10 10 45 00 03 00 00 00 00 00 00 00 00 00 00 00 64 C5"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Setup - DDE",
+          "remarks": "Data output after image stretching and detail enhancement",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x04",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2F",
+            "0xCD"
+          ],
+          "hex_command": "10 10 45 00 04 00 00 00 00 00 00 00 00 00 00 00 2F CD"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Settings - YUV",
+          "remarks": "Default final output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x05",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5A",
+            "0xCE"
+          ],
+          "hex_command": "10 10 45 00 05 00 00 00 00 00 00 00 00 00 00 00 5A CE"
+        },
+        {
+          "name": "Image data source",
+          "setting": "Get",
+          "remarks": "BE AA 02 00 00 00 AD FA EB AA : Indicates IR output BE AA 02 00 00 01 8C EA EB AA : Indicates KBC output BE AA 02 00 00 02 EF DA EB AA : Indicates TNR output BE AA 02 00 00 03 CE CA EB AA : Indicates SNR output BE AA 02 00 00 04 29 BA EB AA : Indicates DDE output BE AA 02 00 00 05 08 AA EB AA : Indicates YUV output",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x85",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8E",
+            "0xCA"
+          ],
+          "hex_command": "10 10 85 00 00 00 00 00 00 00 00 00 01 00 00 00 8E CA"
+        },
+        {
+          "name": "YUV format",
+          "setting": "Set-uyvy",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x3F",
+            "0x86"
+          ],
+          "hex_command": "10 03 4D 00 00 00 00 00 00 00 00 00 00 00 00 00 3F 86"
+        },
+        {
+          "name": "YUV format",
+          "setting": "Setting-vyuy",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5C",
+            "0xC3"
+          ],
+          "hex_command": "10 03 4D 01 00 00 00 00 00 00 00 00 00 00 00 00 5C C3"
+        },
+        {
+          "name": "YUV format",
+          "setting": "Setting-yuyv",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xF9",
+            "0x0C"
+          ],
+          "hex_command": "10 03 4D 02 00 00 00 00 00 00 00 00 00 00 00 00 F9 0C"
+        },
+        {
+          "name": "YUV format",
+          "setting": "Setting -yvyu",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9A",
+            "0x49"
+          ],
+          "hex_command": "10 03 4D 03 00 00 00 00 00 00 00 00 00 00 00 00 9A 49"
+        },
+        {
+          "name": "YUV format",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x8C",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2B",
+            "0xF7"
+          ],
+          "hex_command": "10 03 8C 00 00 00 00 00 00 00 00 00 01 00 00 00 2B F7"
+        },
+        {
+          "name": "Screen freezes",
+          "setting": "Set-disable",
+          "remarks": "Note: When the image is frozen, it will not respond to electronic zoom, mirror reversal, or scene switching commands.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFD",
+            "0xB0"
+          ],
+          "hex_command": "10 10 42 00 00 00 00 00 00 00 00 00 00 00 00 00 FD B0"
+        },
+        {
+          "name": "Screen freezes",
+          "setting": "Set-enable",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x88",
+            "0xB3"
+          ],
+          "hex_command": "10 10 42 00 01 00 00 00 00 00 00 00 00 00 00 00 88 B3"
+        },
+        {
+          "name": "Screen freezes",
+          "setting": "Get",
+          "remarks": "BE AA 02 00 00 00 AD FA EB AA: indicates non-freezing state BE AA 02 00 00 01 8C EA EB AA: indicates freezing state",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x88",
+            "0xBA"
+          ],
+          "hex_command": "10 10 82 00 00 00 00 00 00 00 00 00 01 00 00 00 88 BA"
+        },
+        {
+          "name": "Mirror flip",
+          "setting": "Settings - No Flip",
+          "remarks": "Note: This function conflicts with the electronic zoom function, that is: The electronic zoom state cannot be flipped. The electronic zoom state cannot be flipped.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9C",
+            "0xCB"
+          ],
+          "hex_command": "10 10 43 00 00 00 00 00 00 00 00 00 00 00 00 00 9C CB"
+        },
+        {
+          "name": "Mirror flip",
+          "setting": "Settings - Flip left and right",
+          "remarks": "Note: This function conflicts with the electronic zoom function, that is: The electronic zoom state cannot be flipped. The electronic zoom state cannot be flipped.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xE9",
+            "0xC8"
+          ],
+          "hex_command": "10 10 43 00 01 00 00 00 00 00 00 00 00 00 00 00 E9 C8"
+        },
+        {
+          "name": "Mirror flip",
+          "setting": "Settings - Flip upside down",
+          "remarks": "Note: This function conflicts with the electronic zoom function, that is: The electronic zoom state cannot be flipped. The electronic zoom state cannot be flipped.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x76",
+            "0xCD"
+          ],
+          "hex_command": "10 10 43 00 02 00 00 00 00 00 00 00 00 00 00 00 76 CD"
+        },
+        {
+          "name": "Mirror flip",
+          "setting": "Settings - Left and Right + Up and Down",
+          "remarks": "Note: This function conflicts with the electronic zoom function, that is: The electronic zoom state cannot be flipped. The electronic zoom state cannot be flipped.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x43",
+          "parameters": {
+            "para1": [
+              "0x03",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x03",
+            "0xCE"
+          ],
+          "hex_command": "10 10 43 00 03 00 00 00 00 00 00 00 00 00 00 00 03 CE"
+        },
+        {
+          "name": "Mirror flip",
+          "setting": "Get",
+          "remarks": "BE AA 02 00 00 00 AD FA EB AA: No flip BE AA 02 00 00 01 8C EA EB AA: Left-right flip BE AA 02 00 00 02 EF DA EB AA: Up-down flip BE AA 02 00 00 03 CE CA EB AA: Left-right + up-down flip",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x83",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xE9",
+            "0xC1"
+          ],
+          "hex_command": "10 10 83 00 00 00 00 00 00 00 00 00 01 00 00 00 E9 C1"
+        },
+        {
+          "name": "External synchronization mode",
+          "setting": "Setting-On",
+          "remarks": "Note: Only MIPI and DVP outputs support external synchronization mode. In external synchronization mode, electronic zoom and mirror flip are not supported.",
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x82",
+            "0x23"
+          ],
+          "hex_command": "10 10 4B 00 01 00 00 00 00 00 00 00 00 00 00 00 82 23"
+        },
+        {
+          "name": "External synchronization mode",
+          "setting": "Settings - Off",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xF7",
+            "0x20"
+          ],
+          "hex_command": "10 10 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 F7 20"
+        },
+        {
+          "name": "External synchronization mode",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x10",
+          "subcmd": "0x8B",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x82",
+            "0x2A"
+          ],
+          "hex_command": "10 10 8B 00 00 00 00 00 00 00 00 00 01 00 00 00 82 2A"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Setting -1x",
+          "remarks": "Para1[1]: magnification, 0x0A=10, which means 1.0 times magnification, the highest is X8.0",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x0A",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x06",
+            "0x0A"
+          ],
+          "hex_command": "01 31 42 00 00 0A 00 00 00 00 00 00 00 00 00 00 06 0A"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Setting -2x",
+          "remarks": "Para1[1]: magnification, 0x0A=10, which means 1.0 times magnification, the highest is X8.0",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x14",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x41",
+            "0x0C"
+          ],
+          "hex_command": "01 31 42 00 00 14 00 00 00 00 00 00 00 00 00 00 41 0C"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Setting - 3x",
+          "remarks": "Para1[1]: magnification, 0x0A=10, which means 1.0 times magnification, the highest is X8.0",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x1E",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7C",
+            "0x0E"
+          ],
+          "hex_command": "01 31 42 00 00 1E 00 00 00 00 00 00 00 00 00 00 7C 0E"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Setting - 4x",
+          "remarks": "Para1[1]: magnification, 0x0A=10, which means 1.0 times magnification, the highest is X8.0",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x28",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCF",
+            "0x00"
+          ],
+          "hex_command": "01 31 42 00 00 28 00 00 00 00 00 00 00 00 00 00 CF 00"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Setting -8x",
+          "remarks": "Para1[1]: magnification, 0x0A=10, which means 1.0 times magnification, the highest is X8.0",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x50",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD3",
+            "0x19"
+          ],
+          "hex_command": "01 31 42 00 00 50 00 00 00 00 00 00 00 00 00 00 D3 19"
+        },
+        {
+          "name": "Electronic zoom-center",
+          "setting": "Get",
+          "remarks": " BE AA 02 00 00 5058 A0 EB AA: means 0x50=80, which is 8.0 times. Note that this command is only used to obtain the center magnification information and has nothing to do with the coordinate magnification.",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x82",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4E",
+            "0x02"
+          ],
+          "hex_command": "01 31 82 00 00 00 00 00 00 00 00 00 01 00 00 00 4E 02"
+        },
+        {
+          "name": "Electronic zoom-coordinates",
+          "setting": "Setting -(300,100), 2.1 times",
+          "remarks": "Zoom with the specified point as the center Para2[1]+Para2[0]: x-axis coordinate Para2[3]+Para2[2]: y-axis coordinate Para1[1]: zoom ratio",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x51",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x15",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x2C",
+              "0x01",
+              "0x64",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5B",
+            "0x14"
+          ],
+          "hex_command": "01 31 51 00 00 15 00 00 2C 01 64 00 00 00 00 00 5B 14"
+        },
+        {
+          "name": "Electronic zoom-coordinates",
+          "setting": "Get",
+          "remarks": " BE AA 06 0000 2C 01 64 00 1552 F7 EB AA: Indicates that the center coordinates of the zoom are (0x012C, 0x0064), i.e. (300, 100), and the magnification is 0x15=21, i.e. 2.1 times. Note that this command is only used to obtain coordinate zoom information and has nothing to do with center zoom.",
+          "command_class": "0x01",
+          "command_index": "0x31",
+          "subcmd": "0x91",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0X05",
+            "0x00"
+          ],
+          "crc16": [
+            "0xEB",
+            "0x83"
+          ],
+          "hex_command": "01 31 91 00 00 00 00 00 00 00 00 00 05 00 00 00 EB 83"
+        }
+      ]
+    },
+    {
+      "name": "Image adjustment related instructions",
+      "command_count": 96,
+      "commands": [
+        {
+          "name": "Scene Mode",
+          "setting": "Setting - Low Temperature Protrusion",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC5",
+            "0x65"
+          ],
+          "hex_command": "10 04 42 00 00 00 00 00 00 00 00 00 00 00 00 00 C5 65"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - Linear Stretch",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB0",
+            "0x66"
+          ],
+          "hex_command": "10 04 42 00 01 00 00 00 00 00 00 00 00 00 00 00 B0 66"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - Low Contrast",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2F",
+            "0x63"
+          ],
+          "hex_command": "10 04 42 00 02 00 00 00 00 00 00 00 00 00 00 00 2F 63"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - General Mode (Default)",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x03",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5A",
+            "0x60"
+          ],
+          "hex_command": "10 04 42 00 03 00 00 00 00 00 00 00 00 00 00 00 5A 60"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - High Contrast",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x04",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x11",
+            "0x68"
+          ],
+          "hex_command": "10 04 42 00 04 00 00 00 00 00 00 00 00 00 00 00 11 68"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - Highlight",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x05",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x64",
+            "0x6B"
+          ],
+          "hex_command": "10 04 42 00 05 00 00 00 00 00 00 00 00 00 00 00 64 6B"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Setting-Reserve 1",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x06",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFB",
+            "0x6E"
+          ],
+          "hex_command": "10 04 42 00 06 00 00 00 00 00 00 00 00 00 00 00 FB 6E"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings-Reserve 2",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x07",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8E",
+            "0x6D"
+          ],
+          "hex_command": "10 04 42 00 07 00 00 00 00 00 00 00 00 00 00 00 8E 6D"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings-Reserve 3",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x08",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x6D",
+            "0x7E"
+          ],
+          "hex_command": "10 04 42 00 08 00 00 00 00 00 00 00 00 00 00 00 6D 7E"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Settings - Outline Mode",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x42",
+          "parameters": {
+            "para1": [
+              "0x09",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x18",
+            "0x7D"
+          ],
+          "hex_command": "10 04 42 00 09 00 00 00 00 00 00 00 00 00 00 00 18 7D"
+        },
+        {
+          "name": "Scene Mode",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x89",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0D",
+            "0x0A"
+          ],
+          "hex_command": "10 04 89 00 01 00 00 00 00 00 00 00 01 00 00 00 0D 0A"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings - White Hot",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x54",
+            "0x6D"
+          ],
+          "hex_command": "10 03 45 00 00 00 00 00 00 00 00 00 00 00 00 00 54 6D"
+        },
+        {
+          "name": "False Color",
+          "setting": "Set-reserved",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x01",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x1D",
+            "0xB5"
+          ],
+          "hex_command": "10 03 45 00 00 01 00 00 00 00 00 00 00 00 00 00 1D B5"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings-Gold Sepia",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x02",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xE7",
+            "0xCD"
+          ],
+          "hex_command": "10 03 45 00 00 02 00 00 00 00 00 00 00 00 00 00 E7 CD"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings - Ironbow",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x03",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xAE",
+            "0x15"
+          ],
+          "hex_command": "10 03 45 00 00 03 00 00 00 00 00 00 00 00 00 00 AE 15"
+        },
+        {
+          "name": "False Color",
+          "setting": "Setting-Rainbow",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x04",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x13",
+            "0x3C"
+          ],
+          "hex_command": "10 03 45 00 00 04 00 00 00 00 00 00 00 00 00 00 13 3C"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings-Night",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x05",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x5A",
+            "0xE4"
+          ],
+          "hex_command": "10 03 45 00 00 05 00 00 00 00 00 00 00 00 00 00 5A E4"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings - Aurora",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x06",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA0",
+            "0x9C"
+          ],
+          "hex_command": "10 03 45 00 00 06 00 00 00 00 00 00 00 00 00 00 A0 9C"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings - Red_Hot",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x07",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xE9",
+            "0x44"
+          ],
+          "hex_command": "10 03 45 00 00 07 00 00 00 00 00 00 00 00 00 00 E9 44"
+        },
+        {
+          "name": "False Color",
+          "setting": "Setting-Jungle",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x08",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xDA",
+            "0xCF"
+          ],
+          "hex_command": "10 03 45 00 00 08 00 00 00 00 00 00 00 00 00 00 DA CF"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings-Medical",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x09",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x93",
+            "0x17"
+          ],
+          "hex_command": "10 03 45 00 00 09 00 00 00 00 00 00 00 00 00 00 93 17"
+        },
+        {
+          "name": "False Color",
+          "setting": "Settings - Black_Hot",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x0A",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x69",
+            "0x6F"
+          ],
+          "hex_command": "10 03 45 00 00 0A 00 00 00 00 00 00 00 00 00 00 69 6F"
+        },
+        {
+          "name": "False Color",
+          "setting": "Setting-Golden Red Glory_Hot",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x0B",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x20",
+            "0xB7"
+          ],
+          "hex_command": "10 03 45 00 00 0B 00 00 00 00 00 00 00 00 00 00 20 B7"
+        },
+        {
+          "name": "False Color",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x03",
+          "subcmd": "0x85",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x21",
+            "0x67"
+          ],
+          "hex_command": "10 03 85 00 00 00 00 00 00 00 00 00 01 00 00 00 21 67"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC3",
+            "0x15"
+          ],
+          "hex_command": "10 04 45 00 00 00 00 00 00 00 00 00 00 00 00 00 C3 15"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x81",
+            "0x08"
+          ],
+          "hex_command": "10 04 45 00 0A 00 00 00 00 00 00 00 00 00 00 00 81 08"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x47",
+            "0x2F"
+          ],
+          "hex_command": "10 04 45 00 14 00 00 00 00 00 00 00 00 00 00 00 47 2F"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x05",
+            "0x32"
+          ],
+          "hex_command": "10 04 45 00 1E 00 00 00 00 00 00 00 00 00 00 00 05 32"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCB",
+            "0x60"
+          ],
+          "hex_command": "10 04 45 00 28 00 00 00 00 00 00 00 00 00 00 00 CB 60"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD9",
+            "0x4A"
+          ],
+          "hex_command": "10 04 45 00 32 00 00 00 00 00 00 00 00 00 00 00 D9 4A"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4F",
+            "0x5A"
+          ],
+          "hex_command": "10 04 45 00 3C 00 00 00 00 00 00 00 00 00 00 00 4F 5A"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xBD",
+            "0xC3"
+          ],
+          "hex_command": "10 04 45 00 46 00 00 00 00 00 00 00 00 00 00 00 BD C3"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD3",
+            "0xFF"
+          ],
+          "hex_command": "10 04 45 00 50 00 00 00 00 00 00 00 00 00 00 00 D3 FF"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x91",
+            "0xE2"
+          ],
+          "hex_command": "10 04 45 00 5A 00 00 00 00 00 00 00 00 00 00 00 91 E2"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x45",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xF7",
+            "0xAB"
+          ],
+          "hex_command": "10 04 45 00 64 00 00 00 00 00 00 00 00 00 00 00 F7 AB"
+        },
+        {
+          "name": "Detail Enhancement",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x85",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC3",
+            "0x1C"
+          ],
+          "hex_command": "10 04 85 00 01 00 00 00 00 00 00 00 01 00 00 00 C3 1C"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x01",
+            "0xE3"
+          ],
+          "hex_command": "10 04 47 00 00 00 00 00 00 00 00 00 00 00 00 00 01 E3"
+        },
+        {
+          "name": "brightness",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x43",
+            "0xFE"
+          ],
+          "hex_command": "10 04 47 00 0A 00 00 00 00 00 00 00 00 00 00 00 43 FE"
+        },
+        {
+          "name": "brightness",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x85",
+            "0xD9"
+          ],
+          "hex_command": "10 04 47 00 14 00 00 00 00 00 00 00 00 00 00 00 85 D9"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC7",
+            "0xC4"
+          ],
+          "hex_command": "10 04 47 00 1E 00 00 00 00 00 00 00 00 00 00 00 C7 C4"
+        },
+        {
+          "name": "brightness",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x09",
+            "0x96"
+          ],
+          "hex_command": "10 04 47 00 28 00 00 00 00 00 00 00 00 00 00 00 09 96"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x1B",
+            "0xBC"
+          ],
+          "hex_command": "10 04 47 00 32 00 00 00 00 00 00 00 00 00 00 00 1B BC"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8D",
+            "0xAC"
+          ],
+          "hex_command": "10 04 47 00 3C 00 00 00 00 00 00 00 00 00 00 00 8D AC"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7F",
+            "0x35"
+          ],
+          "hex_command": "10 04 47 00 46 00 00 00 00 00 00 00 00 00 00 00 7F 35"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x11",
+            "0x09"
+          ],
+          "hex_command": "10 04 47 00 50 00 00 00 00 00 00 00 00 00 00 00 11 09"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x53",
+            "0x14"
+          ],
+          "hex_command": "10 04 47 00 5A 00 00 00 00 00 00 00 00 00 00 00 53 14"
+        },
+        {
+          "name": "brightness",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x47",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x35",
+            "0x5D"
+          ],
+          "hex_command": "10 04 47 00 64 00 00 00 00 00 00 00 00 00 00 00 35 5D"
+        },
+        {
+          "name": "brightness",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x87",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x01",
+            "0xEA"
+          ],
+          "hex_command": "10 04 87 00 01 00 00 00 00 00 00 00 01 00 00 00 01 EA"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xAE",
+            "0x8E"
+          ],
+          "hex_command": "10 04 4A 00 00 00 00 00 00 00 00 00 00 00 00 00 AE 8E"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xEC",
+            "0x93"
+          ],
+          "hex_command": "10 04 4A 00 0A 00 00 00 00 00 00 00 00 00 00 00 EC 93"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2A",
+            "0xB4"
+          ],
+          "hex_command": "10 04 4A 00 14 00 00 00 00 00 00 00 00 00 00 00 2A B4"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x68",
+            "0xA9"
+          ],
+          "hex_command": "10 04 4A 00 1E 00 00 00 00 00 00 00 00 00 00 00 68 A9"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA6",
+            "0xFB"
+          ],
+          "hex_command": "10 04 4A 00 28 00 00 00 00 00 00 00 00 00 00 00 A6 FB"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB4",
+            "0xD1"
+          ],
+          "hex_command": "10 04 4A 00 32 00 00 00 00 00 00 00 00 00 00 00 B4 D1"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x22",
+            "0xC1"
+          ],
+          "hex_command": "10 04 4A 00 3C 00 00 00 00 00 00 00 00 00 00 00 22 C1"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD0",
+            "0x58"
+          ],
+          "hex_command": "10 04 4A 00 46 00 00 00 00 00 00 00 00 00 00 00 D0 58"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xBE",
+            "0x64"
+          ],
+          "hex_command": "10 04 4A 00 50 00 00 00 00 00 00 00 00 00 00 00 BE 64"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFC",
+            "0x79"
+          ],
+          "hex_command": "10 04 4A 00 5A 00 00 00 00 00 00 00 00 00 00 00 FC 79"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4A",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9A",
+            "0x30"
+          ],
+          "hex_command": "10 04 4A 00 64 00 00 00 00 00 00 00 00 00 00 00 9A 30"
+        },
+        {
+          "name": "Contrast",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x8A",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xAE",
+            "0x87"
+          ],
+          "hex_command": "10 04 8A 00 01 00 00 00 00 00 00 00 01 00 00 00 AE 87"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCF",
+            "0xF5"
+          ],
+          "hex_command": "10 04 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 CF F5"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8D",
+            "0xE8"
+          ],
+          "hex_command": "10 04 4B 00 0A 00 00 00 00 00 00 00 00 00 00 00 8D E8"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4B",
+            "0xCF"
+          ],
+          "hex_command": "10 04 4B 00 14 00 00 00 00 00 00 00 00 00 00 00 4B CF"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x09",
+            "0xD2"
+          ],
+          "hex_command": "10 04 4B 00 1E 00 00 00 00 00 00 00 00 00 00 00 09 D2"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC7",
+            "0x80"
+          ],
+          "hex_command": "10 04 4B 00 28 00 00 00 00 00 00 00 00 00 00 00 C7 80"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD5",
+            "0xAA"
+          ],
+          "hex_command": "10 04 4B 00 32 00 00 00 00 00 00 00 00 00 00 00 D5 AA"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x43",
+            "0xBA"
+          ],
+          "hex_command": "10 04 4B 00 3C 00 00 00 00 00 00 00 00 00 00 00 43 BA"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB1",
+            "0x23"
+          ],
+          "hex_command": "10 04 4B 00 46 00 00 00 00 00 00 00 00 00 00 00 B1 23"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xDF",
+            "0x1F"
+          ],
+          "hex_command": "10 04 4B 00 50 00 00 00 00 00 00 00 00 00 00 00 DF 1F"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9D",
+            "0x02"
+          ],
+          "hex_command": "10 04 4B 00 5A 00 00 00 00 00 00 00 00 00 00 00 9D 02"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4B",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFB",
+            "0x4B"
+          ],
+          "hex_command": "10 04 4B 00 64 00 00 00 00 00 00 00 00 00 00 00 FB 4B"
+        },
+        {
+          "name": "Airspace Noise Reduction",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x8B",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xCF",
+            "0xFC"
+          ],
+          "hex_command": "10 04 8B 00 01 00 00 00 00 00 00 00 01 00 00 00 CF FC"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC9",
+            "0x85"
+          ],
+          "hex_command": "10 04 4C 00 00 00 00 00 00 00 00 00 00 00 00 00 C9 85"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x8B",
+            "0x98"
+          ],
+          "hex_command": "10 04 4C 00 0A 00 00 00 00 00 00 00 00 00 00 00 8B 98"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x4D",
+            "0xBF"
+          ],
+          "hex_command": "10 04 4C 00 14 00 00 00 00 00 00 00 00 00 00 00 4D BF"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0F",
+            "0xA2"
+          ],
+          "hex_command": "10 04 4C 00 1E 00 00 00 00 00 00 00 00 00 00 00 0F A2"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC1",
+            "0xF0"
+          ],
+          "hex_command": "10 04 4C 00 28 00 00 00 00 00 00 00 00 00 00 00 C1 F0"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD3",
+            "0xDA"
+          ],
+          "hex_command": "10 04 4C 00 32 00 00 00 00 00 00 00 00 00 00 00 D3 DA"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x45",
+            "0xCA"
+          ],
+          "hex_command": "10 04 4C 00 3C 00 00 00 00 00 00 00 00 00 00 00 45 CA"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB7",
+            "0x53"
+          ],
+          "hex_command": "10 04 4C 00 46 00 00 00 00 00 00 00 00 00 00 00 B7 53"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD9",
+            "0x6F"
+          ],
+          "hex_command": "10 04 4C 00 50 00 00 00 00 00 00 00 00 00 00 00 D9 6F"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9B",
+            "0x72"
+          ],
+          "hex_command": "10 04 4C 00 5A 00 00 00 00 00 00 00 00 00 00 00 9B 72"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4C",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFD",
+            "0x3B"
+          ],
+          "hex_command": "10 04 4C 00 64 00 00 00 00 00 00 00 00 00 00 00 FD 3B"
+        },
+        {
+          "name": "Temporal noise reduction",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x8C",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xC9",
+            "0x8C"
+          ],
+          "hex_command": "10 04 8C 00 01 00 00 00 00 00 00 00 01 00 00 00 C9 8C"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA8",
+            "0xFE"
+          ],
+          "hex_command": "10 04 4D 00 00 00 00 00 00 00 00 00 00 00 00 00 A8 FE"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Settings - 10 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x0A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xEA",
+            "0xE3"
+          ],
+          "hex_command": "10 04 4D 00 0A 00 00 00 00 00 00 00 00 00 00 00 EA E3"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Settings - 20 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x14",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x2C",
+            "0xC4"
+          ],
+          "hex_command": "10 04 4D 00 14 00 00 00 00 00 00 00 00 00 00 00 2C C4"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 30 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x1E",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x6E",
+            "0xD9"
+          ],
+          "hex_command": "10 04 4D 00 1E 00 00 00 00 00 00 00 00 00 00 00 6E D9"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Settings - 40 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x28",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA0",
+            "0x8B"
+          ],
+          "hex_command": "10 04 4D 00 28 00 00 00 00 00 00 00 00 00 00 00 A0 8B"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 50 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x32",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB2",
+            "0xA1"
+          ],
+          "hex_command": "10 04 4D 00 32 00 00 00 00 00 00 00 00 00 00 00 B2 A1"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 60 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x3C",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x24",
+            "0xB1"
+          ],
+          "hex_command": "10 04 4D 00 3C 00 00 00 00 00 00 00 00 00 00 00 24 B1"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 70 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x46",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xD6",
+            "0x28"
+          ],
+          "hex_command": "10 04 4D 00 46 00 00 00 00 00 00 00 00 00 00 00 D6 28"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 80",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x50",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xB8",
+            "0x14"
+          ],
+          "hex_command": "10 04 4D 00 50 00 00 00 00 00 00 00 00 00 00 00 B8 14"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting - 90 gears",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x5A",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xFA",
+            "0x09"
+          ],
+          "hex_command": "10 04 4D 00 5A 00 00 00 00 00 00 00 00 00 00 00 FA 09"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Setting -100",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4D",
+          "parameters": {
+            "para1": [
+              "0x64",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x9C",
+            "0x40"
+          ],
+          "hex_command": "10 04 4D 00 64 00 00 00 00 00 00 00 00 00 00 00 9C 40"
+        },
+        {
+          "name": "Gamma intensity",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x8D",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0xA8",
+            "0xF7"
+          ],
+          "hex_command": "10 04 8D 00 01 00 00 00 00 00 00 00 01 00 00 00 A8 F7"
+        }
+      ]
+    },
+    {
+      "name": "Image Outline",
+      "command_count": 4,
+      "commands": [
+        {
+          "name": "Hook edge position",
+          "setting": "Setting - 0",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4E",
+          "parameters": {
+            "para1": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x0b",
+            "0x73"
+          ],
+          "hex_command": "10 04 4E 00 00 00 00 00 00 00 00 00 00 00 00 00 0b 73"
+        },
+        {
+          "name": "Hook edge position",
+          "setting": "Setting - 1st gear",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4E",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7e",
+            "0x70"
+          ],
+          "hex_command": "10 04 4E 00 01 00 00 00 00 00 00 00 00 00 00 00 7e 70"
+        },
+        {
+          "name": "Hook edge position",
+          "setting": "Setting - 2 levels",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x4E",
+          "parameters": {
+            "para1": [
+              "0x02",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x00",
+            "0x00"
+          ],
+          "crc16": [
+            "0xe1",
+            "0x75"
+          ],
+          "hex_command": "10 04 4E 00 02 00 00 00 00 00 00 00 00 00 00 00 e1 75"
+        },
+        {
+          "name": "Hook edge position",
+          "setting": "Get",
+          "remarks": null,
+          "command_class": "0x10",
+          "command_index": "0x04",
+          "subcmd": "0x8E",
+          "parameters": {
+            "para1": [
+              "0x01",
+              "0x00",
+              "0x00",
+              "0x00"
+            ],
+            "para2": [
+              "0x00",
+              "0x00",
+              "0x00",
+              "0x00"
+            ]
+          },
+          "response_length": [
+            "0x01",
+            "0x00"
+          ],
+          "crc16": [
+            "0x7e",
+            "0x79"
+          ],
+          "hex_command": "10 04 8E 00 01 00 00 00 00 00 00 00 01 00 00 00 7e 79"
+        }
+      ]
+    }
+  ]
+}
