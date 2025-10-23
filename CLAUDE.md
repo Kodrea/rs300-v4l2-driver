@@ -603,6 +603,30 @@ When information conflicts or authoritative answer needed:
 - Recommend testing with ./test_controls.sh after changes
 - **Example**: Read Section 4 → follow pattern → give exact locations
 
+**For I2C Command Queries** (EFFICIENCY CRITICAL - 95% token reduction):
+- **ALWAYS grep I2C_QUICK_REFERENCE.md first** for simple command lookups
+- Use simple keywords (e.g., "brightness", "30hz", "colormap") without complex regex
+- If quick reference doesn't have enough detail, then grep I2C_Instructions_hierarchical.json
+- **Never** read full I2C JSON (20,000 tokens) or full quick reference (12,000 tokens)
+- **Example workflow**:
+  ```
+  User: "What's the hex command for 30hz?"
+
+  Step 1: Grep(pattern="30hz",
+              file="I2C_QUICK_REFERENCE.md",
+              output_mode="content", -n=true, -C=3)
+  → Returns: Matching command with hex and parameters (500 tokens)
+
+  If need more details:
+  Step 2: Grep(pattern="30.*hz|1E.*00",
+               file="I2C_Instructions_hierarchical.json",
+               output_mode="content", -n=true, -C=5)
+  → Returns: Full command object with all metadata (800 tokens)
+
+  Total: 500-1,300 tokens vs 20,000 (93-97% reduction)
+  ```
+- **Files priority**: I2C_QUICK_REFERENCE.md → I2C_Instructions_hierarchical.json (grep only) → I2C_PROTOCOL.md (protocol understanding only)
+
 ---
 
 ## V4L2 Controls Reference
