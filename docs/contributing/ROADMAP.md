@@ -45,50 +45,177 @@ Future development plans and priorities for the RS300 thermal camera driver.
 
 ## Short Term (Next 3 Months)
 
-### High Priority
+### 🔥 Highest Priority: Driver Modernization
 
-**1. ISP Integration for Pi 5** 🔥
-- **Goal**: Hardware-accelerated image processing via PiSP Backend
-- **Status**: Research complete, implementation pending
-- **Features**:
-  - Temporal noise reduction (hardware)
-  - Dual-stream output (full-res + thumbnail)
-  - Real-time processing without CPU overhead
-  - YUV color space processing
-- **Documentation**: [RASPBERRY_PI_ISP_GUIDE.md](../../RASPBERRY_PI_ISP_GUIDE.md)
-- **Timeline**: Q1 2025
+**NEW: Driver Modernization Initiative** 🚀
+- **Goal**: Transform RS300 into a modern, user-friendly V4L2 camera driver
+- **Status**: Planning complete, ready to implement
+- **Documentation**: [MODERNIZATION_PLAN.md](../../MODERNIZATION_PLAN.md) ⭐ **FULL TECHNICAL DETAILS**
+- **Timeline**: 12-14 weeks (3-3.5 months)
+
+**Priority Order:**
+
+**1. Runtime Resolution Switching** 🎯 **(Sprint 2: Week 3-4)**
+- **Goal**: Change resolution without driver reload, with auto-detection fallback
+- **Status**: Infrastructure exists, needs activation
+- **Current State**:
+  - ✅ 3 resolutions supported (640×512, 384×288, 256×192)
+  - ✅ V4L2 infrastructure present (`enum_frame_sizes`, `set_fmt`)
+  - ❌ Locked at load time via module parameter
+- **Implementation**:
+  - Modify `rs300_set_pad_fmt()` to update active mode
+  - Research resolution query I2C command (need Purple River input)
+  - Auto-detect resolution from firmware (if supported)
+  - Fall back to module parameter if auto-detect fails
+- **Benefits**:
+  - Switch via `v4l2-ctl --set-fmt-video`
+  - No more `rmmod` + `modprobe` cycle
+  - Better user experience
+- **Timeline**: 2 weeks
 - **Complexity**: Medium
+- **Risk**: Low-Medium (requires all 3 hardware modules for testing)
 
-**2. Test 384×288 and 256×192 Modules on Pi 5** 🧪
-- **Goal**: Verify all resolutions work on Pi 5
-- **Status**: Hardware pending
-- **Tasks**:
-  - Test 384×288 @ 60fps
-  - Test 256×192 @ 50fps
-  - Document any issues
-  - Update compatibility matrix
-- **Timeline**: When hardware available
+**2. Modern Framework (Eliminate configure_media.sh)** 🏗️ **(Sprint 4: Week 7-10)**
+- **Goal**: Auto-configure media controller pipeline, "plug and play" operation
+- **Status**: Multiple approaches evaluated
+- **Current State**:
+  - ❌ Requires manual `./configure_media.sh` after every boot
+  - ❌ Media controller links not auto-configured
+  - ✅ Pipeline configuration logic exists
+- **Implementation** (Hybrid Approach):
+  - **Phase 1 (Quick)**: udev-based auto-configuration **(Sprint 1: Week 1)**
+    - Trigger script on device detection
+    - Works immediately with no driver changes
+    - Complexity: Low (1-2 days)
+  - **Phase 2 (Proper)**: v4l2_async framework **(Sprint 4: Week 7-10)**
+    - Implement `v4l2_async_notifier` in driver
+    - Auto-setup links when CSI-2 receiver ready
+    - Upstream-acceptable solution
+    - Complexity: High (2-4 weeks)
+- **Benefits**:
+  - Camera "just works" after driver load
+  - No manual configuration
+  - Persistent across reboots
+- **Timeline**: 1 week (udev), 3-4 weeks (async framework)
+- **Complexity**: Low (udev), High (async)
+- **Risk**: Medium (async requires deep V4L2 knowledge)
+
+**3. libcamera Support** 📷 **(Sprint 5: Week 11-14, if needed)**
+- **Goal**: Work with libcamera stack (Raspberry Pi's modern camera API)
+- **Status**: Requirements analyzed, testing approach defined
+- **Current State**:
+  - ✅ Driver V4L2 interface compliant
+  - ✅ Controls properly exposed
+  - ❓ Unknown if SimplePipelineHandler works
+- **Implementation** (Phased):
+  - **Phase 1**: Test with SimplePipelineHandler **(Sprint 1: Week 1)**
+    - Try `libcamera-hello --list-cameras`
+    - May work without changes!
+    - Complexity: Low (1 day testing)
+  - **Phase 2**: Custom Pipeline Handler (if Phase 1 fails) **(Sprint 5: Week 11-14)**
+    - Create `src/libcamera/pipeline/rs300/rs300.cpp`
+    - Implement basic capture functionality
+    - Submit upstream to libcamera
+    - Complexity: Medium-High (2-3 weeks)
+- **Benefits**:
+  - Use modern Raspberry Pi camera tools
+  - ISP integration (if using RaspberryPi pipeline)
+  - Better application compatibility
+- **Timeline**: 1 day (testing), 2-3 weeks (custom handler if needed)
+- **Complexity**: Low (testing), Medium-High (custom handler)
+- **Risk**: Medium (may require upstream libcamera changes)
+
+**4. Additional I2C Commands** 📡 **(Sprint 1-3, then Sprint 6)**
+- **Goal**: Integrate high-priority I2C protocol commands in batches
+- **Status**: Detailed implementation plan created
+- **Documentation**: [I2C_COMMANDS_TO_IMPLEMENT.md](../../I2C_COMMANDS_TO_IMPLEMENT.md) ⭐ **FULL DETAILS**
+- **Current State**:
+  - ✅ 12 commands already implemented (all critical SET commands work)
+  - 📋 18 commands planned in 6 batches
+  - ❌ ~50 commands excluded (calibration, non-MIPI outputs, dangerous commands)
+
+**Batch 1: Autoshutter Commands** 🔥 **(Sprint 1: Days 1-2)**
+- `rs300_set_autoshutter()` - Enable/disable automatic FFC
+- `rs300_get_autoshutter()` - Read autoshutter state
+- `rs300_set_autoshutter_params()` - Configure temp threshold and intervals
+- **Priority**: HIGHEST - User requested as #1 priority
+- **Timeline**: 6-8 hours
 - **Complexity**: Low
 
-**3. 256×192 MIPI Troubleshooting (Pi 4)** 🐛
-- **Goal**: Resolve MIPI video streaming issues with 256×192 module
-- **Status**: Investigation ongoing
+**Batch 2: Module Sleep Commands** 🔥 **(Sprint 1: Days 3-4)**
+- `rs300_set_sleep()` - Put module to sleep or wake up
+- `rs300_get_sleep()` - Read sleep state
+- **Priority**: HIGHEST - User requested as #2 priority
+- **Timeline**: 3-4 hours
+- **Complexity**: Low
+
+**Batch 3: Device Information Commands** 🎯 **(Sprint 2: Days 1-2)**
+- `rs300_get_device_name()` - **KEY for resolution auto-detection!**
+- `rs300_get_firmware_version()` - Diagnostics
+- `rs300_get_module_temperature()` - Detector temp readout
+- **Priority**: HIGH - Enables Priority 1 (resolution auto-detection)
+- **Timeline**: 6-8 hours
+- **Complexity**: Low
+
+**Batch 4: Image Enhancement** 🎨 **(Sprint 3: Days 1-2, Optional)**
+- `rs300_set_gamma()` - Gamma curve adjustment
+- `rs300_get_gamma()` - Read gamma value
+- **Priority**: MEDIUM - Nice to have
+- **Timeline**: 3-4 hours
+- **Complexity**: Low
+
+**Batches 5-6: Advanced Features** ⏳ **(Sprint 6: Future)**
+- Edge position, antiburn protection, hotspot coordinates
+- Boot logo, save/restore parameters
+- **Priority**: LOW - Advanced users only
+- **Timeline**: 10-14 hours total
+
+- **Benefits**:
+  - Autoshutter: Automatic FFC without user intervention
+  - Sleep: Power saving for battery-powered applications
+  - Device info: Better diagnostics and auto-detection
+  - Complete thermal camera control
+- **Total Timeline**:
+  - Sprint 1: 5 commands (9-12 hours)
+  - Sprint 2: 3 commands (6-8 hours)
+  - Sprint 3: 2 commands (3-4 hours, optional)
+  - Sprint 6: 6 commands (10-14 hours, future)
+- **Complexity**: Low (follow existing patterns)
+- **Risk**: Low
+
+**5. Pi 5 ISP Integration** 🎨 **(Sprint 3: Week 5-6)**
+- **Goal**: Hardware-accelerated image processing via PiSP Backend
+- **Status**: Documented, ready to implement
 - **Current State**:
-  - I2C communication: ✅ Working
-  - Camera operation: ✅ Working (shutter audible, CVBS works)
-  - MIPI video: ❌ No data
-  - USB mode: ✅ Working (50Hz)
-- **Approaches**:
-  - Firmware update instructions from Purple River
-  - Timing/clock investigation
-  - Media bus format verification
-  - MIPI CSI-2 signal analysis
-- **Timeline**: Ongoing, lower priority (USB workaround available)
-- **Complexity**: High
+  - ✅ Documentation complete ([RASPBERRY_PI_ISP_GUIDE.md](../../RASPBERRY_PI_ISP_GUIDE.md))
+  - ❌ No ISP pipeline implemented
+- **Implementation** (Phased):
+  - **Phase 1**: V4L2 M2M Pipeline **(Sprint 3: Week 5-6)**
+    - Use pispbe as memory-to-memory device
+    - RS300 → Capture → pispbe → Processed output
+    - Complexity: Medium (1 week)
+  - **Phase 2**: libcamera Integration (if Priority 3 done)
+    - Automatic ISP routing via libcamera
+    - Complexity: Low (already done by libcamera)
+  - **Phase 3**: Kernel-Level Integration (long-term)
+    - Direct media controller pipeline
+    - Complexity: High (3-4 weeks)
+- **Features**:
+  - Temporal noise reduction (hardware TNR)
+  - Spatial noise reduction (hardware SNR)
+  - Dual-stream output (full-res + thumbnail)
+  - Zero-copy processing
+- **Benefits**:
+  - Better image quality
+  - Hardware acceleration (no CPU overhead)
+  - Dual-stream for preview + recording
+- **Timeline**: 1 week (V4L2 M2M)
+- **Complexity**: Medium
+- **Risk**: Low-Medium
 
 ### Medium Priority
 
-**4. Video Tutorial Series** 📺
+**6. Video Tutorial Series** 📺
 - **Goal**: Visual walkthroughs for common tasks
 - **Status**: In progress
 - **Topics**:
@@ -103,7 +230,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: Q1-Q2 2025
 - **Complexity**: Low-Medium
 
-**5. Python SDK/Bindings** 🐍
+**7. Python SDK/Bindings** 🐍
 - **Goal**: Python library for easy RS300 integration
 - **Status**: Planned
 - **Features**:
@@ -116,45 +243,47 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: Q2 2025
 - **Complexity**: Medium
 
+**8. Test 384×288 and 256×192 Modules on Pi 5** 🧪
+- **Goal**: Verify all resolutions work on Pi 5
+- **Status**: Hardware pending (blocked by Priority 1)
+- **Tasks**:
+  - Test 384×288 @ 60fps
+  - Test 256×192 @ 50fps
+  - Document any issues
+  - Update compatibility matrix
+- **Note**: Will be done as part of Priority 1 testing
+- **Timeline**: When hardware available
+- **Complexity**: Low
+
 ---
 
 ## Medium Term (3-6 Months)
 
 ### Driver Improvements
 
-**6. Runtime Resolution Switching**
-- **Goal**: Change resolution without driver rebuild
-- **Current Limitation**: Resolution set at compile time (Pi 4) or driver load
-- **Proposed Solution**:
-  - Add V4L2 selection API support
-  - Runtime mode switching via v4l2-ctl
-  - Automatic pipeline reconfiguration (Pi 5)
-- **Benefits**:
-  - User-friendly configuration
-  - Dynamic resolution changes
-  - No recompilation needed
-- **Timeline**: Q2 2025
-- **Complexity**: High
-
-**7. Code Refactoring**
+**9. Code Refactoring** ⚠️ **CAUTION - See lessons-learned/002**
 - **Goal**: Improve code quality and maintainability
+- **Status**: **POSTPONED** - Previous consolidation attempt caused kernel crashes
 - **Current Issues** (from DRIVER_ANALYSIS.md):
   - ~500 lines of duplicate command execution code
   - Hardcoded CRC in zoom command
   - Opportunities for helper functions
-- **Proposed Changes**:
-  - Create `rs300_send_command()` helper function
-  - Consolidate duplicate code
-  - Fix hardcoded CRC values
-  - Improve error handling
-- **Benefits**:
-  - Reduced code size (~500 → ~150 lines)
-  - Easier maintenance
-  - Better testability
-- **Timeline**: Q2 2025
-- **Complexity**: Medium
+- **Lessons Learned**:
+  - ❌ Function signature changes can cause mysterious kernel crashes
+  - ❌ Code consolidation in kernel drivers is risky
+  - ✅ "Working code > Pretty code" for kernel drivers
+  - ✅ Accept duplication for stability
+- **Proposed Approach** (if revisited):
+  - **DO NOT** modify existing function signatures
+  - Use parameter structs if adding parameters
+  - Create NEW functions rather than modifying existing ones
+  - Test extensively on all hardware
+  - See `.claude/lessons-learned/002-consolidation-kernel-crash.md`
+- **Timeline**: TBD (low priority, stability concerns)
+- **Complexity**: High
+- **Risk**: High (kernel crashes possible)
 
-**8. Advanced Control Features**
+**10. Advanced Control Features**
 - **Goal**: Additional camera controls and features
 - **Planned Controls**:
   - [ ] Temperature readout (if supported by module)
@@ -167,7 +296,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 
 ### Integration & Examples
 
-**9. GStreamer Element Plugin**
+**11. GStreamer Element Plugin**
 - **Goal**: Native GStreamer element for RS300
 - **Benefits**:
   - Simplified pipeline construction
@@ -181,7 +310,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: Q3 2025
 - **Complexity**: Medium-High
 
-**10. OpenCV Integration Examples**
+**12. OpenCV Integration Examples**
 - **Goal**: Complete OpenCV examples for thermal processing
 - **Planned Examples**:
   - [ ] Basic capture and display
@@ -201,7 +330,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 
 ### Advanced Features
 
-**11. Multi-Camera Support**
+**13. Multi-Camera Support**
 - **Goal**: Support multiple RS300 cameras simultaneously
 - **Use Cases**:
   - Stereo thermal imaging
@@ -218,7 +347,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: Q3-Q4 2025
 - **Complexity**: High
 
-**12. Radiometric Support**
+**14. Radiometric Support**
 - **Goal**: Temperature measurement for "Mini" (radiometric) variant
 - **Current Status**: Driver is for "Mini2" (imaging only)
 - **Requirements**:
@@ -230,7 +359,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: TBD (hardware dependent)
 - **Complexity**: High
 
-**13. AI/ML Integration Examples**
+**15. AI/ML Integration Examples**
 - **Goal**: Demonstrate thermal imaging + AI/ML
 - **Possible Applications**:
   - Person detection (thermal signature)
@@ -251,7 +380,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 
 ### Under Investigation
 
-**14. Pi Zero 2W Support**
+**16. Pi Zero 2W Support**
 - **Current Status**: ❌ Not compatible (power issues)
 - **Challenge**: Camera draws too much current, causes brownouts
 - **Attempted Solutions**:
@@ -264,7 +393,7 @@ Future development plans and priorities for the RS300 thermal camera driver.
 - **Timeline**: Hardware revision needed (TBD)
 - **Priority**: Low (limited use case)
 
-**15. Other SBCs / Platforms**
+**17. Other SBCs / Platforms**
 - **Potential Targets**:
   - Jetson Nano / Orin
   - Orange Pi 5
@@ -286,12 +415,15 @@ Future development plans and priorities for the RS300 thermal camera driver.
 
 **Vote on features**: [GitHub Issues](https://github.com/Kodrea/rs300-v4l2-driver/issues)
 
-**Top Requested** (to be updated):
-1. ISP integration (Pi 5) - 🔥 In Progress
-2. Python SDK - Planned Q2 2025
-3. Runtime resolution switching - Planned Q2 2025
-4. Video tutorials - In Progress
-5. OpenCV examples - Planned Q2-Q3 2025
+**Top Requested** (Updated 2025-10-24):
+1. **Runtime resolution switching** - 🔥 **HIGH PRIORITY** - Planned Sprint 2 (Week 3-4)
+2. **Auto-configure pipeline (no configure_media.sh)** - 🔥 **HIGH PRIORITY** - udev Sprint 1, async Sprint 4
+3. **libcamera support** - 🔥 **HIGH PRIORITY** - Testing Sprint 1, custom handler Sprint 5 (if needed)
+4. **ISP integration (Pi 5)** - 🔥 **HIGH PRIORITY** - Planned Sprint 3 (Week 5-6)
+5. **Additional I2C commands** - 🔥 **HIGH PRIORITY** - Planned Sprint 1 (Week 1-2)
+6. Python SDK - Medium Priority - Planned Q2 2025
+7. Video tutorials - Medium Priority - In Progress
+8. OpenCV examples - Medium Priority - Planned Q2-Q3 2025
 
 **Submit your request**: [New Feature Request](https://github.com/Kodrea/rs300-v4l2-driver/issues/new)
 
@@ -308,8 +440,10 @@ Future development plans and priorities for the RS300 thermal camera driver.
 **Medium Priority**:
 2. **Pi 4 low-voltage warnings (640×512)**: Rarely causes issues
    - Recommendation: Use adequate power supply (3A+)
-3. **Runtime resolution switching**: Not implemented
-   - Workaround: Edit `rs300.c`, rebuild
+3. **Runtime resolution switching**: Not implemented (⚠️ **IN PROGRESS** - Sprint 2)
+   - Workaround: Use module parameter `mode=0/1/2` until implemented
+4. **Manual media pipeline configuration**: Required after every boot (⚠️ **IN PROGRESS** - Sprint 1 & 4)
+   - Workaround: Run `./configure_media.sh` or use boot automation options
 
 **Low Priority**:
 4. **Hardcoded CRC in zoom command**: Works but not ideal
@@ -349,28 +483,37 @@ Want to contribute? Here are areas where help is needed:
 
 ### Release Schedule
 
-**0.1.0** - Q1 2025
-- ISP integration (Pi 5)
+**v0.9.0** - Q1 2025 (Modernization Release) 🚀
+- ✅ Runtime resolution switching
+- ✅ Auto-configure pipeline (udev + async framework)
+- ✅ libcamera support (simple or custom handler)
+- ✅ Additional I2C commands (Get Device Name, Set YUV Format, etc.)
+- ✅ ISP integration (V4L2 M2M pipeline)
+- ✅ Complete modernization plan
+- **Status**: Modern, user-friendly driver
+
+**v1.0.0** - Q2 2025 (Stable Release)
 - Python SDK (basic)
 - Video tutorials (first batch)
-- Code refactoring
+- Enhanced documentation
+- Comprehensive testing on all hardware
+- **Status**: Production-ready for all use cases
 
-**0.2.0** - Q2 2025
-- Runtime resolution switching
-- Advanced controls
-- GStreamer element
+**v1.1.0** - Q3 2025 (Enhanced Features)
+- Advanced controls (temp readout, auto-FFC, ROI)
+- GStreamer element plugin
 - OpenCV examples
-
-**0.3.0** - Q3 2025
-- Multi-camera support
-- Additional platform support
 - Performance optimizations
 
-**1.0.0** - Q4 2025 (Stable)
-- Feature complete
-- Comprehensive testing
-- Full documentation
-- Production ready for all use cases
+**v1.2.0** - Q4 2025 (Advanced Features)
+- Multi-camera support
+- Additional platform support
+- AI/ML integration examples
+
+**v2.0.0** - 2026 (Future)
+- Radiometric support (temperature measurement)
+- Full ISP kernel integration
+- Upstream kernel submission
 
 ---
 
@@ -384,6 +527,8 @@ Want to contribute? Here are areas where help is needed:
 
 ---
 
-**Last Updated**: 2025-10-21
+**Last Updated**: 2025-10-24
 
-**Next Review**: 2025-11-21 (monthly updates)
+**Next Review**: 2025-11-24 (monthly updates)
+
+**Major Update**: Complete reprioritization based on driver modernization requirements. See [MODERNIZATION_PLAN.md](../../MODERNIZATION_PLAN.md) for full technical details.
