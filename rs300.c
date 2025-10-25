@@ -245,7 +245,12 @@ struct rs300 {
 	struct v4l2_ctrl *contrast;
 	struct v4l2_ctrl *spatial_nr;
 	struct v4l2_ctrl *temporal_nr;
+	struct v4l2_ctrl *autoshutter;  /* Auto shutter enable/disable */
+	struct v4l2_ctrl *autoshutter_temp;  /* Auto shutter temperature threshold */
+	struct v4l2_ctrl *autoshutter_min_interval;  /* Auto shutter minimum interval */
+	struct v4l2_ctrl *autoshutter_max_interval;  /* Auto shutter maximum interval */
 	struct v4l2_ctrl *output_mode;  /* Output mode selection control */
+	struct v4l2_ctrl *camera_sleep;  /* Camera sleep/wake control */
 
 	/* Current mode */
 	const struct rs300_mode *mode;
@@ -259,6 +264,11 @@ struct rs300 {
 	/* Streaming on/off */
 	bool streaming;
 };
+
+/* Autoshutter function prototypes (after struct rs300 definition) */
+static int rs300_set_autoshutter(struct rs300 *rs300, int enable);
+static int rs300_get_autoshutter(struct rs300 *rs300, int *value);
+static int rs300_set_autoshutter_params(struct rs300 *rs300, int param_type, int value);
 
 /**
  * rs300_send_command - Send I2C command to RS300 camera
@@ -539,40 +549,46 @@ static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 	unsigned char *user_data_ptr;
 	long ret = 0;
 
-	/* SECURITY FIX: Copy from userspace first - prevents direct pointer dereference */
+	/*
+	 * IMPORTANT: Validate command BEFORE copying from userspace.
+	 * When V4L2 tools probe for supported ioctls, arg may not point to
+	 * a valid ioctl_data structure. Return silently for unsupported commands.
+	 */
+	if ((cmd != CMD_GET) && (cmd != CMD_SET)) {
+		return -ENOIOCTLCMD;  /* Translated to -ENOTTY by V4L2 core */
+	}
+
+	/* SECURITY FIX: Copy from userspace - prevents direct pointer dereference */
 	if (copy_from_user(&ioctl_data_kernel, (struct ioctl_data __user *)arg,
 			   sizeof(struct ioctl_data))) {
 		dev_err(&client->dev, "Failed to copy ioctl data from userspace\n");
 		return -EFAULT;
 	}
 
-	/* Validate command type */
-	if ((cmd == CMD_GET) || (cmd == CMD_SET)) {
-		/* Check for NULL data pointer */
-		if (ioctl_data_kernel.data == NULL) {
-			dev_err(&client->dev, "NULL data pointer in ioctl\n");
-			return -EINVAL;
-		}
-
-		/* SECURITY FIX: Validate transfer length to prevent integer overflow */
-		if (ioctl_data_kernel.wLength == 0 ||
-		    ioctl_data_kernel.wLength > MAX_I2C_TRANSFER_SIZE) {
-			dev_err(&client->dev,
-				"Invalid I2C transfer length: %u (max %d)\n",
-				ioctl_data_kernel.wLength, MAX_I2C_TRANSFER_SIZE);
-			return -EINVAL;
-		}
-
-		/* SECURITY FIX: Validate register address */
-		if (ioctl_data_kernel.wIndex > 0xFFFF) {
-			dev_err(&client->dev, "Invalid I2C register address: 0x%x\n",
-				ioctl_data_kernel.wIndex);
-			return -EINVAL;
-		}
-
-		dev_info(&client->dev, "rs300 ioctl: cmd=%d reg=0x%x len=%u\n",
-			 cmd, ioctl_data_kernel.wIndex, ioctl_data_kernel.wLength);
+	/* SECURITY FIX: Validate data pointer */
+	if (ioctl_data_kernel.data == NULL) {
+		dev_err(&client->dev, "NULL data pointer in ioctl\n");
+		return -EINVAL;
 	}
+
+	/* SECURITY FIX: Validate transfer length to prevent integer overflow */
+	if (ioctl_data_kernel.wLength == 0 ||
+	    ioctl_data_kernel.wLength > MAX_I2C_TRANSFER_SIZE) {
+		dev_err(&client->dev,
+			"Invalid I2C transfer length: %u (max %d)\n",
+			ioctl_data_kernel.wLength, MAX_I2C_TRANSFER_SIZE);
+		return -EINVAL;
+	}
+
+	/* SECURITY FIX: Validate register address */
+	if (ioctl_data_kernel.wIndex > 0xFFFF) {
+		dev_err(&client->dev, "Invalid I2C register address: 0x%x\n",
+			ioctl_data_kernel.wIndex);
+		return -EINVAL;
+	}
+
+	dev_info(&client->dev, "rs300 ioctl: cmd=%d reg=0x%x len=%u\n",
+		 cmd, ioctl_data_kernel.wIndex, ioctl_data_kernel.wLength);
 
 	switch (cmd) {
 	case CMD_GET:
@@ -700,7 +716,16 @@ static int rs300_set_test_pattern(struct rs300 *rs300, int value)
 	return 0;
 }
 
-///////////////////// TODO: Reduce repeditive code for functions that send commands to the camera ///////////////////////
+/*
+ * NOTE: Code duplication in command functions (2025-10-24)
+ *
+ * The functions below contain ~500 lines of repetitive I2C command execution code.
+ * Consolidation was attempted but ABANDONED due to mysterious kernel crashes when
+ * modifying rs300_send_command() signature (ARM64 ABI issue with 8+ parameters).
+ *
+ * RECOMMENDATION: Leave as-is. Working code > Pretty code in kernel drivers.
+ * See: .claude/lessons-learned/002-consolidation-kernel-crash.md
+ */
 
 /* Function to get the current brightness value from the camera */
 static int rs300_get_brightness(struct rs300 *rs300, int *brightness_value)
@@ -1386,6 +1411,175 @@ static int rs300_set_scene_mode(struct rs300 *rs300, int scene_mode_value)
     return rs300_send_command(rs300, 0x10, 0x04, 0x42, params, 1, 500);
 }
 
+/* Autoshutter control functions */
+static int rs300_set_autoshutter(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting autoshutter: %s", enable ? "ON" : "OFF");
+
+    /* Pack parameters: P1 = enable (0=off, 1=on) */
+    params[0] = enable ? 0x01 : 0x00;
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x41 */
+    return rs300_send_command(rs300, 0x10, 0x02, 0x41, params, 1, 500);
+}
+
+static int rs300_get_autoshutter(struct rs300 *rs300, int *value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+    u8 result_buffer[18];
+    int ret;
+
+    dev_info(&client->dev, "Getting autoshutter state");
+
+    /* Pack parameters: P9=0x01, Len=0x0001 */
+    params[8] = 0x01;  /* P9 = 0x01 */
+    /* Len field is in bytes 12-13, but rs300_send_command handles this */
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x81 */
+    ret = rs300_send_command(rs300, 0x10, 0x02, 0x81, params, 9, 500);
+    if (ret < 0) {
+        dev_err(&client->dev, "Failed to get autoshutter state: %d", ret);
+        return ret;
+    }
+
+    /* Read result from camera (register 0x1d00 contains the result) */
+    ret = read_regs(client, 0x1d00, result_buffer, 18);
+    if (ret < 0) {
+        dev_err(&client->dev, "Failed to read autoshutter result: %d", ret);
+        return ret;
+    }
+
+    /* Extract result from buffer (P1 contains the state) */
+    *value = result_buffer[4];  /* P1 is at byte 4 */
+
+    dev_info(&client->dev, "Autoshutter state: %s", *value ? "ON" : "OFF");
+
+    return 0;
+}
+
+static int rs300_set_autoshutter_params(struct rs300 *rs300, int param_type, int value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting autoshutter param type %d to value %d",
+             param_type, value);
+
+    /* Validate parameter type */
+    if (param_type < 0 || param_type > 2) {
+        dev_err(&client->dev, "Invalid parameter type: %d (valid range: 0-2)",
+                param_type);
+        return -EINVAL;
+    }
+
+    /* Pack parameters:
+     * P1[0] = param_type (0=temp threshold, 1=min interval, 2=max interval)
+     * P1[2:1] = value (16-bit little-endian)
+     */
+    params[0] = param_type;
+    params[1] = value & 0xFF;        /* Low byte */
+    params[2] = (value >> 8) & 0xFF; /* High byte */
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x42 */
+    return rs300_send_command(rs300, 0x10, 0x02, 0x42, params, 3, 500);
+}
+
+/* Camera sleep/wake control functions */
+static int rs300_set_sleep(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting camera sleep: %s", enable ? "ON" : "OFF");
+
+    /* Para1: 0x01 = sleep, 0x00 = wake */
+    params[0] = enable ? 0x01 : 0x00;
+
+    /* Command: Class=0x10, Module=0x10, SubCmd=0x48
+     * After sleeping, video freezes and camera only responds to wake-up command.
+     */
+    return rs300_send_command(rs300, 0x10, 0x10, 0x48, params, 1, 500);
+}
+
+static int rs300_get_sleep(struct rs300 *rs300, int *value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    u8 result_buffer[18];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Getting camera sleep state");
+
+    /* Build GET command: Class=0x10, Module=0x10, SubCmd=0x88 */
+    cmd_buffer[0] = 0x10;
+    cmd_buffer[1] = 0x10;
+    cmd_buffer[2] = 0x88;
+    memset(&cmd_buffer[3], 0x00, 9);
+    cmd_buffer[12] = 0x01;  /* Response length = 1 byte */
+    cmd_buffer[13] = 0x00;
+    cmd_buffer[14] = 0x00;
+    cmd_buffer[15] = 0x00;
+
+    /* Calculate CRC */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    cmd_buffer[16] = crc & 0xFF;
+    cmd_buffer[17] = (crc >> 8) & 0xFF;
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write get sleep command: %d", ret);
+        return ret;
+    }
+
+    /* Poll for completion */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read command status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+
+        if (is_busy) {
+            retry_count++;
+            continue;
+        }
+
+        if (has_failed) {
+            dev_err(&client->dev, "Get sleep command failed");
+            return -EIO;
+        }
+
+        /* Read response from 0x1d00 */
+        ret = read_regs(client, 0x1d00, result_buffer, sizeof(result_buffer));
+        if (ret) {
+            dev_err(&client->dev, "Failed to read sleep status result: %d", ret);
+            return ret;
+        }
+
+        /* Sleep state is in byte 5 of response: 0x00=working, 0x01=sleeping */
+        *value = result_buffer[5];
+        dev_info(&client->dev, "Camera sleep state: %d (0=awake, 1=asleep)", *value);
+
+        return 0;
+    }
+
+    dev_err(&client->dev, "Get sleep command timeout");
+    return -ETIMEDOUT;
+}
+
 static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
 {
     struct rs300 *rs300 =
@@ -1436,6 +1630,22 @@ static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
         break;
     case V4L2_CID_CUSTOM_BASE + 7:  /* Output Mode */
         ret = rs300_set_output_mode(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 8:  /* Autoshutter enable/disable */
+        ret = rs300_set_autoshutter(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 9:  /* Autoshutter temperature threshold */
+        ret = rs300_set_autoshutter_params(rs300, 0, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 10:  /* Autoshutter min interval */
+        ret = rs300_set_autoshutter_params(rs300, 1, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 11:  /* Autoshutter max interval */
+        ret = rs300_set_autoshutter_params(rs300, 2, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 12:  /* Camera sleep */
+        dev_info(&client->dev, "Setting camera sleep: %s", ctrl->val ? "ON" : "OFF");
+        ret = rs300_set_sleep(rs300, ctrl->val);
         break;
     default:
         dev_err(&client->dev, "Invalid control %d", ctrl->id);
@@ -2334,6 +2544,61 @@ static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .def = 50,
 };
 
+static const struct v4l2_ctrl_config autoshutter_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 8,
+    .name = "Auto Shutter",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,  /* BOOLEAN needs step=1 (unlike BUTTON which uses step=0) */
+    .def = 0,  /* Off by default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_temp_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 9,
+    .name = "Auto Shutter Temperature",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 100,  /* 3.12°C maximum */
+    .step = 1,
+    .def = 50,   /* 1.56°C default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_min_interval_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 10,
+    .name = "Auto Shutter Min Interval",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 300,
+    .step = 1,
+    .def = 1,    /* 1 second default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_max_interval_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 11,
+    .name = "Auto Shutter Max Interval",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 600,
+    .step = 1,
+    .def = 120,  /* 120 seconds default */
+};
+
+static const struct v4l2_ctrl_config camera_sleep_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 12,
+    .name = "Camera Sleep",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 0,  /* Awake by default */
+};
+
 static const struct v4l2_ctrl_config output_mode_ctrl = {
     .ops = &rs300_ctrl_ops,
     .id = V4L2_CID_CUSTOM_BASE + 7,
@@ -2359,7 +2624,7 @@ static int rs300_init_controls(struct rs300 *rs300)
     dev_info(&client->dev, "Initializing controls");
 
     ctrl_hdlr = &rs300->ctrl_handler;
-    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 12);
+    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 17);
     if (ret) {
         dev_err(&client->dev, "Failed to init ctrl handler: %d", ret);
         return ret;
@@ -2408,6 +2673,11 @@ static int rs300_init_controls(struct rs300 *rs300)
     rs300->spatial_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &spatial_nr_ctrl, NULL);
     rs300->temporal_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &temporal_nr_ctrl, NULL);
     rs300->output_mode = v4l2_ctrl_new_custom(ctrl_hdlr, &output_mode_ctrl, NULL);
+    rs300->autoshutter = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_ctrl, NULL);
+    rs300->autoshutter_temp = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_temp_ctrl, NULL);
+    rs300->autoshutter_min_interval = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_min_interval_ctrl, NULL);
+    rs300->autoshutter_max_interval = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_max_interval_ctrl, NULL);
+    rs300->camera_sleep = v4l2_ctrl_new_custom(ctrl_hdlr, &camera_sleep_ctrl, NULL);
 
     /* Check for errors */
     if (ctrl_hdlr->error) {
