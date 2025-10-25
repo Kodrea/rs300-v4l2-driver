@@ -10,7 +10,7 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 **Architecture**: Linux kernel driver via MIPI CSI-2 + I2C
 **Platform**: Raspberry Pi 5 (BCM2712/RP1-CFE)
 **Status**: ✅ Beta - Security fixes applied, production testing recommended
-**Files**: 56 files, ~24,600 lines total (including security audit)
+**Files**: 61 documentation files (33 root, 15 docs/, 13 .claude/), ~26,000 lines total
 
 ## ✅ Security Fixes Applied (2025-10-22)
 
@@ -44,7 +44,7 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 ## File Organization Principle
 
 **Professional Documentation System**:
-- **docs/** - Organized user & contributor guides (12 files, ~4,900 lines)
+- **docs/** - Organized user & contributor guides (15 files, ~5,300 lines)
 - **Root** - Technical deep-dives (DRIVER_ANALYSIS.md, I2C_PROTOCOL.md, etc.)
 
 **Layered Access**:
@@ -56,7 +56,10 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 
 | Task | Start Here | Time |
 |------|-----------|------|
+| **🚀 NEW SESSION: Read first** | [SESSION_STATE.md](SESSION_STATE.md) | 1min |
 | **Check project status** | [START_HERE.md](START_HERE.md) | 30s |
+| **Session handoff guide** | [SESSION_HANDOFF_TEMPLATE.md](SESSION_HANDOFF_TEMPLATE.md) | 5min |
+| **Update documentation** | `/update-docs` | 2min |
 | **⚠️ Camera quirks & workarounds** | [~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) | 5min |
 | **✅ Security audit & fixes** | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | 15min |
 | **Install the driver** | [docs/getting-started/](docs/getting-started/) | 10min |
@@ -79,7 +82,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 **Purpose**: Installation, usage, contribution
 **When**: First-time setup, learning to use the camera, contributing
 
-**NEW: Professional docs/ Structure** (12 files, ~4,900 lines)
+**NEW: Professional docs/ Structure** (15 files, ~5,300 lines)
 
 **[docs/README.md](docs/README.md)** - Documentation hub with complete navigation
 
@@ -357,8 +360,9 @@ Problem Occurs
 
 4. Make Changes
    └─► Follow existing patterns (see DRIVER_ANALYSIS.md Section 3.3)
-   └─► Consider refactoring (Section 7.2: ~500 lines of duplicate code)
+   └─► ⚠️ DO NOT modify function signatures (see lessons-learned/002)
    └─► Match existing error handling
+   └─► Accept code duplication (see DRIVER_ANALYSIS.md Section 7.2)
 
 5. Test Thoroughly
    └─► ./test_controls.sh
@@ -436,6 +440,126 @@ Problem Occurs
 
 ---
 
+## Session Handoff System
+
+This project uses a comprehensive documentation system for seamless continuity between Claude Code sessions.
+
+### File Roles
+
+**For AI Session Handoff**:
+- **SESSION_STATE.md** (AI-optimized): Machine-readable current state
+  - In-progress work with task status
+  - Blockers and open questions
+  - Recent decisions with rationale
+  - Test validation status
+  - Quick context summary for new sessions
+
+**For Human Readers**:
+- **START_HERE.md** (human-readable): Informal project status overview
+- **SESSION_HANDOFF_TEMPLATE.md**: Checklists for starting/ending sessions
+- **DOC_MAINTENANCE.md**: Guidelines for keeping docs current
+
+**Session History**:
+- **.claude/sessions/** directory: Brief notes from each session (10-20 lines)
+  - Format: YYYY-MM-DD_HHMM.md
+  - Searchable archive of what was done when
+
+### Session Startup Protocol (New Claude Session)
+
+**Required Reading Order** (2-3 minutes):
+
+1. **SESSION_STATE.md** (1 minute) - Read "Quick Context" section first, then:
+   - In-Progress Work → What's half-done?
+   - Blockers & Questions → What's stuck?
+   - Test & Validation Status → What's verified?
+   - Recent Decisions → Why were things done this way?
+
+2. **START_HERE.md** (30 seconds) - Human-readable status
+   - Current Phase
+   - Key file locations
+   - Quick commands
+
+3. **CLAUDE.md sections as needed** (5-10 minutes) - Navigate to relevant areas
+   - Use Quick Navigation table
+   - Read task-specific sections only
+
+**Quick Start Command**:
+```bash
+# Recommended first action in new session
+cat SESSION_STATE.md | head -40  # Read quick context + current work
+```
+
+### Session End Protocol
+
+**Before Ending Session**:
+
+1. **Run /update-docs** (automatic before commits)
+   - Updates SESSION_STATE.md with current git status
+   - Generates brief session note in .claude/sessions/
+   - Validates documentation links
+   - Reports documentation health
+
+2. **Commit work** (if applicable)
+   ```bash
+   git add [files]
+   git commit -m "descriptive message"
+   ```
+
+3. **Manual updates** (if /update-docs missed something):
+   - Update SESSION_STATE.md "In-Progress Work" if tasks half-done
+   - Add blockers to "Blockers & Questions" if stuck
+   - Note decisions in "Recent Decisions" if important choices made
+
+**See SESSION_HANDOFF_TEMPLATE.md for complete checklists**
+
+### /update-docs Command
+
+**Purpose**: Automated documentation maintenance
+
+**What It Does**:
+- ✅ Counts documentation files, updates CLAUDE.md if needed
+- ✅ Updates SESSION_STATE.md with current git status
+- ✅ Validates all documentation links (checks files exist)
+- ✅ Detects stale information (old timestamps, TODOs)
+- ✅ Generates session note in .claude/sessions/
+- ✅ Reports documentation health (GREEN/YELLOW/RED)
+
+**When to Run**:
+- Before git commits (automatic via pre-commit hook recommended)
+- Before ending a session
+- After major changes (new features, bug fixes, refactoring)
+- Periodically during long sessions (every 1-2 hours)
+
+**Usage**:
+```bash
+/update-docs
+```
+
+**See DOC_MAINTENANCE.md for complete maintenance guidelines**
+
+### Documentation Health Indicators
+
+**GREEN** (Healthy):
+- ✅ /update-docs ran within 24 hours
+- ✅ No broken links
+- ✅ File counts accurate
+- ✅ Test results current
+
+**YELLOW** (Needs Attention):
+- ⚠️ /update-docs last ran 2-7 days ago
+- ⚠️ 1-3 broken links
+- ⚠️ Minor staleness
+
+**RED** (Critical):
+- ❌ /update-docs not run in 7+ days
+- ❌ Multiple broken links (4+)
+- ❌ Major file count discrepancies
+- ❌ Test results 1+ month old
+
+**Action**: If RED, run /update-docs and fix issues before continuing feature work.
+
+---
+
 ## AI Assistant Guidance
 
 ### Context Window Optimization
@@ -508,12 +632,20 @@ When information conflicts or authoritative answer needed:
 
 **Patterns to Follow**:
 - All camera commands follow same structure (see DRIVER_ANALYSIS.md Section 3.3)
-- Consider refactoring opportunity (Section 7.2: helper function could reduce 500→150 lines)
 - Match existing error handling patterns
 - Maintain debug logging style (dev_info/dev_err)
+- **Accept code duplication** - refactoring is risky (see Section 7.2)
+
+**Critical Rules to Avoid Kernel Crashes**:
+- ❌ **NEVER modify existing function signatures** (especially adding parameters)
+- ❌ **NEVER attempt code consolidation** of working command functions
+- ❌ **NEVER refactor** just for code aesthetics in kernel drivers
+- ✅ **Use parameter structs** if you must add function parameters
+- ✅ **Create new functions** rather than modifying existing ones
+- ✅ **See**: `.claude/lessons-learned/002-consolidation-kernel-crash.md`
 
 **Known Issues to Avoid** (from DRIVER_ANALYSIS.md Section 7):
-- ⚠️ ~500 lines of duplicate command execution code (consider helper function)
+- ⚠️ ~500 lines of duplicate command execution code (KEEP AS-IS - consolidation abandoned)
 - ⚠️ Zoom command uses hardcoded CRC (rs300.c:1486-1487) instead of calculation
 - ⚠️ Mode switching requires driver reload (runtime switching not implemented)
 
@@ -554,18 +686,28 @@ When information conflicts or authoritative answer needed:
 4. Cross-reference: I2C_PROTOCOL.md for start_regs command structure
 ```
 
-**Task: "Optimize driver performance (reduce code duplication)"**
+**Task: ~~"Optimize driver performance (reduce code duplication)"~~** ❌ **DO NOT ATTEMPT**
 ```
-1. TROUBLESHOOTING.md → Section 8 (Performance Issues)
-   └─ Check if performance is actually a problem
-2. DRIVER_ANALYSIS.md → Section 7.2 (Code Duplication Analysis)
-   └─ Understand the 500-line duplication issue
-3. See proposed refactoring: rs300_send_command() helper function
-4. Implementation plan:
-   - Create helper function based on common pattern
-   - Migrate one command (e.g., brightness) to verify
-   - Migrate remaining 10+ commands
-   - Test with ./test_controls.sh
+⚠️ CODE CONSOLIDATION ABANDONED (2025-10-24)
+
+This task caused mysterious kernel crashes and is NO LONGER RECOMMENDED.
+
+What happened:
+1. Attempted to enhance rs300_send_command() with result reading
+2. Caused kernel BUG at media_gobj_create during probe
+3. Function wasn't even called during probe - mystery bug
+4. After investigation, decided to abandon consolidation
+
+Why it failed:
+- ARM64 ABI issue with 8+ function parameters
+- Compiler optimization interaction with kernel subsystems
+- Indirect/unknown effect on driver probe sequence
+
+Recommendation:
+- DO NOT attempt code consolidation
+- Accept the ~500 lines of duplicate code
+- "Working code > Pretty code" for kernel drivers
+- See: .claude/lessons-learned/002-consolidation-kernel-crash.md
 ```
 
 ### Response Strategy Guidelines
@@ -754,3 +896,4 @@ dtoverlay=rs300
 - Total: 81 lines → 380 lines (+299 lines, +369%)
 
 **Purpose**: Transform CLAUDE.md into intelligent navigation and documentation architecture system.
+- dont say production ready ever
