@@ -22,12 +22,12 @@
 # Trigger on media device add event, check for RS300 entity in topology
 ACTION=="add", SUBSYSTEM=="media", KERNEL=="media[0-9]*", \
   PROGRAM="/bin/sh -c 'media-ctl -d /dev/%k --print-topology 2>/dev/null | grep -q \"rs300 10-003c\"'", \
-  RUN+="/bin/bash -c 'sleep 2 && /usr/local/bin/rs300-configure --non-interactive > /var/log/rs300-udev-config.log 2>&1'"
+  RUN+="/bin/bash -c 'sleep 2 && /home/cody/rs300-v4l2-driver/configure_media.sh --non-interactive > /var/log/rs300-udev-config.log 2>&1'"
 
 # Rule 2: Alternative trigger on I2C device detection (RS300 on bus 10, address 0x3c)
 # This provides a secondary trigger point earlier in the initialization sequence
 ACTION=="add", SUBSYSTEM=="i2c", ATTR{name}=="rs300*", \
-  RUN+="/bin/bash -c 'sleep 3 && /usr/local/bin/rs300-configure --non-interactive > /var/log/rs300-udev-config-i2c.log 2>&1'"
+  RUN+="/bin/bash -c 'sleep 3 && /home/cody/rs300-v4l2-driver/configure_media.sh --non-interactive > /var/log/rs300-udev-config-i2c.log 2>&1'"
 
 # Debug: Set environment variable to enable verbose logging
 # Uncomment the line below to enable debug output in udev logs

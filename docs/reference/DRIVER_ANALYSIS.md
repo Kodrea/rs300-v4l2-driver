@@ -434,7 +434,7 @@ cmd[6] = fps;   // 25, 30, 50, or 60
 6. Parse status (busy/failed/error_code)
 7. Return 0/-EIO/-ETIMEDOUT
 
-**Refactoring Opportunity**: Could be consolidated into single `rs300_send_command()` helper function (see Section 7.2).
+**Refactoring Opportunity**: ~~Could be consolidated into single `rs300_send_command()` helper function~~ **[ABANDONED - see Section 7.2 for why]**.
 
 ---
 
@@ -912,19 +912,23 @@ Currently requires:
 
 ### 7.2 Code Duplication Analysis
 
+⚠️ **CONSOLIDATION ABANDONED (2025-10-24)** - See [lessons-learned/002-consolidation-kernel-crash.md](.claude/lessons-learned/002-consolidation-kernel-crash.md)
+
 **~500 lines of repetitive command execution code** across these functions:
-- `rs300_get_brightness()` - 132 lines (rs300.c:502-633)
-- `rs300_set_dde()` - 70 lines (rs300.c:635-704)
-- `rs300_set_yuv_format()` - 71 lines (rs300.c:706-776)
-- `rs300_set_contrast()` - 70 lines (rs300.c:778-847)
-- `rs300_set_spatial_nr()` - 70 lines (rs300.c:849-918)
-- `rs300_set_temporal_nr()` - 70 lines (rs300.c:920-989)
-- `rs300_get_colormap()` - 88 lines (rs300.c:991-1078)
-- `rs300_set_colormap()` - 133 lines (rs300.c:1081-1213)
-- `rs300_shutter_cal()` - 110 lines (rs300.c:1215-1325)
-- `rs300_brightness_correct()` - 129 lines (rs300.c:1327-1456)
-- `rs300_set_zoom()` - 82 lines (rs300.c:1458-1539)
-- `rs300_set_scene_mode()` - 84 lines (rs300.c:1541-1624)
+- `rs300_get_brightness()` - 132 lines (rs300.c:730-861)
+- `rs300_set_dde()` - 70 lines (rs300.c:757-826)
+- `rs300_set_yuv_format()` - 71 lines (rs300.c:857-927)
+- `rs300_set_contrast()` - 70 lines (rs300.c:929-998)
+- `rs300_set_spatial_nr()` - 70 lines (rs300.c:1000-1069)
+- `rs300_set_temporal_nr()` - 70 lines (rs300.c:1071-1140)
+- `rs300_get_colormap()` - 88 lines (rs300.c:1096-1183)
+- `rs300_set_colormap()` - 133 lines (rs300.c:1185-1317)
+- `rs300_shutter_cal()` - 110 lines (rs300.c:1319-1428)
+- `rs300_brightness_correct()` - 129 lines (rs300.c:1238-1367)
+- `rs300_set_zoom()` - 82 lines (rs300.c:1369-1450)
+- `rs300_set_scene_mode()` - 84 lines (rs300.c:1393-1476)
+
+**Note**: Line numbers updated to current baseline after abandoning consolidation.
 
 **Common Pattern** (93% identical code):
 ```c
@@ -1017,6 +1021,29 @@ static int rs300_send_command(struct rs300 *rs300,
 ```
 
 **Estimated savings**: 500 lines → ~150 lines (70% reduction)
+
+---
+
+**⚠️ WHY THIS CONSOLIDATION WAS NOT IMPLEMENTED**
+
+Attempted consolidation on 2025-10-24 caused mysterious kernel crashes during driver probe:
+- **Bug**: kernel BUG at `drivers/media/mc/mc-entity.c:146`
+- **Symptom**: Modifying `rs300_send_command()` signature (adding 2 parameters) caused crashes in media controller subsystem
+- **Mystery**: Function is NOT called during probe, yet signature change triggers crash
+- **Root Cause**: Likely ARM64 ABI or compiler optimization issue with 8+ parameters
+- **Decision**: ABANDONED after investigation - baseline is stable, bug is mysterious, consolidation is non-critical
+
+**Lessons Learned**:
+1. Don't modify function signatures in kernel drivers (especially adding parameters)
+2. Use parameter structs instead of adding parameters
+3. Code duplication is sometimes acceptable in stable kernel code
+4. "Working code > Pretty code" for production drivers
+
+**See**: `.claude/lessons-learned/002-consolidation-kernel-crash.md` for complete analysis.
+
+**Recommendation**: Leave code as-is. The duplication is acceptable given the risks.
+
+---
 
 ### 7.3 Error Handling Consistency
 

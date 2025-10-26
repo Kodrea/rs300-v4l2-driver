@@ -1,5 +1,9 @@
 # RS300 Driver - Current Status & Next Actions
 
+> **🤖 For AI session handoff**, see [SESSION_STATE.md](../.claude/SESSION_STATE.md) (machine-readable state)
+>
+> **📖 This file** is human-readable project status overview
+
 **Last Updated**: 2025-10-22 10:50 EDT
 **Current Phase**: Testing Complete - Production Ready
 **Status**: ✅ All tests passed - Driver validated and ready for production use

@@ -194,7 +194,7 @@ Run `./configure_media.sh` after every reboot.
 
 ### Automatic Methods
 
-See [BOOT_CONFIGURATION.md](../../BOOT_CONFIGURATION.md) for three automation options:
+See [BOOT_CONFIGURATION.md](../reference/BOOT_CONFIGURATION.md) for three automation options:
 
 1. **Systemd Service**: Runs at boot (recommended for single user)
 2. **Udev Rule**: Runs when camera detected (recommended for dynamic use)
@@ -332,7 +332,7 @@ media-ctl -V "'csi2':4 [fmt:UYVY8_1X16/640x512 field:none colorspace:smpte170m x
 v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY,colorspace=smpte170m,xfer=709,ycbcr=601,quantization=lim-range
 ```
 
-**See**: [RS300_Media_Pipeline_Guide.md](../../RS300_Media_Pipeline_Guide.md) for complete pipeline documentation
+**See**: [RS300_Media_Pipeline_Guide.md](../reference/RS300_Media_Pipeline_Guide.md) for complete pipeline documentation
 
 ## Next Steps
 
@@ -341,7 +341,7 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY,co
 1. **[First Thermal Capture →](first-capture.md)** - Quick start guide
 2. **[Basic Usage →](../guides/basic-usage.md)** - Streaming commands
 3. **[Camera Controls →](../guides/camera-controls.md)** - Adjust settings
-4. **[Boot Automation →](../../BOOT_CONFIGURATION.md)** - Auto-configure on boot
+4. **[Boot Automation →](../reference/BOOT_CONFIGURATION.md)** - Auto-configure on boot
 
 ## Getting Help
 

@@ -1,0 +1,16 @@
+# Kernel module build artifacts
+*.o
+*.ko
+*.mod
+*.mod.c
+*.symvers
+*.order
+.*.cmd
+.tmp_versions/
+
+# Test logs
+*.log
+
+# Editor backups
+*.bak
+*~

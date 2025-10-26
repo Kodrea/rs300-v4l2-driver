@@ -12,8 +12,8 @@ Complete documentation hub for the RS300 thermal camera driver project.
 | **Stream thermal video** | [Basic Usage](guides/basic-usage.md) | 5 min |
 | **Adjust camera settings** | [Camera Controls](guides/camera-controls.md) | 10 min |
 | **Buy hardware** | [Purchasing Guide](hardware/purchasing-guide.md) | 5 min |
-| **Fix a problem** | [Troubleshooting](../TROUBLESHOOTING.md) | Varies |
-| **Understand the driver** | [Driver Analysis](../DRIVER_ANALYSIS.md) | 30 min |
+| **Fix a problem** | [Troubleshooting](reference/TROUBLESHOOTING.md) | Varies |
+| **Understand the driver** | [Driver Analysis](reference/DRIVER_ANALYSIS.md) | 30 min |
 | **Contribute code** | [Contributing](contributing/CONTRIBUTING.md) | 15 min |
 
 ---
@@ -98,9 +98,9 @@ v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=colormap=3
 
 | Document | Description | Time | Audience |
 |----------|-------------|------|----------|
-| **[Media Pipeline Guide](../RS300_Media_Pipeline_Guide.md)** | Media controller concepts & configuration | 15 min | Pi 5 users |
-| **[ISP Integration Guide](../RASPBERRY_PI_ISP_GUIDE.md)** | Hardware ISP processing with PiSP Backend | 30 min | Advanced Pi 5 |
-| **[Boot Configuration](../BOOT_CONFIGURATION.md)** | Auto-start media pipeline at boot | 10 min | Pi 5 users |
+| **[Media Pipeline Guide](reference/RS300_Media_Pipeline_Guide.md)** | Media controller concepts & configuration | 15 min | Pi 5 users |
+| **[ISP Integration Guide](reference/RASPBERRY_PI_ISP_GUIDE.md)** | Hardware ISP processing with PiSP Backend | 30 min | Advanced Pi 5 |
+| **[Boot Configuration](reference/BOOT_CONFIGURATION.md)** | Auto-start media pipeline at boot | 10 min | Pi 5 users |
 
 **Pi 5 key differences**:
 - Uses RP1-CFE (not Unicam)
@@ -112,14 +112,14 @@ v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=colormap=3
 
 | Document | Description | Time | Audience |
 |----------|-------------|------|----------|
-| **[Driver Analysis](../DRIVER_ANALYSIS.md)** | Complete architecture, code structure, internals | 45 min | Developers |
-| **[I2C Protocol Specification](../I2C_PROTOCOL.md)** | 18-byte packet structure, CRC, commands | 20 min | Developers |
-| **[Quick Reference](../DEV_QUICK_REFERENCE.md)** | Command cheat sheet & code locations | 5 min | Developers |
+| **[Driver Analysis](reference/DRIVER_ANALYSIS.md)** | Complete architecture, code structure, internals | 45 min | Developers |
+| **[I2C Protocol Specification](reference/I2C_PROTOCOL.md)** | 18-byte packet structure, CRC, commands | 20 min | Developers |
+| **[Quick Reference](reference/DEV_QUICK_REFERENCE.md)** | Command cheat sheet & code locations | 5 min | Developers |
 
 **For developers**:
-- Want to modify the driver? Start with [Driver Analysis](../DRIVER_ANALYSIS.md)
-- Adding I2C commands? See [I2C Protocol](../I2C_PROTOCOL.md)
-- Quick command lookup? Use [Quick Reference](../DEV_QUICK_REFERENCE.md)
+- Want to modify the driver? Start with [Driver Analysis](reference/DRIVER_ANALYSIS.md)
+- Adding I2C commands? See [I2C Protocol](reference/I2C_PROTOCOL.md)
+- Quick command lookup? Use [Quick Reference](reference/DEV_QUICK_REFERENCE.md)
 
 ---
 
@@ -129,7 +129,7 @@ v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl=colormap=3
 
 | Document | Description | Time | Audience |
 |----------|-------------|------|----------|
-| **[Troubleshooting Guide](../TROUBLESHOOTING.md)** | Complete debug guide with decision trees | Varies | All users |
+| **[Troubleshooting Guide](reference/TROUBLESHOOTING.md)** | Complete debug guide with decision trees | Varies | All users |
 
 **Quick diagnostics**:
 ```bash
@@ -199,24 +199,24 @@ media-ctl -p | grep ENABLED
 ### I want to build an application
 
 1. **[Basic Usage](guides/basic-usage.md)** - Streaming methods
-2. **[Quick Reference](../DEV_QUICK_REFERENCE.md)** - Commands
+2. **[Quick Reference](reference/DEV_QUICK_REFERENCE.md)** - Commands
 3. **[Camera Controls](guides/camera-controls.md)** - All settings
 4. **[OpenCV Examples](guides/basic-usage.md#processing-and-analysis)** - Python integration
 5. **[GStreamer Pipelines](guides/basic-usage.md#streaming-methods)** - Video processing
 
 ### I want to understand the system
 
-1. **[Driver Analysis](../DRIVER_ANALYSIS.md)** - Architecture overview
-2. **[I2C Protocol](../I2C_PROTOCOL.md)** - Communication details
-3. **[Media Pipeline Guide](../RS300_Media_Pipeline_Guide.md)** - Pi 5 pipeline
-4. **[ISP Guide](../RASPBERRY_PI_ISP_GUIDE.md)** - Hardware acceleration
+1. **[Driver Analysis](reference/DRIVER_ANALYSIS.md)** - Architecture overview
+2. **[I2C Protocol](reference/I2C_PROTOCOL.md)** - Communication details
+3. **[Media Pipeline Guide](reference/RS300_Media_Pipeline_Guide.md)** - Pi 5 pipeline
+4. **[ISP Guide](reference/RASPBERRY_PI_ISP_GUIDE.md)** - Hardware acceleration
 
 ### I want to contribute
 
 1. **[Roadmap](contributing/ROADMAP.md)** - See what's planned
 2. **[Contributing Guide](contributing/CONTRIBUTING.md)** - Development setup
-3. **[Driver Analysis](../DRIVER_ANALYSIS.md)** - Understand the code
-4. **[Quick Reference](../DEV_QUICK_REFERENCE.md)** - Code locations
+3. **[Driver Analysis](reference/DRIVER_ANALYSIS.md)** - Understand the code
+4. **[Quick Reference](reference/DEV_QUICK_REFERENCE.md)** - Code locations
 
 ---
 
@@ -255,7 +255,7 @@ media-ctl -p | grep ENABLED
 - `FILE_INVENTORY.md` - Complete file listing
 - `CLAUDE.md` - AI assistant navigation guide
 
-**See**: [FILE_INVENTORY.md](../FILE_INVENTORY.md) for complete project file listing
+**See**: [FILE_INVENTORY.md](reference/FILE_INVENTORY.md) for complete project file listing
 
 ---
 
@@ -279,7 +279,7 @@ media-ctl -p | grep ENABLED
 - Review decision trees and tables
 
 **Example**: "How do I debug I2C timeouts?"
-→ Read [Troubleshooting](../TROUBLESHOOTING.md) → I2C section → Follow procedure
+→ Read [Troubleshooting](reference/TROUBLESHOOTING.md) → I2C section → Follow procedure
 
 ### Deep Level (30-60 minutes)
 **Good for**: Code modifications, system integration
@@ -289,7 +289,7 @@ media-ctl -p | grep ENABLED
 - Cross-reference between documents
 
 **Example**: "I need to add a new V4L2 control"
-→ Read [Driver Analysis](../DRIVER_ANALYSIS.md) Section 4 → [I2C Protocol](../I2C_PROTOCOL.md) → Code
+→ Read [Driver Analysis](reference/DRIVER_ANALYSIS.md) Section 4 → [I2C Protocol](reference/I2C_PROTOCOL.md) → Code
 
 ---
 
@@ -312,8 +312,8 @@ For developers building applications with RS300.
 2. [First Capture](getting-started/first-capture.md) - 5 min
 3. [Basic Usage](guides/basic-usage.md) (complete) - 30 min
 4. [Camera Controls](guides/camera-controls.md) (complete) - 30 min
-5. [Quick Reference](../DEV_QUICK_REFERENCE.md) - 15 min
-6. [Troubleshooting](../TROUBLESHOOTING.md) (skim) - 15 min
+5. [Quick Reference](reference/DEV_QUICK_REFERENCE.md) - 15 min
+6. [Troubleshooting](reference/TROUBLESHOOTING.md) (skim) - 15 min
 7. Examples & experimentation - 15 min
 
 **Outcome**: Can build applications using RS300 thermal camera
@@ -322,14 +322,14 @@ For developers building applications with RS300.
 For contributors modifying the driver code.
 
 1. [Installation Guide](getting-started/) - 10 min
-2. [Driver Analysis](../DRIVER_ANALYSIS.md) (complete) - 60 min
-3. [I2C Protocol](../I2C_PROTOCOL.md) (complete) - 30 min
-4. [Quick Reference](../DEV_QUICK_REFERENCE.md) - 10 min
+2. [Driver Analysis](reference/DRIVER_ANALYSIS.md) (complete) - 60 min
+3. [I2C Protocol](reference/I2C_PROTOCOL.md) (complete) - 30 min
+4. [Quick Reference](reference/DEV_QUICK_REFERENCE.md) - 10 min
 5. [Contributing Guide](contributing/CONTRIBUTING.md) - 20 min
-6. [Pi 5: Media Pipeline Guide](../RS300_Media_Pipeline_Guide.md) - 20 min
-7. [Pi 5: ISP Guide](../RASPBERRY_PI_ISP_GUIDE.md) - 30 min
+6. [Pi 5: Media Pipeline Guide](reference/RS300_Media_Pipeline_Guide.md) - 20 min
+7. [Pi 5: ISP Guide](reference/RASPBERRY_PI_ISP_GUIDE.md) - 30 min
 8. Code review (rs300.c) - 60-90 min
-9. [Troubleshooting](../TROUBLESHOOTING.md) - 30 min
+9. [Troubleshooting](reference/TROUBLESHOOTING.md) - 30 min
 
 **Outcome**: Understand driver architecture, ready to contribute code
 
@@ -393,7 +393,7 @@ For contributors modifying the driver code.
 
 1. **Check documentation** (you're in the right place!)
 2. **Search issues**: [GitHub Issues](https://github.com/Kodrea/rs300-v4l2-driver/issues)
-3. **Troubleshooting guide**: [TROUBLESHOOTING.md](../TROUBLESHOOTING.md)
+3. **Troubleshooting guide**: [TROUBLESHOOTING.md](reference/TROUBLESHOOTING.md)
 4. **Video tutorials**: [linktr.ee/kodrea](https://linktr.ee/kodrea)
 5. **Ask a question**: [Open an issue](https://github.com/Kodrea/rs300-v4l2-driver/issues/new)
 
