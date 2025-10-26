@@ -413,7 +413,7 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=brightness=75
 
 - 📖 [Full Documentation](../../)
 - 🐛 [Report Issues](https://github.com/Kodrea/rs300-v4l2-driver/issues)
-- ❓ [Troubleshooting Guide](../../TROUBLESHOOTING.md)
+- ❓ [Troubleshooting Guide](../reference/TROUBLESHOOTING.md)
 - 📺 [Video Tutorials](https://linktr.ee/kodrea)
 
 ---

@@ -3009,6 +3009,13 @@ static void rs300_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	rs300_free_controls(rs300);
 
+	/*
+	 * Disable regulators to ensure clean power state for module reload.
+	 * Without this, regulators remain enabled after rmmod, causing issues
+	 * when the module is reloaded without a reboot.
+	 */
+	regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
+	dev_info(&client->dev, "RS300 regulators disabled, driver removed\n");
 }
 
 static const struct i2c_device_id rs300_id[] = {

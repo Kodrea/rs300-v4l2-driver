@@ -441,13 +441,13 @@ Now that you've captured your first thermal image:
 1. **[Basic Usage Guide →](../guides/basic-usage.md)** - Learn more streaming methods
 2. **[Camera Controls Reference →](../guides/camera-controls.md)** - Complete control documentation
 3. **[Advanced Usage →](../../README.md#advanced-usage)** - ISP integration, boot automation
-4. **[Troubleshooting →](../../TROUBLESHOOTING.md)** - Detailed debugging guide
+4. **[Troubleshooting →](../reference/TROUBLESHOOTING.md)** - Detailed debugging guide
 
 ## Learning Resources
 
 - 📺 **[Video Tutorials](https://linktr.ee/kodrea)** - Visual walkthroughs
-- 📖 **[DEV_QUICK_REFERENCE.md](../../DEV_QUICK_REFERENCE.md)** - Command cheat sheet
-- 📖 **[DRIVER_ANALYSIS.md](../../DRIVER_ANALYSIS.md)** - Deep technical dive
+- 📖 **[DEV_QUICK_REFERENCE.md](../reference/DEV_QUICK_REFERENCE.md)** - Command cheat sheet
+- 📖 **[DRIVER_ANALYSIS.md](../reference/DRIVER_ANALYSIS.md)** - Deep technical dive
 - 🐛 **[GitHub Issues](https://github.com/Kodrea/rs300-v4l2-driver/issues)** - Community support
 
 ---

@@ -37,7 +37,7 @@ cd ~/rs300-v4l2-driver
 - Sets up complete pipeline
 - Tests streaming
 
-**Make it permanent**: See [BOOT_CONFIGURATION.md](../../BOOT_CONFIGURATION.md) for auto-start options.
+**Make it permanent**: See [BOOT_CONFIGURATION.md](../reference/BOOT_CONFIGURATION.md) for auto-start options.
 
 #### Manual Configuration (Advanced)
 
@@ -562,11 +562,11 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100
 
 - **[Camera Controls →](camera-controls.md)** - Adjust image settings
 - **[Advanced Topics →](../../)** - ISP integration, boot automation
-- **[Troubleshooting →](../../TROUBLESHOOTING.md)** - Detailed debugging
+- **[Troubleshooting →](../reference/TROUBLESHOOTING.md)** - Detailed debugging
 
 ---
 
 **See Also**:
-- [DEV_QUICK_REFERENCE.md](../../DEV_QUICK_REFERENCE.md) - Command cheat sheet
-- [RASPBERRY_PI_ISP_GUIDE.md](../../RASPBERRY_PI_ISP_GUIDE.md) - Hardware ISP processing
-- [RS300_Media_Pipeline_Guide.md](../../RS300_Media_Pipeline_Guide.md) - Media controller details
+- [DEV_QUICK_REFERENCE.md](../reference/DEV_QUICK_REFERENCE.md) - Command cheat sheet
+- [RASPBERRY_PI_ISP_GUIDE.md](../reference/RASPBERRY_PI_ISP_GUIDE.md) - Hardware ISP processing
+- [RS300_Media_Pipeline_Guide.md](../reference/RS300_Media_Pipeline_Guide.md) - Media controller details

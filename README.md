@@ -21,7 +21,7 @@ All critical and high-severity security vulnerabilities have been **FIXED**:
 - ✅ **CRITICAL**: Multi-camera race condition eliminated - global buffers converted to local variables
 - ✅ **HIGH**: All memory management issues fixed with NULL checks
 
-**See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
+**See [SECURITY_AUDIT.md](docs/reference/SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
 
 **Current Status**: Driver now suitable for production testing. Multi-camera setups safe.
 
@@ -36,7 +36,7 @@ The driver includes **retry logic** to handle intermittent camera hardware error
 - **Problem Solved**: Camera hardware occasionally reports error status 0x0e (~25% of stream starts), which triggered deadlocks in the upstream rp1-cfe driver
 - **Solution**: 3-attempt retry with exponential backoff (100ms, 200ms, 400ms)
 - **Results**: 100% success rate in single-camera testing (25/25 test streams), zero stuck processes
-- **Documentation**: See [ISSUE_SUMMARY_20251021.md](ISSUE_SUMMARY_20251021.md) and [UPSTREAM_BUG_REPORT.md](UPSTREAM_BUG_REPORT.md)
+- **Documentation**: See [ISSUE_SUMMARY_20251021.md](docs/meta/ISSUE_SUMMARY_20251021.md) and [UPSTREAM_BUG_REPORT.md](docs/meta/UPSTREAM_BUG_REPORT.md)
 
 **Combined with security fixes**: Driver now production-ready for testing and deployment.
 
@@ -120,95 +120,23 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 ## Installation
 
-### Prerequisites
-- Raspberry Pi with Raspbian/Raspberry Pi OS Bookworm (Bullseye not tested)
-- Linux headers installed
-- DKMS support
+**Choose your platform:**
 
-### Raspberry Pi 5 - Quick Setup (Recommended)
+- **Raspberry Pi 5**: [Complete Pi 5 Installation Guide](docs/getting-started/installation-pi5.md)
+- **Raspberry Pi 4**: [Complete Pi 4 Installation Guide](docs/getting-started/installation-pi4.md)
 
-**Pi 5 uses the new RP1-CFE camera system with media controller pipeline configuration.**
-
-Install dependencies:
+**Quick Start** (all platforms):
 ```bash
 sudo apt install raspberrypi-kernel-headers dkms git v4l-utils
-```
-
-Clone and build:
-```bash
-git clone git clone -b pi5-testing https://github.com/Kodrea/rs300-v4l2-driver.git
+git clone -b pi5-testing https://github.com/Kodrea/rs300-v4l2-driver.git
 cd rs300-v4l2-driver
-chmod +x setup.sh
 ./setup.sh
-```
-
-Add to config.txt:
-```bash
-sudo nano /boot/firmware/config.txt
-```
-Add these lines:
-```bash
-camera_auto_detect=0
-dtoverlay=rs300
-```
-
-Reboot and configure:
-```bash
-sudo reboot
-./configure_media.sh
-```
-
-The configuration script will:
-- Auto-detect your RS300 camera
-- Let you choose UYVY or YUYV format
-- Configure the media controller pipeline
-- Test streaming automatically
-
-**That's it! Your thermal camera should now be streaming at 60fps.**
-
-**Note:** The media configuration needs to run after every reboot. To automate this, see [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md) for systemd/udev setup options.
-
-### Raspberry Pi 4 - Manual Setup
-
-**Pi 4 uses the legacy Unicam driver system.**
-
-Install the needed headers:
-```bash
-sudo apt install raspberrypi-kernel-headers dkms git
-```
-
-MODIFY DRIVER BEFORE BUILDING.
-This will be improved soon so it can be set without modifying driver code 
-```c
-static int mode = 2; //0-640; 1-256; 2-384
-static int fps = 60; //256: 25/50fps, 384/640: 30/60fps  
-```
-
-Run the setup script:
-```bash
-cd /rs300-v4l2-driver
-# modify driver to select module
-sudo nano rs300.c
-chmod +x setup.sh
-./setup.sh
-```
-
-In your config.txt file add the overlay
-- For bookworm
-```bash
-sudo nano /boot/firmware/config.txt
-```
-
-Then Add
-```bash
-camera_auto_detect=0
-dtoverlay=rs300
-```
-
-Then reboot
-```bash
 sudo reboot
 ```
+
+**Pi 5 users**: Run `./configure_media.sh` after reboot to configure the media pipeline.
+
+See installation guides above for detailed platform-specific instructions.
 
 ## Usage
 
@@ -315,61 +243,15 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 
 ## Troubleshooting
 
-### Raspberry Pi 5 Troubleshooting
+**Top 3 Quick Fixes**:
 
-**Note**: Previous deadlock issue (error status 0x0e causing unkillable processes) **resolved** via retry logic as of October 2025. See [ISSUE_SUMMARY_20251021.md](ISSUE_SUMMARY_20251021.md) for details.
+1. **Driver not loading?** → Check: `lsmod | grep rs300` and `dmesg | grep rs300`
+2. **No video device (Pi 5)?** → Run: `./configure_media.sh` to configure media pipeline
+3. **I2C errors?** → Verify: `i2cdetect -y 10` (Pi 5) or `i2cdetect -y 1` (Pi 4)
 
-**1. Media Pipeline Issues**
-```bash
-# Check if driver loaded
-dmesg | grep rs300
-lsmod | grep rs300
+**Complete troubleshooting guide**: [TROUBLESHOOTING.md](docs/reference/TROUBLESHOOTING.md)
 
-# Verify camera detection
-./configure_media.sh
-
-# Check media controller topology
-media-ctl -p
-
-# Generate pipeline visualization
-python3 media-topology-visualizer.py --check-formats
-```
-
-**2. Format Issues**
-- Pi 5 only supports 16-bit packed formats (`YUYV8_1X16`, `UYVY8_1X16`)
-- 8-bit dual lane formats (`*8_2X8`) will cause "Format mismatch!" errors
-- Use `./configure_media.sh` to ensure proper format configuration
-
-**3. No Video Stream**
-```bash
-# Check I2C communication (should be bus 10 on Pi 5)
-i2cdetect -y 10
-
-# Verify media links are enabled
-media-ctl --print-topology | grep ENABLED
-
-# Test basic streaming
-v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=1
-```
-
-### Raspberry Pi 4 Troubleshooting
-
-**Common Issues and Solutions:**
-
-1. **Wrong resolution**: Make sure to set the stream to your modules resolution. By default the Unicam driver will have it as 640x480
-
-If experiencing issues:
-
-1. Check kernel messages: `dmesg | grep rs300`
-2. In a seperate terminal: `dmesg wH`
-3. Verify I2C connection: `i2c-detect -y 1`
-4. Check for device: `ls -la /dev/video*`
-5. I started getting a message that postinst wasn't running, but it's only needed for the first time or if changes to the device tree overlay are made
-
-```bash
-./setup.sh
-sudo sh /usr/src/rs300-0.0.1/dkms.postinst
-```
+**Note**: Previous deadlock issue (error 0x0e) resolved via retry logic. See archived docs for details.
 
 ## Current Status
 

@@ -525,7 +525,7 @@ v4l2-ctl -d $SUBDEV --set-ctrl=temporal_noise_reduction=50
 - **Default (50)**: General use
 
 **Pi 5 ISP Integration**:
-On Pi 5, hardware-accelerated temporal noise reduction is available via the PiSP Backend. See [RASPBERRY_PI_ISP_GUIDE.md](../../RASPBERRY_PI_ISP_GUIDE.md) for details.
+On Pi 5, hardware-accelerated temporal noise reduction is available via the PiSP Backend. See [RASPBERRY_PI_ISP_GUIDE.md](../reference/RASPBERRY_PI_ISP_GUIDE.md) for details.
 
 ---
 
@@ -649,11 +649,11 @@ cd ~/rs300-v4l2-driver
 ## Next Steps
 
 - **[Basic Usage →](basic-usage.md)** - Streaming and recording
-- **[Troubleshooting →](../../TROUBLESHOOTING.md)** - Debug guide
-- **[Quick Reference →](../../DEV_QUICK_REFERENCE.md)** - Command cheat sheet
+- **[Troubleshooting →](../reference/TROUBLESHOOTING.md)** - Debug guide
+- **[Quick Reference →](../reference/DEV_QUICK_REFERENCE.md)** - Command cheat sheet
 
 ---
 
 **See Also**:
-- [I2C Protocol Documentation](../../I2C_PROTOCOL.md) - Low-level command details
-- [Driver Analysis](../../DRIVER_ANALYSIS.md) - Control implementation (rs300.c:1626-1680)
+- [I2C Protocol Documentation](../reference/I2C_PROTOCOL.md) - Low-level command details
+- [Driver Analysis](../reference/DRIVER_ANALYSIS.md) - Control implementation (rs300.c:1626-1680)

@@ -1,3 +1,23 @@
+---
+requiredPermissions:
+  - "Bash(find:*)"
+  - "Bash(wc:*)"
+  - "Bash(cat:*)"
+  - "Bash(echo:*)"
+  - "Bash(grep:*)"
+  - "Bash(git branch:*)"
+  - "Bash(git log:*)"
+  - "Bash(git status:*)"
+  - "Bash(git diff:*)"
+  - "Bash(date:*)"
+  - "Bash(ls:*)"
+  - "Bash(cp:*)"
+  - "Bash(cut:*)"
+  - "Bash(sort:*)"
+  - "Edit(.claude/SESSION_STATE.md)"
+  - "Write(.claude/sessions/*.md)"
+---
+
 # Update Documentation System
 
 Automatically maintain project documentation, validate links, update file counts, refresh session state, and generate session notes for seamless handoff between Claude Code sessions.
@@ -38,8 +58,9 @@ cat /tmp/docs_count.txt
 find .claude/ -name "*.md" -type f 2>/dev/null | wc -l > /tmp/claude_count.txt
 cat /tmp/claude_count.txt
 
-# Total lines in root .md files
-cat *.md 2>/dev/null | wc -l
+# README.md line count (only .md file in root)
+echo "README.md lines:"
+wc -l < README.md 2>/dev/null || echo "0"
 ```
 
 **Expected**: Clear count of documentation files (counts saved to /tmp/*.txt for later use)
@@ -76,7 +97,7 @@ echo ""
 echo "=== LINK VALIDATION ==="
 
 # Extract .md file references and save to file
-grep -roP '\[[^\]]+\]\(\K[^)]+\.md' *.md docs/ .claude/ 2>/dev/null | cut -d':' -f2 | sort -u > /tmp/doc_links.txt
+grep -roP '\[[^\]]+\]\(\K[^)]+\.md' README.md docs/ .claude/ 2>/dev/null | cut -d':' -f2 | sort -u > /tmp/doc_links.txt
 
 # Note: Link validation can produce false positives for relative paths
 # (e.g., ../README.md from subdirectories are valid but reported as broken)
@@ -93,7 +114,7 @@ echo ""
 echo "=== STALENESS CHECK ==="
 
 # Check SESSION_STATE.md last updated
-grep "Last Updated:" SESSION_STATE.md | head -1
+grep "Last Updated:" .claude/SESSION_STATE.md | head -1
 
 # Check for TODO or FIXME in recent git changes
 git diff HEAD~5..HEAD 2>/dev/null | grep -c "TODO\|FIXME" > /tmp/todo_count.txt || echo "0" > /tmp/todo_count.txt
@@ -110,12 +131,12 @@ echo ""
 echo "=== UPDATING SESSION_STATE.md ==="
 
 # Backup current SESSION_STATE.md
-cp SESSION_STATE.md SESSION_STATE.md.bak
-echo "✅ Backed up to SESSION_STATE.md.bak"
+cp .claude/SESSION_STATE.md .claude/SESSION_STATE.md.bak
+echo "✅ Backed up to .claude/SESSION_STATE.md.bak"
 
 # Note: SESSION_STATE.md should be updated using Edit tool for reliability
 # The slash command will prompt Claude to update it with current git status
-echo "Claude will update SESSION_STATE.md with:"
+echo "Claude will update .claude/SESSION_STATE.md with:"
 echo "  - Current timestamp"
 echo "  - Git branch from /tmp/git_branch.txt"
 echo "  - Git status from /tmp/git_modified.txt and /tmp/git_untracked.txt"
@@ -158,7 +179,7 @@ echo ""
 echo "=== CHECKING CLAUDE.md ACCURACY ==="
 
 # Extract file count from CLAUDE.md
-grep "Files.*files" CLAUDE.md | head -1 > /tmp/claude_filecount.txt
+grep "Files.*files" docs/CLAUDE.md | head -1 > /tmp/claude_filecount.txt
 cat /tmp/claude_filecount.txt
 
 echo ""
@@ -188,7 +209,7 @@ echo "  - SESSION_STATE.md backed up"
 echo "  - Claude will complete SESSION_STATE.md and session note updates"
 echo ""
 echo "Next: Claude will use Edit/Write tools to update:"
-echo "  1. SESSION_STATE.md (with current git status)"
+echo "  1. .claude/SESSION_STATE.md (with current git status)"
 echo "  2. Create session note (if needed)"
 echo "  3. Report final health status"
 ```
@@ -205,10 +226,10 @@ Provide output in this format:
 === DOCUMENTATION UPDATE REPORT ===
 
 File Counts:
-  Root .md: 22 files
-  docs/: 12 files
-  .claude/: 6 files
-  Total: 40 files
+  Root .md: 1 file (README.md only)
+  docs/: 37 files (includes CLAUDE.md, START_HERE.md, reference/)
+  .claude/: 30 files (includes SESSION_STATE.md)
+  Total: 68 files
 
 Git Status:
   Branch: pi5-testing
@@ -221,7 +242,7 @@ Validation:
   ✅ CLAUDE.md counts accurate
 
 Updates:
-  ✅ SESSION_STATE.md updated
+  ✅ .claude/SESSION_STATE.md updated
   ✅ Session note created: .claude/sessions/2025-10-24_1615.md
 
 Health: ✅ GREEN (All systems good)

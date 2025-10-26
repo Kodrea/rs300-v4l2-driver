@@ -10,7 +10,7 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 **Architecture**: Linux kernel driver via MIPI CSI-2 + I2C
 **Platform**: Raspberry Pi 5 (BCM2712/RP1-CFE)
 **Status**: ✅ Beta - Security fixes applied, production testing recommended
-**Files**: 61 documentation files (33 root, 15 docs/, 13 .claude/), ~26,000 lines total
+**Files**: 69 documentation files (1 root, 37 docs/, 31 .claude/), ~26,000 lines total
 
 ## ✅ Security Fixes Applied (2025-10-22)
 
@@ -23,7 +23,7 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 - ✅ **HIGH-002**: NULL checks added after all kmalloc calls
 - ✅ **HIGH-001**: Streaming state corruption fixed - flag set only after success
 
-**See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for complete analysis and fix details**
+**See [SECURITY_AUDIT.md](reference/SECURITY_AUDIT.md) for complete analysis and fix details**
 
 **Status**: All kernel crash vulnerabilities eliminated. Driver suitable for production testing. Multi-camera setups now safe (race conditions fixed).
 
@@ -38,14 +38,14 @@ This file provides intelligent navigation and guidance for Claude Code (claude.a
 - **Fix:** Retry logic implemented (3 attempts, exponential backoff) - commit eb99791
 - **Status:** ✅ **TESTED & VALIDATED** - 100% success rate (25/25 tests), zero stuck processes
 - **Test Results:** See [~/rs300-test-results/TEST_SUMMARY.txt](~/rs300-test-results/TEST_SUMMARY.txt)
-- **Documentation:** [ISSUE_SUMMARY_20251021.md](ISSUE_SUMMARY_20251021.md), [UPSTREAM_BUG_REPORT.md](UPSTREAM_BUG_REPORT.md)
+- **Documentation:** [ISSUE_SUMMARY_20251021.md](meta/ISSUE_SUMMARY_20251021.md), [UPSTREAM_BUG_REPORT.md](meta/UPSTREAM_BUG_REPORT.md)
 - **Note:** Retry logic works well, but underlying security issues discovered during audit
 
 ## File Organization Principle
 
 **Professional Documentation System**:
-- **docs/** - Organized user & contributor guides (15 files, ~5,300 lines)
-- **Root** - Technical deep-dives (DRIVER_ANALYSIS.md, I2C_PROTOCOL.md, etc.)
+- **docs/** - Organized user & contributor guides (25 files, ~7,500 lines)
+- **Root** - Technical deep-dives (14 core files, DRIVER_ANALYSIS.md, I2C_PROTOCOL.md, etc.)
 
 **Layered Access**:
 Quick Start (docs/getting-started/) → Usage Guides (docs/guides/) → Technical Deep-Dives (root docs) → Source Code
@@ -56,23 +56,23 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 
 | Task | Start Here | Time |
 |------|-----------|------|
-| **🚀 NEW SESSION: Read first** | [SESSION_STATE.md](SESSION_STATE.md) | 1min |
+| **🚀 NEW SESSION: Read first** | [SESSION_STATE.md](../.claude/SESSION_STATE.md) | 1min |
 | **Check project status** | [START_HERE.md](START_HERE.md) | 30s |
 | **Session handoff guide** | [SESSION_HANDOFF_TEMPLATE.md](SESSION_HANDOFF_TEMPLATE.md) | 5min |
 | **Update documentation** | `/update-docs` | 2min |
 | **⚠️ Camera quirks & workarounds** | [~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) | 5min |
-| **✅ Security audit & fixes** | [SECURITY_AUDIT.md](SECURITY_AUDIT.md) | 15min |
+| **✅ Security audit & fixes** | [SECURITY_AUDIT.md](reference/SECURITY_AUDIT.md) | 15min |
 | **Install the driver** | [docs/getting-started/](docs/getting-started/) | 10min |
 | **First thermal capture** | [docs/getting-started/first-capture.md](docs/getting-started/first-capture.md) | 5min |
 | **Learn camera controls** | [docs/guides/camera-controls.md](docs/guides/camera-controls.md) | 15min |
 | **Browse all docs** | [docs/README.md](docs/README.md) | 2min |
-| Quick command lookup | [DEV_QUICK_REFERENCE.md](DEV_QUICK_REFERENCE.md) | 30s |
-| Understand driver internals | [DRIVER_ANALYSIS.md](DRIVER_ANALYSIS.md) | 30min |
-| Fix broken feature | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 5min |
-| I2C protocol details | [I2C_PROTOCOL.md](I2C_PROTOCOL.md) | 15min |
-| ISP integration | [RASPBERRY_PI_ISP_GUIDE.md](RASPBERRY_PI_ISP_GUIDE.md) | 20min |
+| Quick command lookup | [DEV_QUICK_REFERENCE.md](reference/DEV_QUICK_REFERENCE.md) | 30s |
+| Understand driver internals | [DRIVER_ANALYSIS.md](reference/DRIVER_ANALYSIS.md) | 30min |
+| Fix broken feature | [TROUBLESHOOTING.md](reference/TROUBLESHOOTING.md) | 5min |
+| I2C protocol details | [I2C_PROTOCOL.md](reference/I2C_PROTOCOL.md) | 15min |
+| ISP integration | [RASPBERRY_PI_ISP_GUIDE.md](reference/RASPBERRY_PI_ISP_GUIDE.md) | 20min |
 | Test controls | `./test_controls.sh` | 2min |
-| Find any file | [FILE_INVENTORY.md](FILE_INVENTORY.md) | 1min |
+| Find any file | [FILE_INVENTORY.md](reference/FILE_INVENTORY.md) | 1min |
 
 ---
 
@@ -82,7 +82,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 **Purpose**: Installation, usage, contribution
 **When**: First-time setup, learning to use the camera, contributing
 
-**NEW: Professional docs/ Structure** (15 files, ~5,300 lines)
+**Professional docs/ Structure** (25 files, ~7,500 lines)
 
 **[docs/README.md](docs/README.md)** - Documentation hub with complete navigation
 
@@ -109,14 +109,14 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 **Purpose**: Fast answers without deep understanding
 **When**: Daily development, testing, quick debugging
 
-**1. [DEV_QUICK_REFERENCE.md](DEV_QUICK_REFERENCE.md)** (~450 lines)
+**1. [DEV_QUICK_REFERENCE.md](reference/DEV_QUICK_REFERENCE.md)** (~450 lines)
 - Command cheat sheets (v4l2-ctl, media-ctl, i2c)
 - All 11 V4L2 controls with examples
 - Colormap (0-11) and scene mode (0-9) tables
 - Code location map
 - Testing checklists
 
-**2. [FILE_INVENTORY.md](FILE_INVENTORY.md)** (~350 lines)
+**2. [FILE_INVENTORY.md](reference/FILE_INVENTORY.md)** (~350 lines)
 - All 29 files categorized by type and date
 - File purposes and relationships
 - New vs. existing file tracking
@@ -130,15 +130,15 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 - Project overview
 - Quick start guide
 
-**4. [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md)** (~200 lines)
+**4. [BOOT_CONFIGURATION.md](reference/BOOT_CONFIGURATION.md)** (~200 lines)
 - Auto-start media pipeline at boot
 - Systemd and udev setup options
 
-**5. [RS300_Media_Pipeline_Guide.md](RS300_Media_Pipeline_Guide.md)** (~300 lines)
+**5. [RS300_Media_Pipeline_Guide.md](reference/RS300_Media_Pipeline_Guide.md)** (~300 lines)
 - Media controller concepts
 - Pipeline configuration details
 
-**6. [TROUBLESHOOTING.md](TROUBLESHOOTING.md)** (~600 lines)
+**6. [TROUBLESHOOTING.md](reference/TROUBLESHOOTING.md)** (~600 lines)
 - Quick diagnostics decision trees
 - Common error messages with solutions
 - Media pipeline issues
@@ -149,7 +149,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 **Purpose**: Comprehensive technical documentation
 **When**: Modifying code, system integration, deep debugging
 
-**7. [DRIVER_ANALYSIS.md](DRIVER_ANALYSIS.md)** ⭐ (~600 lines) **PRIMARY TECHNICAL REFERENCE**
+**7. [DRIVER_ANALYSIS.md](reference/DRIVER_ANALYSIS.md)** ⭐ (~600 lines) **PRIMARY TECHNICAL REFERENCE**
 - Complete driver architecture analysis
 - Data structures with line numbers (rs300.c:303-340)
 - I2C protocol deep-dive (18-byte packets, CRC-16)
@@ -159,7 +159,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 - Code quality assessment
 - Known issues and improvement opportunities
 
-**8. [I2C_PROTOCOL.md](I2C_PROTOCOL.md)** (~550 lines)
+**8. [I2C_PROTOCOL.md](reference/I2C_PROTOCOL.md)** (~550 lines)
 - Complete I2C command specification
 - 18-byte packet structure
 - CRC-16-CCITT algorithm (C + Python)
@@ -168,7 +168,7 @@ Choose documentation depth based on task complexity. Start with user guides, esc
 - Example transactions with hex dumps
 - Python implementation using smbus2
 
-**9. [RASPBERRY_PI_ISP_GUIDE.md](RASPBERRY_PI_ISP_GUIDE.md)** (~800 lines)
+**9. [RASPBERRY_PI_ISP_GUIDE.md](reference/RASPBERRY_PI_ISP_GUIDE.md)** (~800 lines)
 - Pi 5 ISP architecture (Front End + Back End)
 - Why thermal cameras differ from Bayer sensors
 - PiSP Backend (pispbe) integration for YUV processing
@@ -289,7 +289,7 @@ START: What are you trying to do?
 7. **Full Test**: `./test_controls.sh` (5 minutes)
 8. **Capture Logs** (if issues): `./capture_logs.sh`
 
-**Documentation**: See [DEV_QUICK_REFERENCE.md](DEV_QUICK_REFERENCE.md) for all command details
+**Documentation**: See [DEV_QUICK_REFERENCE.md](reference/DEV_QUICK_REFERENCE.md) for all command details
 
 ### Boot-Time Configuration
 
@@ -300,7 +300,7 @@ Media pipeline configuration does not persist across reboots. Options:
 - **Automatic (udev)**: Install udev rule via `./setup.sh`
 - **Hybrid**: Both systemd + udev for maximum reliability
 
-See [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md) for detailed setup.
+See [BOOT_CONFIGURATION.md](reference/BOOT_CONFIGURATION.md) for detailed setup.
 
 ### Testing Workflow
 
@@ -746,7 +746,7 @@ Recommendation:
 - **Example**: Read Section 4 → follow pattern → give exact locations
 
 **For I2C Command Queries** (EFFICIENCY CRITICAL - 95% token reduction):
-- **ALWAYS grep I2C_QUICK_REFERENCE.md first** for simple command lookups
+- **ALWAYS grep reference/I2C_QUICK_REFERENCE.md first** for simple command lookups
 - Use simple keywords (e.g., "brightness", "30hz", "colormap") without complex regex
 - If quick reference doesn't have enough detail, then grep I2C_Instructions_hierarchical.json
 - **Never** read full I2C JSON (20,000 tokens) or full quick reference (12,000 tokens)
@@ -755,7 +755,7 @@ Recommendation:
   User: "What's the hex command for 30hz?"
 
   Step 1: Grep(pattern="30hz",
-              file="I2C_QUICK_REFERENCE.md",
+              file="reference/I2C_QUICK_REFERENCE.md",
               output_mode="content", -n=true, -C=3)
   → Returns: Matching command with hex and parameters (500 tokens)
 
@@ -767,7 +767,7 @@ Recommendation:
 
   Total: 500-1,300 tokens vs 20,000 (93-97% reduction)
   ```
-- **Files priority**: I2C_QUICK_REFERENCE.md → I2C_Instructions_hierarchical.json (grep only) → I2C_PROTOCOL.md (protocol understanding only)
+- **Files priority**: reference/I2C_QUICK_REFERENCE.md → I2C_Instructions_hierarchical.json (grep only) → I2C_PROTOCOL.md (protocol understanding only)
 
 ---
 
@@ -814,7 +814,7 @@ media-ctl -V "'csi2':4 [fmt:UYVY8_1X16/640x512 ...]"
 v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY,colorspace=smpte170m,xfer=709,ycbcr=601,quantization=lim-range
 ```
 
-**Note**: Pipeline configuration does not persist across reboots. See [BOOT_CONFIGURATION.md](BOOT_CONFIGURATION.md) for auto-start options.
+**Note**: Pipeline configuration does not persist across reboots. See [BOOT_CONFIGURATION.md](reference/BOOT_CONFIGURATION.md) for auto-start options.
 
 ---
 
