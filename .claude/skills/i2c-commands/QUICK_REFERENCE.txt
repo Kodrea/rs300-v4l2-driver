@@ -1,0 +1,170 @@
+RS300 I2C COMMANDS - QUICK REFERENCE
+====================================
+20+ critical I2C commands with hex codes, params, timeouts, and CSV row references
+Tab-separated for terminal use | CRC types: Dyn=CRC-16-CCITT, Hard=Lookup table
+---
+
+[ OUTPUT & DISPLAY COMMANDS ]
+Command                Hex           Params                 Response  Timeout  CRC   CSV Row
+Brightness GET         10/04/87      P1=0x01, P9=0x01       Byte[4]   500ms    Dyn   173
+Brightness SET         10/04/47      P1=0-100               Status    500ms    Dyn   162-172
+Colormap GET           10/03/85      P1=0x01, P9=0x01       Byte[4]   500ms    Dyn   149
+Colormap SET           10/03/45      ⚠P2=0-11 (ambiguous)   Status    500ms    Dyn   137-148
+Contrast SET           10/04/4A      P1=0-100               Status    500ms    Dyn   174-184
+Output Mode SET        10/10/45      P1=0-5 (IR/KBC/TNR)    Status    500ms    Hard  95-101
+YUV Format SET         10/03/4D      P1=0-3 (UYVY/VYUY)     Status    500ms    Dyn   102-106
+
+[ IMAGE PROCESSING COMMANDS ]
+DDE SET                10/04/45      P1=0-100               Status    500ms    Dyn   150-161
+SNR SET                10/04/4B      P1=0-100               Status    500ms    Dyn   186-197
+TNR SET                10/04/4C      P1=0-100               Status    500ms    Dyn   198-208
+Scene Mode SET         10/04/42      P1=0-9 (modes)         Status    500ms    Dyn   126-136
+Zoom SET               01/31/42      P1=0x00, *P2=lvl×10    Status    500ms    Dyn   118-122
+
+[ DEVICE CONTROL COMMANDS ]
+FFC Trigger            10/02/43      All=0x00               Status    5000ms   Dyn   2
+FPS SET                10/10/46      P1=0x01,P2=0x03,P3=fps Status    4500ms   Dyn   66-94
+Autoshutter GET        10/02/81      P1=0x01, P9=0x01       Byte[4]   500ms    Dyn   8
+Autoshutter SET        10/02/41      P1=0/1 (off/on)        Status    500ms    Dyn   6-7
+Autoshutter Params     10/02/42      P1=type,*P2-3=vals     Status    500ms    Dyn   9-16
+Sleep GET              10/10/88      P1=0x01, P9=0x01       Byte[4]   500ms    Dyn   47
+Sleep SET              10/10/48      P1=0/1 (wake/sleep)    Status    500ms    Dyn   45-46
+
+[ DEVICE INFORMATION COMMANDS ]
+Device Name GET        01/01/81      P1=0x01, P12=0x20      40 bytes  250ms    Hard  56
+FW Version GET         01/01/81      P1=0x02, P12=0x0B      11 bytes  250ms    Hard  57
+VID GET                01/01/81      P1=0x04, P12=0x02      2 bytes   250ms    Hard  58
+PID GET                01/01/81      P1=0x05, P12=0x02      2 bytes   250ms    Hard  59
+PN GET                 01/01/81      P1=0x06, P12=0x20      32 bytes  250ms    Hard  60
+SN GET                 01/01/81      P1=0x07, P12=0x20      32 bytes  250ms    Hard  61
+
+---
+
+[ HARDCODED CRC LOOKUP - OUTPUT MODE (0x10/0x10/0x45) ]
+Mode 0 (IR):   P1=0x00  CRC=0xFB,0xC0  Row 95
+Mode 1 (KBC):  P1=0x01  CRC=0x8E,0xC3  Row 96
+Mode 2 (TNR):  P1=0x02  CRC=0x11,0xC6  Row 97
+Mode 3 (SNR):  P1=0x03  CRC=0x64,0xC5  Row 98
+Mode 4 (DDE):  P1=0x04  CRC=0x2F,0xCD  Row 99
+Mode 5 (YUV):  P1=0x05  CRC=0x5A,0xCE  Row 100
+
+---
+
+[ HARDCODED CRC LOOKUP - DEVICE INFO (0x01/0x01/0x81) ]
+Device Name:   P1=0x01, P12=0x20  CRC=0xFC,0x1E  Row 56
+FW Version:    P1=0x02, P12=0x0B  CRC=0x32,0x32  Row 57
+VID:           P1=0x04, P12=0x02  CRC=0x7B,0xCA  Row 58
+PID:           P1=0x05, P12=0x02  CRC=0x0E,0xC9  Row 59
+PN:            P1=0x06, P12=0x20  CRC=0xB7,0x16  Row 60
+SN:            P1=0x07, P12=0x20  CRC=0xC2,0x15  Row 61
+
+---
+
+[ LEGEND ]
+CRC Type:    Dyn = Calculate using CRC-16-CCITT over bytes [0-15]
+             Hard = Use hardcoded lookup table (DO NOT calculate)
+
+Response:    Status = Poll 0x0200 until busy bit clears
+             Byte[4] = Read byte from response[4] after polling
+             N bytes = Read multi-byte response from 0x1d00
+
+⚠ Warning:   Ambiguity exists, verify against actual camera behavior
+* Multi-byte: Use little-endian encoding (LSB first)
+
+Parameters:  P1=byte[4], P2=byte[5], ... P12=byte[15]
+             Unused params must be 0x00
+
+---
+
+[ PACKET STRUCTURE - STANDARD 18-BYTE ]
+Byte   Field      Example
+[0]    Class      0x10 (camera), 0x01 (device/zoom)
+[1]    Module     0x02-0x31 (varies)
+[2]    SubCmd     0x40-0x8F (varies)
+[3]    Reserved   Always 0x00
+[4-15] P1-P12     Parameters (varies, unused=0x00)
+[16]   CRC_Low    LSB of CRC-16-CCITT
+[17]   CRC_High   MSB of CRC-16-CCITT
+
+---
+
+[ USAGE EXAMPLES ]
+
+Set Brightness to 50:
+  Packet: 10 04 47 00 32 00 00 00 00 00 00 00 00 00 00 00 [CRC_L] [CRC_H]
+  CSV Ref: Row 167
+  CRC: Dynamic (calculate over bytes 0-15)
+
+Set Output Mode to TNR (Mode 2):
+  Packet: 10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6
+  CSV Ref: Row 97
+  CRC: Hardcoded (0x11, 0xC6) - DO NOT calculate
+
+Set Zoom to 2x:
+  Packet: 01 31 42 00 00 14 00 00 00 00 00 00 00 00 00 00 [CRC_L] [CRC_H]
+  CSV Ref: Row 119
+  Note: P2 = level × 10 (2×10=20=0x14)
+  CRC: Dynamic
+
+Get Device Name:
+  Packet: 01 01 81 00 01 00 00 00 00 00 00 00 20 00 00 00 FC 1E
+  CSV Ref: Row 56
+  CRC: Hardcoded (0xFC, 0x1E)
+  Response: 40-byte ASCII string
+
+---
+
+[ EXECUTION STEPS ]
+1. Construct 18-byte packet with correct class/module/subCmd
+2. Insert parameters at correct positions (P1=byte[4], P2=byte[5], etc.)
+3. Set unused parameter bytes to 0x00
+4. Calculate CRC (dynamic) or lookup CRC (hardcoded)
+5. Append CRC at bytes [16]=LSB, [17]=MSB
+6. Write packet to I2C register 0x1d00
+7. Poll I2C register 0x0200 every N ms until busy bit clears
+8. Check error bit (bit 1): 0=success, 1=failure
+9. If GET command, read response from 0x1d00
+
+---
+
+[ COMMON MISTAKES ]
+❌ Sending 0x55/0x43/0x49 (SERIAL protocol) to I2C bus
+✅ Use 0x10/0x10/0x45 for output mode on I2C
+
+❌ Setting zoom P2=2 for 2x zoom
+✅ Set zoom P2=20 (level × 10)
+
+❌ Calculating CRC for output mode/device info
+✅ Use hardcoded CRC from lookup tables above
+
+❌ Using big-endian for multi-byte parameters
+✅ Use little-endian (LSB first, MSB second)
+
+❌ Forgetting P9=0x01 on GET commands
+✅ Always set P9=0x01 for GET commands
+
+---
+
+[ VERIFICATION CHECKLIST ]
+□ Hex code matches CSV row number
+□ Packet is exactly 18 bytes (NOT 23 bytes)
+□ Byte [0] is 0x10 or 0x01 (NOT 0x55)
+□ Byte [3] (reserved) is 0x00
+□ Parameters at correct positions (verify CSV)
+□ CRC type correct (dynamic vs hardcoded)
+□ Timeout value appropriate for command type
+□ Multi-byte values use little-endian
+□ Zoom levels multiplied by 10
+□ Poll 0x0200 until busy bit clears
+
+---
+
+REFERENCES:
+- Full skill doc:  /home/cody/rs300-v4l2-driver/.claude/skills/i2c-commands/SKILL.md
+- CSV source:      /home/cody/rs300-v4l2-driver/.claude/skills/i2c-commands/Mini2_I2C_full_commands.csv
+- Driver code:     /home/cody/rs300-v4l2-driver/rs300.c (lines 164-2850)
+- CRC function:    rs300.c:164-182
+- Command wrapper: rs300.c:288-403
+
+Last Updated: 2025-10-29
+Status: Complete reference with output mode protocol fix applied

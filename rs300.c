@@ -39,11 +39,10 @@
 #define DRIVER_VERSION			KERNEL_VERSION(0, 0x01, 0x1)
 #define DRIVER_NAME "rs300"
 //80M (clk)* 2(double ) *2 (lan) /8
-//80Mhz works for 640x512
-//400, 80, 40, and 20Mhz does not work for 256x192
-#define RS300_LINK_RATE (80 * 1000 * 1000)
-#define RS300_PIXEL_RATE	(40 * 1000 * 1000)
-//#define RS300_PIXEL_RATE_256	(20 * 1000 * 1000)
+
+#define RS300_LINK_RATE (80 * 1000 * 1000)       /* 80MHz link rate matching device tree */
+#define RS300_PIXEL_RATE	(200 * 1000 * 1000)  /* TEST: Conservative 30MHz pixel rate for 8-bit */
+#define RS300_PIXEL_RATE_16BIT	(400 * 1000 * 1000)  /* TEST: Conservative 60MHz pixel rate for 16-bit */
 #define RS300_BRIGHTNESS_MIN 0
 #define RS300_BRIGHTNESS_MAX 100
 #define RS300_BRIGHTNESS_STEP 10
@@ -82,20 +81,27 @@ static const char * const scene_mode_menu[] = {
     NULL
 };
 
+/* Define output mode menu items */
+static const char * const output_mode_menu[] = {
+    "IR Output (Raw)",    /* 0 */
+    "KBC Output",         /* 1 */
+    "TNR Output",         /* 2 */
+    "SNR Output",         /* 3 */
+    "DDE Output",         /* 4 */
+    "YUV Output",         /* 5 */
+    NULL
+};
+
 #define NUM_COLORMAP_ITEMS (ARRAY_SIZE(colormap_menu) - 1) // Account for NULL terminator
 
 // Mode must be set before running setup.sh
 // TODO: Make mode adjustable during runtime
-static int mode = 2; //0-640; 1-256; 2-384
-static int fps = 60;
-static int pWidth = 0;
-static int pHeight = 0;
+static int mode = 2; // 0-640; 1-256; 2-384
+static int fps = 30;
 static int type = 16;
 static int debug = 1;
 module_param(mode, int, 0644);
 module_param(fps, int, 0644);
-module_param(pWidth, int, 0644);
-module_param(pHeight, int, 0644);
 module_param(type, int, 0644);
 module_param(debug, int, 0644);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
@@ -136,6 +142,7 @@ struct ioctl_data{
 #define I2C_VD_BUFFER_DATA_LEN		256
 #define I2C_OUT_BUFFER_MAX			64 // IN buffer set equal to I2C_VD_BUFFER_DATA_LEN(256)
 #define I2C_TRANSFER_WAIT_TIME_2S	2000
+#define MAX_I2C_TRANSFER_SIZE		256  /* Maximum I2C transfer size (security limit) */
 
 #define I2C_VD_BUFFER_STATUS			0x0200
 #define VCMD_BUSY_STS_BIT				0x01
@@ -158,7 +165,7 @@ static unsigned short do_crc(unsigned char *ptr, int len)
 {
     unsigned int i;
     unsigned short crc = 0x0000;
-    
+
     while(len--)
     {
         crc ^= (unsigned short)(*ptr++) << 8;
@@ -170,42 +177,248 @@ static unsigned short do_crc(unsigned char *ptr, int len)
                 crc <<= 1;
         }
     }
-    
+
     return crc;
 }
 
-static  u8 start_regs[] = {
-		0x01, 0x30, 0xc1, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x0a, 0x00,
-		0x00, 0x00, //crc [16]
-		0x2F, 0x0D, //crc [18]
-		0x00, //path
-		0x16, //src
-		0x03, //dst
-		0x3c, // 60 fps
-		0x80, 0x02, //width&0xff, width>>8
-		0x00, 0x02, //height&0xff, height>>8
-		0x00, 0x00
+/* Forward declarations */
+static int read_regs(struct i2c_client *client, u32 reg, u8 *val, int len);
+static int write_regs(struct i2c_client *client, u32 reg, u8 *val, int len);
+
+/* Data structures - must be defined before rs300_send_command */
+enum pad_types {
+	IMAGE_PAD,
+	METADATA_PAD,
+	NUM_PADS
 };
 
-static  u8 stop_regs[]={
-		0x01, 0x30, 0xc2, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00,
-		0x0a, 0x00,
-		0x00, 0x00, //crc [16]
-		0x2F, 0x0D, //crc [18]
-		0x01, //path
-		0x16, //src
-		0x00, //dst
-		0x3c, //fps
-		0x80, 0x02, //width&0xff, width>>8
-		0x00, 0x02, //height&0xff, height>>8
-		0x00, 0x00
-    
+struct rs300_mode {
+	unsigned int width;
+	unsigned int height;
+	struct v4l2_fract max_fps;
+	u32 code;
 };
+
+struct pll_ctrl_reg {
+	unsigned int div;
+	unsigned char reg;
+};
+
+static const char * const rs300_supply_names[] = {
+	"VANA",	/* Digital I/O power */
+	"VDIG",		/* Analog power */
+	"VDDL",		/* Digital core power */
+};
+
+#define rs300_NUM_SUPPLIES ARRAY_SIZE(rs300_supply_names)
+
+static const u32 codes[] = {
+	/* YUV 4:2:2 Formats - Prioritize 16-bit packed for Pi 5 RP1-CFE compatibility */
+	MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed - preferred for RP1-CFE */
+	MEDIA_BUS_FMT_UYVY8_1X16,  /* 16-bit packed - alternative */
+	MEDIA_BUS_FMT_YUYV8_2X8,   /* 8-bit dual lane - legacy */
+	MEDIA_BUS_FMT_UYVY8_2X8,   /* 8-bit dual lane - legacy */
+};
+
+struct rs300 {
+	struct v4l2_subdev sd;
+	struct media_pad pad[NUM_PADS];
+
+	struct v4l2_mbus_framefmt fmt;
+
+	unsigned int xvclk_frequency;
+	struct clk *xvclk;
+
+	struct gpio_desc *reset_gpio;
+	struct regulator_bulk_data supplies[rs300_NUM_SUPPLIES];
+
+	struct v4l2_ctrl_handler ctrl_handler;
+	/* V4L2 Controls */
+	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *link_frequency;
+	struct v4l2_ctrl *brightness;
+	struct v4l2_ctrl *shutter_cal;  /* Shutter calibration button */
+	struct v4l2_ctrl *colormap;  /* Colormap selection control */
+	struct v4l2_ctrl *zoom;  // Custom zoom control
+	struct v4l2_ctrl *scene_mode;  /* Scene mode selection control */
+	struct v4l2_ctrl *dde;
+	struct v4l2_ctrl *contrast;
+	struct v4l2_ctrl *spatial_nr;
+	struct v4l2_ctrl *temporal_nr;
+	struct v4l2_ctrl *autoshutter;  /* Auto shutter enable/disable */
+	struct v4l2_ctrl *autoshutter_temp;  /* Auto shutter temperature threshold */
+	struct v4l2_ctrl *autoshutter_min_interval;  /* Auto shutter minimum interval */
+	struct v4l2_ctrl *autoshutter_max_interval;  /* Auto shutter maximum interval */
+	struct v4l2_ctrl *output_mode;  /* Output mode selection control */
+	struct v4l2_ctrl *camera_sleep;  /* Camera sleep/wake control */
+	struct v4l2_ctrl *antiburn;  /* Anti-burn protection enable/disable */
+	struct v4l2_ctrl *shutter;  /* Shutter open/close control */
+	struct v4l2_ctrl *hook_edge;  /* Hook edge position control */
+	struct v4l2_ctrl *frame_rate;  /* Detector frame rate control */
+	struct v4l2_ctrl *analog_output_fmt;  /* Digital-Analog output format control */
+
+	/* Current mode */
+	const struct rs300_mode *mode;
+
+	/*
+	 * Mutex for serialized access:
+	 * Protect sensor module set pad format and start/stop streaming safely.
+	 */
+	struct mutex mutex;
+
+	/* Streaming on/off */
+	bool streaming;
+};
+
+/* Autoshutter function prototypes (after struct rs300 definition) */
+static int rs300_set_autoshutter(struct rs300 *rs300, int enable);
+static int rs300_get_autoshutter(struct rs300 *rs300, int *value);
+static int rs300_set_autoshutter_params(struct rs300 *rs300, int param_type, int value);
+
+/**
+ * rs300_send_command - Send I2C command to RS300 camera
+ * @rs300: RS300 device structure
+ * @class: Command class (typically 0x10, 0x01 for zoom)
+ * @module: Module code (0x02-0x31)
+ * @subcmd: Sub-command code
+ * @params: Parameter buffer (12 bytes max, or NULL)
+ * @param_len: Length of parameter data (0-12)
+ * @timeout_ms: Maximum wait time for completion (default 500ms)
+ *
+ * Builds 18-byte command packet, calculates CRC, sends command,
+ * and polls for completion status.
+ *
+ * Returns: 0 on success, negative error code on failure
+ */
+static int rs300_send_command(struct rs300 *rs300,
+                              u8 class,
+                              u8 module,
+                              u8 subcmd,
+                              const u8 *params,
+                              size_t param_len,
+                              unsigned int timeout_ms)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    unsigned char buf[18];
+    unsigned char status[2];
+    unsigned short crc;
+    int ret, i;
+    int max_polls;
+
+    if (param_len > 12) {
+        dev_err(&client->dev, "Parameter length %zu exceeds maximum 12\n",
+                param_len);
+        return -EINVAL;
+    }
+
+    /* Build 18-byte command packet */
+    memset(buf, 0, sizeof(buf));
+    buf[0] = class;     // Command class
+    buf[1] = module;    // Module code
+    buf[2] = subcmd;    // Sub-command code
+    buf[3] = 0x00;      // Reserved
+
+    /* Copy parameters (buf[4-15]) */
+    if (params && param_len > 0)
+        memcpy(&buf[4], params, param_len);
+
+    /* Calculate and append CRC-16 */
+    crc = do_crc(buf, 16);
+    buf[16] = crc & 0xff;        // CRC low byte
+    buf[17] = (crc >> 8) & 0xff; // CRC high byte
+
+    dev_dbg(&client->dev, "Command buffer: %*ph", (int)sizeof(buf), buf);
+
+    /* Send command to camera */
+    ret = write_regs(client, 0x1d00, buf, 18);
+    if (ret < 0) {
+        dev_err(&client->dev, "I2C write failed: %d\n", ret);
+        return ret;
+    }
+
+    /* Initial delay for camera processing */
+    msleep(20);
+
+    /* Poll for completion status */
+    max_polls = timeout_ms / 10;
+    for (i = 0; i < max_polls; i++) {
+        ret = read_regs(client, 0x0200, status, 2);
+        if (ret < 0) {
+            dev_err(&client->dev, "Status read failed: %d\n", ret);
+            return ret;
+        }
+
+        /* Extract status components */
+        bool is_busy = (status[0] & 0x01) != 0;
+        bool has_failed = (status[0] & 0x02) != 0;
+        u8 error_code = (status[0] >> 2) & 0x3F;
+
+        /* Check if command is still busy */
+        if (is_busy) {
+            msleep(10);
+            continue;
+        }
+
+        /* Check for errors */
+        if (has_failed || error_code != 0) {
+            dev_err(&client->dev,
+                    "Command 0x%02x:0x%02x failed: status=0x%02x error_code=0x%02x\n",
+                    module, subcmd, status[0], error_code);
+
+            /* Interpret error code */
+            switch (error_code) {
+            case 0x01:
+                dev_err(&client->dev, "Error: Length error\n");
+                break;
+            case 0x02:
+                dev_err(&client->dev, "Error: Unknown command\n");
+                break;
+            case 0x03:
+                dev_err(&client->dev, "Error: Hardware error\n");
+                break;
+            case 0x04:
+                dev_err(&client->dev, "Error: Command not enabled\n");
+                break;
+            case 0x05:
+            case 0x06:
+            case 0x07:
+                dev_err(&client->dev, "Error: CRC check error\n");
+                break;
+            default:
+                if (error_code != 0)
+                    dev_err(&client->dev, "Error: Unknown error code\n");
+                break;
+            }
+
+            return -EIO;
+        }
+
+        /* Command executed successfully */
+        dev_dbg(&client->dev,
+                "Command 0x%02x:0x%02x succeeded after %dms\n",
+                module, subcmd, (i + 2) * 10);
+        return 0;
+    }
+
+    /* Timeout */
+    dev_err(&client->dev,
+            "Command 0x%02x:0x%02x timeout after %dms\n",
+            module, subcmd, timeout_ms);
+    return -ETIMEDOUT;
+}
+
+/*
+ * SECURITY FIX: Removed static global buffers to prevent race conditions
+ * These are now allocated as local variables in rs300_set_stream()
+ * to ensure thread-safety in multi-camera scenarios.
+ *
+ * Previous vulnerable code (CRITICAL-001):
+ * static u8 start_regs[] = { ... };
+ * static u8 stop_regs[] = { ... };
+ *
+ * Issue: Multiple camera instances would modify the same global arrays,
+ * causing data corruption in multi-camera setups.
+ */
 
 static int read_regs(struct i2c_client *client,  u32 reg, u8 *val ,int len )
 {
@@ -271,97 +484,26 @@ static int write_regs(struct i2c_client *client,  u32 reg, u8 *val,int len)
 	// }
 }
 
-enum pad_types {
-	IMAGE_PAD,
-	METADATA_PAD,
-	NUM_PADS
-};
-
-struct rs300_mode {
-	unsigned int width;
-	unsigned int height;
-	struct v4l2_fract max_fps;
-	u32 code;
-};
-
-struct pll_ctrl_reg {
-	unsigned int div;
-	unsigned char reg;
-};
-
-static const char * const rs300_supply_names[] = {
-	"VANA",	/* Digital I/O power */
-	"VDIG",		/* Analog power */
-	"VDDL",		/* Digital core power */
-};
-
-#define rs300_NUM_SUPPLIES ARRAY_SIZE(rs300_supply_names)
-
-static const u32 codes[] = {
-	/* YUV 4:2:2 Formats*/
-	MEDIA_BUS_FMT_YUYV8_1X16,
-	MEDIA_BUS_FMT_UYVY8_1X16,
-	MEDIA_BUS_FMT_YUYV8_2X8,
-	MEDIA_BUS_FMT_UYVY8_2X8,
-};
-
-struct rs300 {
-	struct v4l2_subdev sd;
-	struct media_pad pad[NUM_PADS];
-
-	struct v4l2_mbus_framefmt fmt;
-
-	unsigned int xvclk_frequency;
-	struct clk *xvclk;
-
-	struct gpio_desc *reset_gpio;
-	struct regulator_bulk_data supplies[rs300_NUM_SUPPLIES];
-	
-	struct v4l2_ctrl_handler ctrl_handler;
-	/* V4L2 Controls */
-	struct v4l2_ctrl *pixel_rate;
-	struct v4l2_ctrl *link_frequency;
-	struct v4l2_ctrl *brightness;
-	struct v4l2_ctrl *shutter_cal;  /* Shutter calibration button */
-	struct v4l2_ctrl *colormap;  /* Colormap selection control */
-	struct v4l2_ctrl *zoom;  // Custom zoom control
-	struct v4l2_ctrl *scene_mode;  /* Scene mode selection control */
-	struct v4l2_ctrl *dde;
-	struct v4l2_ctrl *contrast;
-	struct v4l2_ctrl *spatial_nr;
-	struct v4l2_ctrl *temporal_nr;
-
-	/* Current mode */
-	const struct rs300_mode *mode;
-
-	/*
-	 * Mutex for serialized access:
-	 * Protect sensor module set pad format and start/stop streaming safely.
-	 */
-	struct mutex mutex;
-
-	/* Streaming on/off */
-	bool streaming;
-};
+/* Duplicate struct definitions removed - now defined earlier in file */
 
 static struct rs300_mode supported_modes[] = {
-    { /* 640*/
+    { /* 640 - Primary mode for Pi 5 */
         .width      = 640,
         .height     = 512,
         .max_fps = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
-    { /* 256*/ // MIPI video not currently working, but I2C commands are working
+    { /* 256 - MIPI video not currently working, but I2C commands are working */
         .width      = 256,
         .height     = 192,  
         .max_fps = {
             .numerator = 25,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     },
         { /* 384*/
         .width      = 384,
@@ -370,7 +512,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 30,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,
+        .code = MEDIA_BUS_FMT_YUYV8_1X16,  /* 16-bit packed for RP1-CFE compatibility */
     }
 
 };
@@ -383,51 +525,137 @@ static inline struct rs300 *to_rs300(struct v4l2_subdev *sd)
 static u32 rs300_get_format_code(struct rs300 *rs300, u32 code)
 {
 	unsigned int i;
+	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
 
 	lockdep_assert_held(&rs300->mutex);	
 
-	for (i = 0; i < ARRAY_SIZE(codes); i++)
+	dev_info(&client->dev, "rs300_get_format_code: input code=0x%x", code);
+
+	for (i = 0; i < ARRAY_SIZE(codes); i++) {
+		dev_info(&client->dev, "  Checking supported code[%d]=0x%x", i, codes[i]);
 		if (codes[i] == code)
 			break;
+	}
 
-	if (i >= ARRAY_SIZE(codes))
-		i = 0;	
+	if (i >= ARRAY_SIZE(codes)) {
+		dev_warn(&client->dev, "Format code 0x%x not found, defaulting to 0x%x", code, codes[0]);
+		i = 0; /* Default to first supported code (YUYV8_1X16) */
+	}
 
+	dev_info(&client->dev, "rs300_get_format_code: returning code=0x%x", codes[i]);
 	return codes[i];
 }
 
 static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct ioctl_data ioctl_data_kernel;  /* Kernel copy - SECURITY CRITICAL */
+	unsigned char *data = NULL;
+	unsigned char *user_data_ptr;
 	long ret = 0;
-	unsigned char *data;
-	struct ioctl_data * valp;
 
-	valp=(struct ioctl_data *)arg;
-	if((cmd==CMD_GET)||(cmd==CMD_SET)){
-		if((valp!=NULL) &&(valp->data!=NULL) ){
-			dev_info(&client->dev,"rs300 %d %d %d  \n",cmd, valp->wIndex,valp->wLength);
-		}else{
-			dev_err(&client->dev, "rs300 args error \n");
+	/*
+	 * IMPORTANT: Validate command BEFORE copying from userspace.
+	 * When V4L2 tools probe for supported ioctls, arg may not point to
+	 * a valid ioctl_data structure. Return silently for unsupported commands.
+	 */
+	if ((cmd != CMD_GET) && (cmd != CMD_SET)) {
+		return -ENOIOCTLCMD;  /* Translated to -ENOTTY by V4L2 core */
+	}
+
+	/* SECURITY FIX: Copy from userspace - prevents direct pointer dereference */
+	if (copy_from_user(&ioctl_data_kernel, (struct ioctl_data __user *)arg,
+			   sizeof(struct ioctl_data))) {
+		dev_err(&client->dev, "Failed to copy ioctl data from userspace\n");
+		return -EFAULT;
+	}
+
+	/* SECURITY FIX: Validate data pointer */
+	if (ioctl_data_kernel.data == NULL) {
+		dev_err(&client->dev, "NULL data pointer in ioctl\n");
+		return -EINVAL;
+	}
+
+	/* SECURITY FIX: Validate transfer length to prevent integer overflow */
+	if (ioctl_data_kernel.wLength == 0 ||
+	    ioctl_data_kernel.wLength > MAX_I2C_TRANSFER_SIZE) {
+		dev_err(&client->dev,
+			"Invalid I2C transfer length: %u (max %d)\n",
+			ioctl_data_kernel.wLength, MAX_I2C_TRANSFER_SIZE);
+		return -EINVAL;
+	}
+
+	/* SECURITY FIX: Validate register address */
+	if (ioctl_data_kernel.wIndex > 0xFFFF) {
+		dev_err(&client->dev, "Invalid I2C register address: 0x%x\n",
+			ioctl_data_kernel.wIndex);
+		return -EINVAL;
+	}
+
+	dev_info(&client->dev, "rs300 ioctl: cmd=%d reg=0x%x len=%u\n",
+		 cmd, ioctl_data_kernel.wIndex, ioctl_data_kernel.wLength);
+
+	switch (cmd) {
+	case CMD_GET:
+		/* SECURITY FIX: Allocate kernel buffer with NULL check */
+		data = kmalloc(ioctl_data_kernel.wLength, GFP_KERNEL);
+		if (!data) {
+			dev_err(&client->dev,
+				"Failed to allocate %u byte transfer buffer\n",
+				ioctl_data_kernel.wLength);
+			return -ENOMEM;
+		}
+
+		/* Read I2C registers into kernel buffer */
+		ret = read_regs(client, ioctl_data_kernel.wIndex, data,
+				ioctl_data_kernel.wLength);
+		if (ret) {
+			dev_err(&client->dev, "I2C read failed: %ld\n", ret);
+			kfree(data);
+			return ret;
+		}
+
+		/* Copy kernel buffer to userspace */
+		if (copy_to_user(ioctl_data_kernel.data, data,
+				 ioctl_data_kernel.wLength)) {
+			dev_err(&client->dev, "Failed to copy data to userspace\n");
+			kfree(data);
 			return -EFAULT;
 		}
-	}
-	switch (cmd) {
 
-	case CMD_GET:
-		data = kmalloc(valp->wLength, GFP_KERNEL);
-		read_regs(client,valp->wIndex,data,valp->wLength);
-
-		if (copy_to_user(valp->data, data, valp->wLength))
-		{
-			ret = -EFAULT;
-			dev_err(&client->dev, "error stop rs300\n");
-		}
-		kfree(data);                                                                                                                                               
+		kfree(data);
 		break;
+
 	case CMD_SET:
-		write_regs(client,valp->wIndex,valp->data,valp->wLength);
+		/* SECURITY FIX: Allocate kernel buffer and copy from userspace */
+		data = kmalloc(ioctl_data_kernel.wLength, GFP_KERNEL);
+		if (!data) {
+			dev_err(&client->dev,
+				"Failed to allocate %u byte transfer buffer\n",
+				ioctl_data_kernel.wLength);
+			return -ENOMEM;
+		}
+
+		/* Save userspace pointer before copying */
+		user_data_ptr = ioctl_data_kernel.data;
+
+		/* Copy data from userspace to kernel buffer */
+		if (copy_from_user(data, user_data_ptr, ioctl_data_kernel.wLength)) {
+			dev_err(&client->dev, "Failed to copy data from userspace\n");
+			kfree(data);
+			return -EFAULT;
+		}
+
+		/* Write kernel buffer to I2C registers */
+		ret = write_regs(client, ioctl_data_kernel.wIndex, data,
+				 ioctl_data_kernel.wLength);
+		if (ret) {
+			dev_err(&client->dev, "I2C write failed: %ld\n", ret);
+		}
+
+		kfree(data);
 		break;
+
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -437,12 +665,30 @@ static long rs300_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 }
 static void rs300_reset_colorspace(struct v4l2_mbus_framefmt *fmt)
 {
-	fmt->colorspace = V4L2_COLORSPACE_SRGB;
-	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
-	fmt->quantization = V4L2_MAP_QUANTIZATION_DEFAULT(false,
-							  fmt->colorspace,
-							  fmt->ycbcr_enc);
-	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
+	/* Use video-compatible colorspace for RP1-CFE ISP pipeline compatibility */
+	/* Thermal data disguised as standard video YUV for ISP processing */
+	fmt->colorspace = V4L2_COLORSPACE_SMPTE170M;     /* Standard SDTV YUV colorspace */
+	fmt->ycbcr_enc = V4L2_YCBCR_ENC_601;            /* ITU-R BT.601 YCbCr encoding */
+	fmt->quantization = V4L2_QUANTIZATION_LIM_RANGE; /* Broadcast-legal limited range */
+	fmt->xfer_func = V4L2_XFER_FUNC_709;            /* Standard video transfer function */
+}
+
+/* Calculate pixel rate based on format */
+static u64 rs300_get_pixel_rate(u32 format_code)
+{
+	switch (format_code) {
+	case MEDIA_BUS_FMT_YUYV8_1X16:
+	case MEDIA_BUS_FMT_UYVY8_1X16:
+		/* 16-bit packed formats require higher pixel rate */
+		return RS300_PIXEL_RATE_16BIT;
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		/* 8-bit dual lane formats use base pixel rate */
+		return RS300_PIXEL_RATE;
+	default:
+		/* Default to 16-bit rate for unknown formats */
+		return RS300_PIXEL_RATE_16BIT;
+	}
 }
 
 static void rs300_set_default_format(struct rs300 *rs300)
@@ -475,7 +721,16 @@ static int rs300_set_test_pattern(struct rs300 *rs300, int value)
 	return 0;
 }
 
-///////////////////// TODO: Reduce repeditive code for functions that send commands to the camera ///////////////////////
+/*
+ * NOTE: Code duplication in command functions (2025-10-24)
+ *
+ * The functions below contain ~500 lines of repetitive I2C command execution code.
+ * Consolidation was attempted but ABANDONED due to mysterious kernel crashes when
+ * modifying rs300_send_command() signature (ARM64 ABI issue with 8+ parameters).
+ *
+ * RECOMMENDATION: Leave as-is. Working code > Pretty code in kernel drivers.
+ * See: .claude/lessons-learned/002-consolidation-kernel-crash.md
+ */
 
 /* Function to get the current brightness value from the camera */
 static int rs300_get_brightness(struct rs300 *rs300, int *brightness_value)
@@ -598,10 +853,38 @@ static int rs300_get_brightness(struct rs300 *rs300, int *brightness_value)
         }
         
         dev_info(&client->dev, "Brightness result buffer: %*ph", (int)sizeof(result_buffer), result_buffer);
-        
+
+        /* DEBUG: Print detailed breakdown of result buffer */
+        dev_info(&client->dev, "Result breakdown:");
+        dev_info(&client->dev, "  [0-3] Cmd header: %02X %02X %02X %02X",
+                 result_buffer[0], result_buffer[1], result_buffer[2], result_buffer[3]);
+        dev_info(&client->dev, "  [4-7] P1-P4:     %02X %02X %02X %02X (P1=%d)",
+                 result_buffer[4], result_buffer[5], result_buffer[6], result_buffer[7], result_buffer[4]);
+        dev_info(&client->dev, "  [8-11] P5-P8:    %02X %02X %02X %02X",
+                 result_buffer[8], result_buffer[9], result_buffer[10], result_buffer[11]);
+        dev_info(&client->dev, "  [12-15] P9-P12:  %02X %02X %02X %02X (P12=%d)",
+                 result_buffer[12], result_buffer[13], result_buffer[14], result_buffer[15], result_buffer[15]);
+        dev_info(&client->dev, "  [16-17] CRC:     %02X %02X",
+                 result_buffer[16], result_buffer[17]);
+
+        /* TEMPORARY: Test multiple byte positions to find correct one */
+        dev_info(&client->dev, "Byte position candidates:");
+        dev_info(&client->dev, "  byte[4]  (P1)  = %d (0x%02X) - current assumption",
+                 result_buffer[4], result_buffer[4]);
+        dev_info(&client->dev, "  byte[5]  (P2)  = %d (0x%02X)",
+                 result_buffer[5], result_buffer[5]);
+        dev_info(&client->dev, "  byte[12] (P9)  = %d (0x%02X)",
+                 result_buffer[12], result_buffer[12]);
+        dev_info(&client->dev, "  byte[13] (P10) = %d (0x%02X)",
+                 result_buffer[13], result_buffer[13]);
+        dev_info(&client->dev, "  byte[14] (P11) = %d (0x%02X)",
+                 result_buffer[14], result_buffer[14]);
+        dev_info(&client->dev, "  byte[15] (P12) = %d (0x%02X)",
+                 result_buffer[15], result_buffer[15]);
+
         /* Based on the command structure, the brightness value should be in byte 4 */
         *brightness_value = result_buffer[4];
-        
+
         dev_info(&client->dev, "Current brightness value: %d (0x%02X)", *brightness_value, *brightness_value);
         return 0;
     }
@@ -614,26 +897,126 @@ static int rs300_get_brightness(struct rs300 *rs300, int *brightness_value)
 static int rs300_set_dde(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting DDE to %d", value);
+
+    /* Validate value range */
+    if (value < 0 || value > 100) {
+        dev_err(&client->dev, "Invalid DDE value: %d (valid range: 0-100)", value);
+        return -EINVAL;
+    }
+
+    /* Pack parameters */
+    params[0] = value;
+
+    return rs300_send_command(rs300, 0x10, 0x04, 0x45, params, 1, 500);
+}
+
+static int rs300_set_output_mode(struct rs300 *rs300, int value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];  /* Standard 18-byte I2C command format */
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Setting output mode to %d", value);
+
+    /* Validate value range (0-5: IR/KBC/TNR/SNR/DDE/YUV) */
+    if (value < 0 || value > 5) {
+        dev_err(&client->dev, "Invalid output mode value: %d (valid: 0-5)", value);
+        return -EINVAL;
+    }
+
+    /* Construct the command buffer for output mode selection (standard 18-byte format) */
+    /* Command: Set Image Data Source (IR/KBC/TNR/SNR/DDE/YUV output) */
+    cmd_buffer[0] = 0x10;  /* Command Class: Camera control */
+    cmd_buffer[1] = 0x10;  /* Module Index: MIPI interface */
+    cmd_buffer[2] = 0x45;  /* SubCmd: Output source selection */
+    cmd_buffer[3] = 0x00;  /* Reserved - MUST be 0x00 per I2C protocol */
+    cmd_buffer[4] = value; /* Output mode: 0=IR, 1=KBC, 2=TNR, 3=SNR, 4=DDE, 5=YUV */
+
+    /* Fill remaining parameters with zeros (bytes 5-15) */
+    memset(&cmd_buffer[5], 0, 11);
+
+    /* Use pre-calculated CRC values for each mode (hardcoded per I2C_QUICK_REFERENCE.md) */
+    /* CRC lookup table: [mode][low_byte, high_byte] */
+    static const u8 mode_crc[6][2] = {
+        {0xFB, 0xC0},  /* Mode 0 (IR):  Detector raw data output */
+        {0x8E, 0xC3},  /* Mode 1 (KBC): KB correction output */
+        {0x11, 0xC6},  /* Mode 2 (TNR): Temporal noise removal output */
+        {0x64, 0xC5},  /* Mode 3 (SNR): Spatial noise removal output */
+        {0x2F, 0xCD},  /* Mode 4 (DDE): Detail enhancement output */
+        {0x5A, 0xCE},  /* Mode 5 (YUV): Default final YUV output */
+    };
+
+    cmd_buffer[16] = mode_crc[value][0];  /* CRC low byte */
+    cmd_buffer[17] = mode_crc[value][1];  /* CRC high byte */
+
+    dev_info(&client->dev, "Output mode command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write output mode command: %d", ret);
+        return ret;
+    }
+
+    /* Wait for completion */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "Output mode command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "Output mode set successfully to %d", value);
+            return 0;
+        }
+
+        retry_count++;
+    }
+
+    dev_err(&client->dev, "Output mode command timed out");
+    return -ETIMEDOUT;
+}
+
+static int rs300_set_yuv_format(struct rs300 *rs300, int format)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
     u8 cmd_buffer[18];
     u8 status_buffer[1];
     int ret;
     int retry_count = 0;
     const int max_retries = 5;
     
-    dev_info(&client->dev, "Setting DDE to %d", value);
+    dev_info(&client->dev, "Setting YUV format to %d (0=UYVY, 1=VYUY, 2=YUYV, 3=YVYU)", format);
     
-    /* Validate value range */
-    if (value < 0 || value > 100) {
-        dev_err(&client->dev, "Invalid DDE value: %d (valid range: 0-100)", value);
+    /* Validate format range */
+    if (format < 0 || format > 3) {
+        dev_err(&client->dev, "Invalid YUV format: %d (valid range: 0-3)", format);
         return -EINVAL;
     }
     
-    /* Construct the command buffer */
+    /* Construct the YUV format command buffer based on CSV data */
     cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x04;  /* Module Command Index */
-    cmd_buffer[2] = 0x45;  /* SubCmd */
+    cmd_buffer[1] = 0x03;  /* Module Command Index */
+    cmd_buffer[2] = 0x4D;  /* SubCmd - YUV format setting */
     cmd_buffer[3] = 0x00;  /* Reserved */
-    cmd_buffer[4] = value; /* Parameter value */
+    cmd_buffer[4] = format; /* Parameter: 0=UYVY, 1=VYUY, 2=YUYV, 3=YVYU */
     
     /* Fill remaining parameters with zeros */
     memset(&cmd_buffer[5], 0, 11);
@@ -643,16 +1026,16 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
     cmd_buffer[16] = crc & 0xFF;
     cmd_buffer[17] = (crc >> 8) & 0xFF;
     
-    dev_info(&client->dev, "DDE command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+    dev_info(&client->dev, "YUV format command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
     
     /* Write command */
     ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
     if (ret) {
-        dev_err(&client->dev, "Failed to write DDE command: %d", ret);
+        dev_err(&client->dev, "Failed to write YUV format command: %d", ret);
         return ret;
     }
     
-    /* Wait for completion */
+    /* Wait for completion with timeout and retry */
     while (retry_count < max_retries) {
         msleep(50);
         
@@ -668,231 +1051,341 @@ static int rs300_set_dde(struct rs300 *rs300, int value)
         
         if (!is_busy) {
             if (has_failed) {
-                dev_err(&client->dev, "DDE command failed with error code: 0x%02X", error_code);
+                dev_err(&client->dev, "YUV format command failed with error code: 0x%02X", error_code);
                 return -EIO;
             }
-            dev_info(&client->dev, "DDE set successfully");
+            dev_info(&client->dev, "YUV format set to %d successfully", format);
             return 0;
         }
         
         retry_count++;
     }
     
-    dev_err(&client->dev, "DDE command timed out");
+    /* If we get here, we've exceeded max retries */
+    dev_err(&client->dev, "YUV format command timed out after %d retries", max_retries);
+    return -ETIMEDOUT;
+}
+
+/* Anti-burn Protection SET command (0x10/0x03/0x4B with hardcoded CRC) */
+static int rs300_set_antiburn(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Setting anti-burn protection: %s", enable ? "ON" : "OFF");
+
+    if (enable != 0 && enable != 1) {
+        dev_err(&client->dev, "Invalid anti-burn value: %d (valid: 0 or 1)", enable);
+        return -EINVAL;
+    }
+
+    /* Construct anti-burn protection command packet */
+    cmd_buffer[0] = 0x10;  /* Class: Camera control */
+    cmd_buffer[1] = 0x03;  /* Module: Image quality */
+    cmd_buffer[2] = 0x4B;  /* SubCmd: Anti-burn protection SET */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+    cmd_buffer[4] = enable;  /* P1: 0=OFF, 1=ON */
+
+    memset(&cmd_buffer[5], 0, 11);  /* Fill P2-P12 with zeros */
+
+    /* Hardcoded CRC lookup table (from CSV rows 42-43) */
+    static const u8 antiburn_crc[2][2] = {
+        {0x58, 0x8D},  /* OFF (enable=0) CRC LSB, MSB */
+        {0x2D, 0x8E},  /* ON  (enable=1) CRC LSB, MSB */
+    };
+
+    cmd_buffer[16] = antiburn_crc[enable][0];
+    cmd_buffer[17] = antiburn_crc[enable][1];
+
+    dev_info(&client->dev, "Anti-burn command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write anti-burn command: %d", ret);
+        return ret;
+    }
+
+    /* Poll status register until ready */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "Anti-burn command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "Anti-burn protection set successfully to %s", enable ? "ON" : "OFF");
+            return 0;
+        }
+
+        retry_count++;
+    }
+
+    dev_err(&client->dev, "Anti-burn command timed out");
+    return -ETIMEDOUT;
+}
+
+/* Shutter Control SET command (0x01/0x0F/0x45 with hardcoded CRC) */
+static int rs300_set_shutter(struct rs300 *rs300, int state)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Setting shutter to %s", state ? "OPEN" : "CLOSED");
+
+    if (state != 0 && state != 1) {
+        dev_err(&client->dev, "Invalid shutter state: %d (valid: 0=close, 1=open)", state);
+        return -EINVAL;
+    }
+
+    /* Construct shutter control command packet */
+    cmd_buffer[0] = 0x01;  /* Class: Device control (not standard 0x10) */
+    cmd_buffer[1] = 0x0F;  /* Module: Shutter control */
+    cmd_buffer[2] = 0x45;  /* SubCmd: Shutter open/close */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+    cmd_buffer[4] = state;  /* P1: 0=CLOSE, 1=OPEN */
+
+    memset(&cmd_buffer[5], 0, 11);  /* Fill P2-P12 with zeros */
+
+    /* Hardcoded CRC lookup table (from CSV rows 4-5) */
+    static const u8 shutter_crc[2][2] = {
+        {0x8D, 0x5A},  /* CLOSE (state=0) CRC LSB, MSB */
+        {0xF8, 0x59},  /* OPEN  (state=1) CRC LSB, MSB */
+    };
+
+    cmd_buffer[16] = shutter_crc[state][0];
+    cmd_buffer[17] = shutter_crc[state][1];
+
+    dev_info(&client->dev, "Shutter command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write shutter command: %d", ret);
+        return ret;
+    }
+
+    /* Poll status register until ready */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "Shutter command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "Shutter set successfully to %s", state ? "OPEN" : "CLOSED");
+            return 0;
+        }
+
+        retry_count++;
+    }
+
+    dev_err(&client->dev, "Shutter command timed out");
+    return -ETIMEDOUT;
+}
+
+/* Hook Edge Position SET command (0x10/0x04/0x4E with dynamic CRC) */
+static int rs300_set_hook_edge(struct rs300 *rs300, int position)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting hook edge position to %d (0=No Hook, 1=1st Gear, 2=2 Levels)", position);
+
+    if (position < 0 || position > 2) {
+        dev_err(&client->dev, "Invalid hook edge position: %d (valid: 0-2)", position);
+        return -EINVAL;
+    }
+
+    params[0] = position;
+
+    /* Use dynamic CRC calculation via rs300_send_command */
+    return rs300_send_command(rs300, 0x10, 0x04, 0x4E, params, 1, 500);
+}
+
+/* Detector Frame Rate SET command (0x10/0x10/0x44 with dynamic CRC) */
+static int rs300_set_frame_rate(struct rs300 *rs300, int rate_index)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+    u8 rate_value;
+
+    /* Map menu index to frame rate parameter value */
+    static const u8 frame_rate_values[] = {
+        0x19,  /* Index 0: 25Hz */
+        0x1E,  /* Index 1: 30Hz */
+        0x32,  /* Index 2: 50Hz */
+        0x3C,  /* Index 3: 60Hz */
+    };
+
+    if (rate_index < 0 || rate_index > 3) {
+        dev_err(&client->dev, "Invalid frame rate index: %d (valid: 0-3)", rate_index);
+        return -EINVAL;
+    }
+
+    rate_value = frame_rate_values[rate_index];
+    dev_info(&client->dev, "Setting detector frame rate to index %d (value: 0x%02X)", rate_index, rate_value);
+
+    params[0] = rate_value;
+
+    /* Use dynamic CRC calculation via rs300_send_command with extended timeout for frame rate switching */
+    return rs300_send_command(rs300, 0x10, 0x10, 0x44, params, 1, 2500);
+}
+
+/* Digital-Analog Output Format SET command (0x10/0x10/0x49 with hardcoded CRC) */
+static int rs300_set_analog_output_fmt(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Setting digital-analog output format (enable: %d)", enable);
+
+    if (enable != 0 && enable != 1) {
+        dev_err(&client->dev, "Invalid analog output format value: %d", enable);
+        return -EINVAL;
+    }
+
+    /* Construct digital-analog output format command packet */
+    cmd_buffer[0] = 0x10;  /* Class: Camera control */
+    cmd_buffer[1] = 0x10;  /* Module: MIPI interface */
+    cmd_buffer[2] = 0x49;  /* SubCmd: Digital-analog output format */
+    cmd_buffer[3] = 0x00;  /* Reserved */
+
+    /* All parameters are 0x00 for this command (single fixed config) */
+    memset(&cmd_buffer[4], 0, 12);
+
+    /* Hardcoded CRC for this command (from CSV row 89) */
+    cmd_buffer[16] = 0x35;  /* CRC LSB */
+    cmd_buffer[17] = 0xD6;  /* CRC MSB */
+
+    dev_info(&client->dev, "Analog output format command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write analog output format command: %d", ret);
+        return ret;
+    }
+
+    /* Poll status register until ready */
+    while (retry_count < max_retries) {
+        msleep(50);
+
+        ret = read_regs(client, 0x0200, status_buffer, 1);
+        if (ret) {
+            dev_err(&client->dev, "Failed to read status: %d", ret);
+            return ret;
+        }
+
+        bool is_busy = (status_buffer[0] & 0x01) != 0;
+        bool has_failed = (status_buffer[0] & 0x02) != 0;
+        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
+
+        if (!is_busy) {
+            if (has_failed) {
+                dev_err(&client->dev, "Analog output format command failed with error code: 0x%02X", error_code);
+                return -EIO;
+            }
+            dev_info(&client->dev, "Analog output format set successfully");
+            return 0;
+        }
+
+        retry_count++;
+    }
+
+    dev_err(&client->dev, "Analog output format command timed out");
     return -ETIMEDOUT;
 }
 
 static int rs300_set_contrast(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-    int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
+    u8 params[12] = {0};
+
     dev_info(&client->dev, "Setting contrast to %d", value);
-    
+
     /* Validate value range */
     if (value < 0 || value > 100) {
         dev_err(&client->dev, "Invalid contrast value: %d (valid range: 0-100)", value);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x04;  /* Module Command Index */
-    cmd_buffer[2] = 0x4A;  /* SubCmd */
-    cmd_buffer[3] = 0x00;  /* Reserved */
-    cmd_buffer[4] = value; /* Parameter value */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[5], 0, 11);
-    
-    /* Calculate CRC */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    cmd_buffer[16] = crc & 0xFF;
-    cmd_buffer[17] = (crc >> 8) & 0xFF;
-    
-    dev_info(&client->dev, "Contrast command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write contrast command: %d", ret);
-        return ret;
-    }
-    
-    /* Wait for completion */
-    while (retry_count < max_retries) {
-        msleep(50);
-        
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read status: %d", ret);
-            return ret;
-        }
-        
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
-        
-        if (!is_busy) {
-            if (has_failed) {
-                dev_err(&client->dev, "Contrast command failed with error code: 0x%02X", error_code);
-                return -EIO;
-            }
-            dev_info(&client->dev, "Contrast set successfully");
-            return 0;
-        }
-        
-        retry_count++;
-    }
-    
-    dev_err(&client->dev, "Contrast command timed out");
-    return -ETIMEDOUT;
+
+    /* Pack parameters */
+    params[0] = value;
+
+    return rs300_send_command(rs300, 0x10, 0x04, 0x4A, params, 1, 500);
 }
 
 static int rs300_set_spatial_nr(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-    int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
+    u8 params[12] = {0};
+
     dev_info(&client->dev, "Setting spatial noise reduction to %d", value);
-    
+
     /* Validate value range */
     if (value < 0 || value > 100) {
         dev_err(&client->dev, "Invalid spatial NR value: %d (valid range: 0-100)", value);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x04;  /* Module Command Index */
-    cmd_buffer[2] = 0x4B;  /* SubCmd */
-    cmd_buffer[3] = 0x00;  /* Reserved */
-    cmd_buffer[4] = value; /* Parameter value */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[5], 0, 11);
-    
-    /* Calculate CRC */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    cmd_buffer[16] = crc & 0xFF;
-    cmd_buffer[17] = (crc >> 8) & 0xFF;
-    
-    dev_info(&client->dev, "Spatial NR command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write spatial NR command: %d", ret);
-        return ret;
-    }
-    
-    /* Wait for completion */
-    while (retry_count < max_retries) {
-        msleep(50);
-        
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read status: %d", ret);
-            return ret;
-        }
-        
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
-        
-        if (!is_busy) {
-            if (has_failed) {
-                dev_err(&client->dev, "Spatial NR command failed with error code: 0x%02X", error_code);
-                return -EIO;
-            }
-            dev_info(&client->dev, "Spatial NR set successfully");
-            return 0;
-        }
-        
-        retry_count++;
-    }
-    
-    dev_err(&client->dev, "Spatial NR command timed out");
-    return -ETIMEDOUT;
+
+    /* Pack parameters */
+    params[0] = value;
+
+    return rs300_send_command(rs300, 0x10, 0x04, 0x4B, params, 1, 500);
 }
 
 static int rs300_set_temporal_nr(struct rs300 *rs300, int value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-    int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
+    u8 params[12] = {0};
+
     dev_info(&client->dev, "Setting temporal noise reduction to %d", value);
-    
+
     /* Validate value range */
     if (value < 0 || value > 100) {
         dev_err(&client->dev, "Invalid temporal NR value: %d (valid range: 0-100)", value);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x04;  /* Module Command Index */
-    cmd_buffer[2] = 0x4C;  /* SubCmd */
-    cmd_buffer[3] = 0x00;  /* Reserved */
-    cmd_buffer[4] = value; /* Parameter value */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[5], 0, 11);
-    
-    /* Calculate CRC */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    cmd_buffer[16] = crc & 0xFF;
-    cmd_buffer[17] = (crc >> 8) & 0xFF;
-    
-    dev_info(&client->dev, "Temporal NR command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write temporal NR command: %d", ret);
-        return ret;
-    }
-    
-    /* Wait for completion */
-    while (retry_count < max_retries) {
-        msleep(50);
-        
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read status: %d", ret);
-            return ret;
-        }
-        
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;
-        
-        if (!is_busy) {
-            if (has_failed) {
-                dev_err(&client->dev, "Temporal NR command failed with error code: 0x%02X", error_code);
-                return -EIO;
-            }
-            dev_info(&client->dev, "Temporal NR set successfully");
-            return 0;
-        }
-        
-        retry_count++;
-    }
-    
-    dev_err(&client->dev, "Temporal NR command timed out");
-    return -ETIMEDOUT;
+
+    /* Pack parameters */
+    params[0] = value;
+
+    return rs300_send_command(rs300, 0x10, 0x04, 0x4C, params, 1, 500);
 }
 
 static int rs300_get_colormap(struct rs300 *rs300, int *colormap_value)
@@ -988,247 +1481,53 @@ static int rs300_get_colormap(struct rs300 *rs300, int *colormap_value)
 static int rs300_set_colormap(struct rs300 *rs300, int colormap_value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
+    u8 params[12] = {0};
     int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
     int current_colormap;
-    
+
     dev_info(&client->dev, "Setting colormap to %d", colormap_value);
-    
+
     /* Validate colormap value range */
     if (colormap_value < 0 || colormap_value > 11) {
         dev_err(&client->dev, "Invalid colormap value: %d (valid range: 0-11)",
                 colormap_value);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x10;             /* Command Class */
-    cmd_buffer[1] = 0x03;             /* Module Command Index */
-    cmd_buffer[2] = 0x45;             /* SubCmd */
-    cmd_buffer[3] = 0x00;             /* Reserved */
-    cmd_buffer[4] = 0x00;             /* Parameter 1 (0x00) */
-    cmd_buffer[5] = colormap_value;   /* Parameter 2 (0-11) */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[6], 0, 10);
-    
-    /* Calculate CRC/checksum for the command */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    /* Swap byte order to match the expected format */
-    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
-    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
-    
-    dev_info(&client->dev, "Command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* STEP 1: Write command to command buffer register (0x1d00) */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write command: %d", ret);
+
+    /* Pack parameters */
+    params[0] = 0x00;            /* Parameter 1 (0x00) */
+    params[1] = colormap_value;  /* Parameter 2 (0-11) */
+
+    /* Send command */
+    ret = rs300_send_command(rs300, 0x10, 0x03, 0x45, params, 2, 500);
+    if (ret)
         return ret;
+
+    /* Verify colormap was set correctly */
+    msleep(100);
+    ret = rs300_get_colormap(rs300, &current_colormap);
+    if (ret) {
+        dev_warn(&client->dev, "Failed to get current colormap: %d", ret);
+    } else {
+        if (current_colormap == colormap_value) {
+            dev_info(&client->dev, "Colormap successfully set and verified: %d", current_colormap);
+        } else {
+            dev_warn(&client->dev, "Colormap mismatch! Set: %d, Got: %d",
+                     colormap_value, current_colormap);
+        }
     }
-    
-    /* STEP 2: Read command status and wait for completion */
-    while (retry_count < max_retries) {
-        /* Wait for command processing */
-        msleep(50);
-        
-        /* Read command status from status register (0x0200) */
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read command status: %d", ret);
-            return ret;
-        }
-        
-        /* Check command status */
-        dev_info(&client->dev, "Command status: 0x%02X", status_buffer[0]);
-        
-        /* Extract status components */
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  // Bits 2-7
-        
-        /* Check if command is still busy */
-        if (is_busy) {
-            dev_info(&client->dev, "Command is busy, retrying...");
-            retry_count++;
-            continue;
-        }
-        
-        /* Check for errors */
-        if (has_failed) {
-            /* Bit 1 set: Command execution failed */
-            dev_err(&client->dev, "Command execution failed with error code: 0x%02X", error_code);
-            
-            /* Interpret error code */
-            switch (error_code) {
-            case 0x00:
-                dev_info(&client->dev, "Error: Correct");
-                break;
-            case 0x01:
-                dev_err(&client->dev, "Error: Length");
-                break;
-            case 0x02:
-                dev_err(&client->dev, "Error: Unknown instruction");
-                break;
-            case 0x03:
-                dev_err(&client->dev, "Error: Hardware error");
-                break;
-            case 0x04:
-                dev_err(&client->dev, "Error: Unknown instruction (not yet enabled)");
-                break;
-            case 0x05:
-            case 0x06:
-            case 0x07:
-                dev_err(&client->dev, "Error: CRC check error");
-                break;
-            default:
-                dev_err(&client->dev, "Error: Unknown error code");
-                break;
-            }
-            
-            return -EIO;
-        }
-        
-        /* After successful command execution */
-        if (!has_failed && error_code == 0) {
-            /* Wait a moment before getting the colormap */
-            msleep(100);
-            
-            /* Get the current colormap to verify the change */
-            ret = rs300_get_colormap(rs300, &current_colormap);
-            if (ret) {
-                dev_warn(&client->dev, "Failed to get current colormap: %d", ret);
-            } else {
-                if (current_colormap == colormap_value) {
-                    dev_info(&client->dev, "Colormap successfully set and verified: %d", current_colormap);
-                } else {
-                    dev_warn(&client->dev, "Colormap mismatch! Set: %d, Got: %d", 
-                             colormap_value, current_colormap);
-                }
-            }
-        }
-        
-        return 0;
-    }
-    
-    /* If we get here, we've exceeded max retries */
-    dev_err(&client->dev, "Command timed out after %d retries", max_retries);
-    return -ETIMEDOUT;
+
+    return 0;
 }
 
 static int rs300_shutter_cal(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-	int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
-    dev_info(&client->dev, "Triggering shutter calibration (FFC)");
-    
-    /* Construct the command buffer based on the example (shutter command) */
-    cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x02;  /* Module Command Index */
-    cmd_buffer[2] = 0x43;  /* SubCmd - 0x43 for shutter/FFC */
-    cmd_buffer[3] = 0x00;  /* Reserved */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[4], 0, 12);
 
-    /* Calculate CRC/checksum for the command */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    /* Swap byte order to match the expected format */
-    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
-    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
-    
-    dev_info(&client->dev, "Shutter command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* STEP 1: Write command to command buffer register (0x1d00) */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write shutter command: %d", ret);
-        return ret;
-    }
-    
-    /* STEP 2: Read command status and wait for completion */
-    while (retry_count < max_retries) {
-        /* Wait for command processing - FFC might take longer */
-        msleep(1000);  /* Longer wait time for FFC */
-        
-        /* Read command status from status register (0x0200) */
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read command status: %d", ret);
-            return ret;
-        }
-        
-        /* Check command status */
-        dev_info(&client->dev, "Shutter command status: 0x%02X", status_buffer[0]);
-        
-        /* Extract status components */
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  // Bits 2-7
-        
-        /* Check if command is still busy */
-        if (is_busy) {
-            dev_info(&client->dev, "Shutter command is busy, retrying...");
-            retry_count++;
-            continue;
-        }
-        
-        /* Check for errors */
-        if (has_failed) {
-            /* Bit 1 set: Command execution failed */
-            dev_err(&client->dev, "Shutter command execution failed with error code: 0x%02X", error_code);
-            
-            /* Interpret error code */
-            switch (error_code) {
-            case 0x00:
-                dev_info(&client->dev, "Error: Correct");
-                break;
-            case 0x01:
-                dev_err(&client->dev, "Error: Length");
-                break;
-            case 0x02:
-                dev_err(&client->dev, "Error: Unknown instruction");
-                break;
-            case 0x03:
-                dev_err(&client->dev, "Error: Hardware error");
-                break;
-            case 0x04:
-                dev_err(&client->dev, "Error: Unknown instruction (not yet enabled)");
-                break;
-            case 0x05:
-            case 0x06:
-            case 0x07:
-                dev_err(&client->dev, "Error: CRC check error");
-                break;
-            default:
-                dev_err(&client->dev, "Error: Unknown error code");
-                break;
-            }
-            
-            return -EIO;
-        }
-        
-        /* Even if not failed, check if there's an error code */
-        if (error_code != 0) {
-            dev_warn(&client->dev, "Shutter command completed but with error code: 0x%02X", error_code);
-        }
-        
-        /* Command executed successfully */
-        dev_info(&client->dev, "Shutter calibration command executed successfully");
-        return 0;
-    }
-    
-    /* If we get here, we've exceeded max retries */
-    dev_err(&client->dev, "Shutter command timed out after %d retries", max_retries);
-    return -ETIMEDOUT;
+    dev_info(&client->dev, "Triggering shutter calibration (FFC)");
+
+    /* FFC requires longer timeout due to physical shutter movement */
+    return rs300_send_command(rs300, 0x10, 0x02, 0x43, NULL, 0, 5000);
 }
 
 static int rs300_brightness_correct(struct rs300 *rs300, int brightness_value)
@@ -1242,29 +1541,8 @@ static int rs300_brightness_correct(struct rs300 *rs300, int brightness_value)
     const int max_retries = 5;
     int current_brightness;
     
-    /* Map 0-100 brightness to appropriate parameter values */
-    if (brightness_value == 0)
-        brightness_param = 0x00;
-    else if (brightness_value <= 10)
-        brightness_param = 0x0A;
-    else if (brightness_value <= 20)
-        brightness_param = 0x14;
-    else if (brightness_value <= 30)
-        brightness_param = 0x1E;
-    else if (brightness_value <= 40)
-        brightness_param = 0x28;
-    else if (brightness_value <= 50)
-        brightness_param = 0x32;
-    else if (brightness_value <= 60)
-        brightness_param = 0x3C;
-    else if (brightness_value <= 70)
-        brightness_param = 0x46;
-    else if (brightness_value <= 80)
-        brightness_param = 0x50;
-    else if (brightness_value <= 90)
-        brightness_param = 0x5A;
-    else
-        brightness_param = 0x64;
+    /* Map 0-100 brightness to parameter values (simple linear mapping) */
+    brightness_param = (brightness_value > 100) ? 0x64 : brightness_value;
     
     dev_info(&client->dev, "Setting brightness correctly to %d (param: 0x%02X)", 
              brightness_value, brightness_param);
@@ -1388,166 +1666,211 @@ static int rs300_brightness_correct(struct rs300 *rs300, int brightness_value)
 static int rs300_set_zoom(struct rs300 *rs300, int zoom_level)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-    int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
+    u8 params[12] = {0};
+
     dev_info(&client->dev, "Setting zoom to %dx", zoom_level);
-    
+
     /* Validate zoom level */
     if (zoom_level < 1 || zoom_level > 8) {
         dev_err(&client->dev, "Invalid zoom level: %d (valid range: 1-8)", zoom_level);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x01;  /* Fixed value */
-    cmd_buffer[1] = 0x31;  /* Fixed value */
-    cmd_buffer[2] = 0x42;  /* Fixed value */
-    cmd_buffer[3] = 0x00;  /* Fixed value */
-    cmd_buffer[4] = 0x00;  /* Fixed value */
-    cmd_buffer[5] = zoom_level * 10;  /* Convert zoom level to command value */
-    /* Fill remaining values */
-    memset(&cmd_buffer[6], 0x00, 10);  /* Bytes 6-15 are 0x00 */
-    cmd_buffer[16] = 0x06;  /* Fixed value */
-    cmd_buffer[17] = 0x0A;  /* Fixed value */
-    
-    dev_info(&client->dev, "Zoom command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command to command buffer register (0x1d00) */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write zoom command: %d", ret);
-        return ret;
-    }
-    
-    /* Read command status and wait for completion */
-    while (retry_count < max_retries) {
-        /* Wait for command processing */
-        msleep(50);
-        
-        /* Read command status from status register (0x0200) */
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_err(&client->dev, "Failed to read command status: %d", ret);
-            return ret;
-        }
-        
-        /* Check command status */
-        dev_info(&client->dev, "Zoom command status: 0x%02X", status_buffer[0]);
-        
-        /* Extract status components */
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  /* Bits 2-7 */
-        
-        /* Check if command is still busy */
-        if (is_busy) {
-            dev_info(&client->dev, "Zoom command is busy, retrying...");
-            retry_count++;
-            continue;
-        }
-        
-        /* Check for errors */
-        if (has_failed) {
-            dev_err(&client->dev, "Zoom command execution failed with error code: 0x%02X", error_code);
-            return -EIO;
-        }
-        
-        /* Command executed successfully */
-        dev_info(&client->dev, "Zoom set to %dx successfully", zoom_level);
-        return 0;
-    }
-    
-    /* If we get here, we've exceeded max retries */
-    dev_err(&client->dev, "Zoom command timed out after %d retries", max_retries);
-    return -ETIMEDOUT;
+
+    /* Pack parameters */
+    params[0] = 0x00;                /* Fixed value */
+    params[1] = zoom_level * 10;     /* Convert zoom level to command value (10, 20, ... 80) */
+
+    /* Note: Previously used hardcoded CRC values (0x06, 0x0A) - now properly calculated */
+    /* Zoom uses class 0x01 instead of the standard 0x10 */
+    return rs300_send_command(rs300, 0x01, 0x31, 0x42, params, 2, 500);
 }
 
 static int rs300_set_scene_mode(struct rs300 *rs300, int scene_mode_value)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
-    int ret;
-    int retry_count = 0;
-    const int max_retries = 5;
-    
+    u8 params[12] = {0};
+
     dev_info(&client->dev, "Setting scene mode to %d", scene_mode_value);
-    
+
     /* Validate scene mode value range */
     if (scene_mode_value < 0 || scene_mode_value > 9) {
         dev_err(&client->dev, "Invalid scene mode value: %d (valid range: 0-9)",
                 scene_mode_value);
         return -EINVAL;
     }
-    
-    /* Construct the command buffer */
-    cmd_buffer[0] = 0x10;             /* Command Class */
-    cmd_buffer[1] = 0x04;             /* Module Command Index */
-    cmd_buffer[2] = 0x42;             /* SubCmd */
-    cmd_buffer[3] = 0x00;             /* Reserved */
-    cmd_buffer[4] = scene_mode_value;  /* Parameter 1 (scene mode value) */
-    
-    /* Fill remaining parameters with zeros */
-    memset(&cmd_buffer[5], 0, 11);
-    
-    /* Calculate CRC/checksum for the command */
-    unsigned short crc = do_crc(cmd_buffer, 16);
-    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
-    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
-    
-    dev_info(&client->dev, "Scene mode command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command to command buffer register (0x1d00) */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_err(&client->dev, "Failed to write scene mode command: %d", ret);
+
+    /* Pack parameters */
+    params[0] = scene_mode_value;
+
+    return rs300_send_command(rs300, 0x10, 0x04, 0x42, params, 1, 500);
+}
+
+/* Autoshutter control functions */
+static int rs300_set_autoshutter(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting autoshutter: %s", enable ? "ON" : "OFF");
+
+    /* Pack parameters: P1 = enable (0=off, 1=on) */
+    params[0] = enable ? 0x01 : 0x00;
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x41 */
+    return rs300_send_command(rs300, 0x10, 0x02, 0x41, params, 1, 500);
+}
+
+static int rs300_get_autoshutter(struct rs300 *rs300, int *value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+    u8 result_buffer[18];
+    int ret;
+
+    dev_info(&client->dev, "Getting autoshutter state");
+
+    /* Pack parameters: P9=0x01, Len=0x0001 */
+    params[8] = 0x01;  /* P9 = 0x01 */
+    /* Len field is in bytes 12-13, but rs300_send_command handles this */
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x81 */
+    ret = rs300_send_command(rs300, 0x10, 0x02, 0x81, params, 9, 500);
+    if (ret < 0) {
+        dev_err(&client->dev, "Failed to get autoshutter state: %d", ret);
         return ret;
     }
-    
-    /* Read command status and wait for completion */
+
+    /* Read result from camera (register 0x1d00 contains the result) */
+    ret = read_regs(client, 0x1d00, result_buffer, 18);
+    if (ret < 0) {
+        dev_err(&client->dev, "Failed to read autoshutter result: %d", ret);
+        return ret;
+    }
+
+    /* Extract result from buffer (P1 contains the state) */
+    *value = result_buffer[4];  /* P1 is at byte 4 */
+
+    dev_info(&client->dev, "Autoshutter state: %s", *value ? "ON" : "OFF");
+
+    return 0;
+}
+
+static int rs300_set_autoshutter_params(struct rs300 *rs300, int param_type, int value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting autoshutter param type %d to value %d",
+             param_type, value);
+
+    /* Validate parameter type */
+    if (param_type < 0 || param_type > 2) {
+        dev_err(&client->dev, "Invalid parameter type: %d (valid range: 0-2)",
+                param_type);
+        return -EINVAL;
+    }
+
+    /* Pack parameters:
+     * P1[0] = param_type (0=temp threshold, 1=min interval, 2=max interval)
+     * P1[2:1] = value (16-bit little-endian)
+     */
+    params[0] = param_type;
+    params[1] = value & 0xFF;        /* Low byte */
+    params[2] = (value >> 8) & 0xFF; /* High byte */
+
+    /* Command: Class=0x10, Module=0x02, SubCmd=0x42 */
+    return rs300_send_command(rs300, 0x10, 0x02, 0x42, params, 3, 500);
+}
+
+/* Camera sleep/wake control functions */
+static int rs300_set_sleep(struct rs300 *rs300, int enable)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 params[12] = {0};
+
+    dev_info(&client->dev, "Setting camera sleep: %s", enable ? "ON" : "OFF");
+
+    /* Para1: 0x01 = sleep, 0x00 = wake */
+    params[0] = enable ? 0x01 : 0x00;
+
+    /* Command: Class=0x10, Module=0x10, SubCmd=0x48
+     * After sleeping, video freezes and camera only responds to wake-up command.
+     */
+    return rs300_send_command(rs300, 0x10, 0x10, 0x48, params, 1, 500);
+}
+
+static int rs300_get_sleep(struct rs300 *rs300, int *value)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+    u8 cmd_buffer[18];
+    u8 status_buffer[1];
+    u8 result_buffer[18];
+    int ret;
+    int retry_count = 0;
+    const int max_retries = 5;
+
+    dev_info(&client->dev, "Getting camera sleep state");
+
+    /* Build GET command: Class=0x10, Module=0x10, SubCmd=0x88 */
+    cmd_buffer[0] = 0x10;
+    cmd_buffer[1] = 0x10;
+    cmd_buffer[2] = 0x88;
+    memset(&cmd_buffer[3], 0x00, 9);
+    cmd_buffer[12] = 0x01;  /* Response length = 1 byte */
+    cmd_buffer[13] = 0x00;
+    cmd_buffer[14] = 0x00;
+    cmd_buffer[15] = 0x00;
+
+    /* Calculate CRC */
+    unsigned short crc = do_crc(cmd_buffer, 16);
+    cmd_buffer[16] = crc & 0xFF;
+    cmd_buffer[17] = (crc >> 8) & 0xFF;
+
+    /* Write command */
+    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
+    if (ret) {
+        dev_err(&client->dev, "Failed to write get sleep command: %d", ret);
+        return ret;
+    }
+
+    /* Poll for completion */
     while (retry_count < max_retries) {
-        /* Wait for command processing */
         msleep(50);
-        
-        /* Read command status from status register (0x0200) */
+
         ret = read_regs(client, 0x0200, status_buffer, 1);
         if (ret) {
             dev_err(&client->dev, "Failed to read command status: %d", ret);
             return ret;
         }
-        
-        /* Check command status */
-        dev_info(&client->dev, "Scene mode command status: 0x%02X", status_buffer[0]);
-        
-        /* Extract status components */
+
         bool is_busy = (status_buffer[0] & 0x01) != 0;
         bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  /* Bits 2-7 */
-        
-        /* Check if command is still busy */
+
         if (is_busy) {
-            dev_info(&client->dev, "Scene mode command is busy, retrying...");
             retry_count++;
             continue;
         }
-        
-        /* Check for errors */
+
         if (has_failed) {
-            dev_err(&client->dev, "Scene mode command execution failed with error code: 0x%02X", error_code);
+            dev_err(&client->dev, "Get sleep command failed");
             return -EIO;
         }
-        
-        /* Command executed successfully */
-        dev_info(&client->dev, "Scene mode set successfully");
+
+        /* Read response from 0x1d00 */
+        ret = read_regs(client, 0x1d00, result_buffer, sizeof(result_buffer));
+        if (ret) {
+            dev_err(&client->dev, "Failed to read sleep status result: %d", ret);
+            return ret;
+        }
+
+        /* Sleep state is in byte 5 of response: 0x00=working, 0x01=sleeping */
+        *value = result_buffer[5];
+        dev_info(&client->dev, "Camera sleep state: %d (0=awake, 1=asleep)", *value);
+
         return 0;
     }
-    
-    /* If we get here, we've exceeded max retries */
-    dev_err(&client->dev, "Scene mode command timed out after %d retries", max_retries);
+
+    dev_err(&client->dev, "Get sleep command timeout");
     return -ETIMEDOUT;
 }
 
@@ -1599,6 +1922,40 @@ static int rs300_set_ctrl(struct v4l2_ctrl *ctrl)
     case V4L2_CID_CUSTOM_BASE + 6:  /* Temporal NR */
         ret = rs300_set_temporal_nr(rs300, ctrl->val);
         break;
+    case V4L2_CID_CUSTOM_BASE + 7:  /* Output Mode */
+        ret = rs300_set_output_mode(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 8:  /* Autoshutter enable/disable */
+        ret = rs300_set_autoshutter(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 9:  /* Autoshutter temperature threshold */
+        ret = rs300_set_autoshutter_params(rs300, 0, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 10:  /* Autoshutter min interval */
+        ret = rs300_set_autoshutter_params(rs300, 1, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 11:  /* Autoshutter max interval */
+        ret = rs300_set_autoshutter_params(rs300, 2, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 12:  /* Camera sleep */
+        dev_info(&client->dev, "Setting camera sleep: %s", ctrl->val ? "ON" : "OFF");
+        ret = rs300_set_sleep(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 13:  /* Anti-burn Protection */
+        ret = rs300_set_antiburn(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 14:  /* Shutter State */
+        ret = rs300_set_shutter(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 15:  /* Hook Edge Position */
+        ret = rs300_set_hook_edge(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 16:  /* Detector Frame Rate */
+        ret = rs300_set_frame_rate(rs300, ctrl->val);
+        break;
+    case V4L2_CID_CUSTOM_BASE + 17:  /* Digital-Analog Output Format */
+        ret = rs300_set_analog_output_fmt(rs300, ctrl->val);
+        break;
     default:
         dev_err(&client->dev, "Invalid control %d", ctrl->id);
         ret = -EINVAL;
@@ -1616,23 +1973,37 @@ static int rs300_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct rs300 *rs300 = to_rs300(sd);
-	//struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	
-	if (code->pad >= NUM_PADS)
+	dev_info(&client->dev, "rs300_enum_mbus_code: pad=%d, index=%d", code->pad, code->index);
+	
+	if (code->pad >= NUM_PADS) {
+		dev_err(&client->dev, "Invalid pad %d (max %d)", code->pad, NUM_PADS-1);
 		return -EINVAL;
+	}
 
 	if (code->pad == IMAGE_PAD) {
-		if (code->index >= ARRAY_SIZE(supported_modes))
+		if (code->index >= ARRAY_SIZE(supported_modes)) {
+			dev_err(&client->dev, "Invalid index %d for IMAGE_PAD (max %lu)", 
+				code->index, ARRAY_SIZE(supported_modes)-1);
 			return -EINVAL;
+		}
 
 		mutex_lock(&rs300->mutex);
 		code->code = supported_modes[code->index].code;
+		dev_info(&client->dev, "IMAGE_PAD[%d]: returning format code 0x%x (%s)",
+			 code->index, code->code, 
+			 code->code == MEDIA_BUS_FMT_YUYV8_1X16 ? "YUYV8_1X16" :
+			 code->code == MEDIA_BUS_FMT_YUYV8_2X8 ? "YUYV8_2X8" : "OTHER");
 		mutex_unlock(&rs300->mutex);
 	} else {
-		if (code->index > 0)
+		if (code->index > 0) {
+			dev_err(&client->dev, "Invalid index %d for METADATA_PAD (only 0 supported)", code->index);
 			return -EINVAL;
+		}
 
 		code->code = MEDIA_BUS_FMT_SENSOR_DATA;
+		dev_info(&client->dev, "METADATA_PAD: returning SENSOR_DATA format (0x%x)", code->code);
 	}
 	
 	return 0;
@@ -1686,23 +2057,29 @@ static void rs300_update_image_pad_format(struct rs300 *rs300,
 
 // Restore and fix __rs300_get_pad_fmt
 static int __rs300_get_pad_fmt(struct rs300 *rs300,
-				struct v4l2_subdev_state *sd_state,
-				struct v4l2_subdev_format *fmt)
+                               struct v4l2_subdev_state *sd_state,
+                               struct v4l2_subdev_format *fmt)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    struct v4l2_mbus_framefmt *try_fmt;
-	if (fmt->pad >= NUM_PADS)
-		return -EINVAL;	
+        struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+        struct v4l2_mbus_framefmt *try_fmt;
+        if (fmt->pad >= NUM_PADS)
+                return -EINVAL;
 
-	dev_info(&client->dev, "rs300_get_pad_fmt: pad=%d, which=%d", 
-		fmt->pad, fmt->which);
+        dev_info(&client->dev, "rs300_get_pad_fmt: pad=%d, which=%d",
+                fmt->pad, fmt->which);
 
-	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-        // Use v4l2_subdev_get_fmt instead of v4l2_subdev_get_try_format
-        try_fmt = v4l2_subdev_get_fmt(&rs300->sd, sd_state, fmt->pad);
+        if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_TRY,
+                        .pad = fmt->pad,
+                };
+                int ret = v4l2_subdev_get_fmt(&rs300->sd, sd_state, &fmt_req);
+                if (ret < 0)
+                        return ret;
 
-        // Copy the format from userspace (fmt->format) to that location (*try_fmt)
-        *try_fmt = fmt->format;
+                /* Copy the format from userspace (fmt->format) to that location (*try_fmt) */
+                try_fmt = &fmt_req.format;
+                *try_fmt = fmt->format;
 
 		dev_info(&client->dev, "Get TRY format: code=0x%x, %dx%d",
 			fmt->format.code, fmt->format.width, fmt->format.height);
@@ -1722,11 +2099,18 @@ static int __rs300_get_pad_fmt(struct rs300 *rs300,
                 dev_info(&client->dev, "No active mode set yet");
             }
 		} else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
-			/* Set metadata format if needed */
-			fmt->format.code = MEDIA_BUS_FMT_SENSOR_DATA;
-			fmt->format.width = 0;  /* Set appropriate width for metadata */
-			fmt->format.height = 0; /* Set appropriate height for metadata */
+			/* Set metadata format to match image format for RP1-CFE compatibility */
+			fmt->format.code = rs300->fmt.code;  /* Use same format as image pad */
+			fmt->format.width = 16384;  /* Standard metadata width for CSI-2 */
+			fmt->format.height = 1;     /* Single line metadata */
 			fmt->format.field = V4L2_FIELD_NONE;
+			/* Copy colorspace parameters from image format */
+			fmt->format.colorspace = rs300->fmt.colorspace;
+			fmt->format.ycbcr_enc = rs300->fmt.ycbcr_enc;
+			fmt->format.quantization = rs300->fmt.quantization;
+			fmt->format.xfer_func = rs300->fmt.xfer_func;
+			dev_info(&client->dev, "Get METADATA format: code=0x%x, %dx%d",
+				fmt->format.code, fmt->format.width, fmt->format.height);
 		}
 	}
 	return 0;
@@ -1798,10 +2182,19 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 
 		rs300_update_image_pad_format(rs300, mode, fmt);
 
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			/* Just update the try format */
-			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
-			*framefmt = fmt->format;
+                if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                        /* Just update the try format */
+                        struct v4l2_subdev_format fmt_req = {
+                                .which = V4L2_SUBDEV_FORMAT_TRY,
+                                .pad = fmt->pad,
+                        };
+                        int ret = v4l2_subdev_get_fmt(sd, sd_state, &fmt_req);
+                        if (ret < 0) {
+                                mutex_unlock(&rs300->mutex);
+                                return ret;
+                        }
+                        framefmt = &fmt_req.format;
+                        *framefmt = fmt->format;
 			dev_info(&client->dev, "Set TRY format: code=0x%x, %dx%d",
 				framefmt->code, framefmt->width, framefmt->height);
 		} else {
@@ -1809,25 +2202,34 @@ static int rs300_set_pad_fmt(struct v4l2_subdev *sd,
 			rs300->fmt = fmt->format;
 			rs300->mode = mode;
 			
-			// Set link frequency based on the selected mode
-			if (rs300->link_frequency) {
-				int idx = (mode->width == 256 && mode->height == 192) ? 1 : 0;
-				__v4l2_ctrl_s_ctrl(rs300->link_frequency, idx);
-				dev_info(&client->dev, "Updated link frequency index to %d for %dx%d",
-						 idx, mode->width, mode->height);
+			/* Update pixel rate control based on new format */
+			if (rs300->pixel_rate) {
+				u64 new_pixel_rate = rs300_get_pixel_rate(rs300->fmt.code);
+				v4l2_ctrl_s_ctrl_int64(rs300->pixel_rate, new_pixel_rate);
+				dev_info(&client->dev, "Updated pixel rate to %llu for format 0x%x",
+					 new_pixel_rate, rs300->fmt.code);
 			}
 			
 			dev_info(&client->dev, "Set ACTIVE format: code=0x%x, %dx%d",
 				rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
 		}
-	} else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
-		/* Handle metadata pad format if needed */
-		if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
-			framefmt = v4l2_subdev_get_fmt(sd, sd_state, fmt->pad);
-			*framefmt = fmt->format;
-		}
-		/* For active format, we don't change anything as metadata format is fixed */
-	}
+        } else if (fmt->pad == METADATA_PAD && NUM_PADS > 1) {
+                /* Handle metadata pad format if needed */
+                if (fmt->which == V4L2_SUBDEV_FORMAT_TRY) {
+                        struct v4l2_subdev_format fmt_req = {
+                                .which = V4L2_SUBDEV_FORMAT_TRY,
+                                .pad = fmt->pad,
+                        };
+                        int ret = v4l2_subdev_get_fmt(sd, sd_state, &fmt_req);
+                        if (ret < 0) {
+                                mutex_unlock(&rs300->mutex);
+                                return ret;
+                        }
+                        framefmt = &fmt_req.format;
+                        *framefmt = fmt->format;
+                }
+                /* For active format, we don't change anything as metadata format is fixed */
+        }
 
 	mutex_unlock(&rs300->mutex);
 	return 0;
@@ -1837,28 +2239,52 @@ static int rs300_set_framefmt(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
     
-    dev_info(&client->dev, "Setting frame format: code=0x%x", rs300->fmt.code);
+    dev_info(&client->dev, "Setting frame format: code=0x%x, %dx%d", 
+             rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
     
     switch (rs300->fmt.code) {
     case MEDIA_BUS_FMT_YUYV8_1X16:
-        dev_info(&client->dev, "Using YUYV8_1X16 format");
-        // Add format-specific setup here if needed
+        dev_info(&client->dev, "Using YUYV8_1X16 format (16-bit packed, preferred for RP1-CFE)");
+        /* 16-bit packed format - should be compatible with Pi 5 RP1-CFE */
+        return 0;
+    case MEDIA_BUS_FMT_UYVY8_1X16:
+        dev_info(&client->dev, "Using UYVY8_1X16 format (16-bit packed alternative)");
         return 0;
     case MEDIA_BUS_FMT_YUYV8_2X8:
-        dev_info(&client->dev, "Using YUYV8_2X8 format");
+        dev_info(&client->dev, "Using YUYV8_2X8 format (8-bit dual lane, legacy)");
         return 0;
     case MEDIA_BUS_FMT_UYVY8_2X8:
-        dev_info(&client->dev, "Using UYVY8_2X8 format");
+        dev_info(&client->dev, "Using UYVY8_2X8 format (8-bit dual lane, legacy)");
         return 0;
+    default:
+        dev_err(&client->dev, "Unsupported format code: 0x%x", rs300->fmt.code);
+        dev_err(&client->dev, "Supported formats: YUYV8_1X16(0x%x), UYVY8_1X16(0x%x), YUYV8_2X8(0x%x), UYVY8_2X8(0x%x)",
+                MEDIA_BUS_FMT_YUYV8_1X16, MEDIA_BUS_FMT_UYVY8_1X16, 
+                MEDIA_BUS_FMT_YUYV8_2X8, MEDIA_BUS_FMT_UYVY8_2X8);
+        return -EINVAL;
     }        
-
-    dev_err(&client->dev, "Unsupported format code: 0x%x", rs300->fmt.code);
-    return -EINVAL;
 }
 
 static void rs300_stop_streaming(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
+
+    /* SECURITY FIX: Use local buffer instead of static global (prevents race condition) */
+    u8 stop_regs[28] = {
+        0x01, 0x30, 0xc2, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x0a, 0x00,
+        0x00, 0x00, //crc [14]
+        0x2F, 0x0D, //crc [16]
+        0x01, //path [18]
+        0x16, //src [19]
+        0x00, //dst [20]
+        0x3c, //fps [21]
+        0x80, 0x02, //width&0xff, width>>8 [22-23]
+        0x00, 0x02, //height&0xff, height>>8 [24-25]
+        0x00, 0x00
+    };
 
     dev_info(&client->dev, "Stopping streaming");
 
@@ -1873,86 +2299,45 @@ static void rs300_stop_streaming(struct rs300 *rs300)
 static int rs300_set_fps(struct rs300 *rs300, int fps)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
-    u8 cmd_buffer[18];
-    u8 status_buffer[1];
+    u8 params[12] = {0};
     int ret;
-    int retry_count = 0;
-    const int max_retries = 15;
-    unsigned short crc;
-    
-    //check if fps is 25, 30, 50, or 60
-    //if not exit function but don't end program
+
+    /* Validate FPS value (25, 30, 50, or 60) */
     if (fps != 25 && fps != 30 && fps != 50 && fps != 60) {
         dev_warn(&client->dev, "Invalid FPS value: %d", fps);
         return 0;
     }
-    
+
     dev_info(&client->dev, "Setting camera to %d fps", fps);
+
+    /* Pack parameters */
+    params[0] = 0x01;  /* Enable */
+    params[1] = 0x03;  /* MIPI Progressive */
+    params[2] = fps;   /* FPS value */
+
+    /* FPS command needs longer timeout (4500ms total via 15 retries × 300ms) */
+    ret = rs300_send_command(rs300, 0x10, 0x10, 0x46, params, 3, 4500);
+
+    /* Note: FPS command always returns 0 even on error (legacy behavior) */
+    if (ret)
+        dev_warn(&client->dev, "FPS command failed: %d", ret);
+
+    return 0;
+}
+
+static void rs300_debug_pipeline_state(struct rs300 *rs300, const char *context)
+{
+    struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
     
-    /* Construct the command buffer for setting FPS */
-    cmd_buffer[0] = 0x10;  /* Command Class */
-    cmd_buffer[1] = 0x10;  /* Module Command Index */
-    cmd_buffer[2] = 0x46;  /* SubCmd -  MIPI */
-    cmd_buffer[3] = 0x00;  /* Reserved */
-    cmd_buffer[4] = 0x01;  /* Parameter 1 - Enable*/
-    cmd_buffer[5] = 0x03;  /* Parameter 2 - MIPI Progressive*/
-    cmd_buffer[6] = fps;   /* Parameter 3 - FPS */
-    cmd_buffer[9] = 0x00; 
-    cmd_buffer[7] = 0x00; 
-    cmd_buffer[8] = 0x00; 
-    cmd_buffer[10] = 0x00;
-    cmd_buffer[11] = 0x00;
-    cmd_buffer[12] = 0x00;  
-    cmd_buffer[13] = 0x00;
-    cmd_buffer[14] = 0x00;
-    cmd_buffer[15] = 0x00;
-    
-    /* Calculate CRC/checksum for the command */
-    crc = do_crc(cmd_buffer, 16);
-    /* Swap byte order to match the expected format */
-    cmd_buffer[16] = crc & 0xFF;         /* Low byte of CRC first */
-    cmd_buffer[17] = (crc >> 8) & 0xFF;  /* High byte of CRC second */
-    
-    dev_info(&client->dev, "FPS command buffer: %*ph", (int)sizeof(cmd_buffer), cmd_buffer);
-    
-    /* Write command to command buffer register (0x1d00) */
-    ret = write_regs(client, 0x1d00, cmd_buffer, sizeof(cmd_buffer));
-    if (ret) {
-        dev_warn(&client->dev, "Failed to write FPS command: %d", ret);
-        return 0;  // Changed from return ret
-    }
-    
-    /* Read command status and wait for completion */
-    while (retry_count < max_retries) {
-        msleep(300);
-        
-        ret = read_regs(client, 0x0200, status_buffer, 1);
-        if (ret) {
-            dev_warn(&client->dev, "Failed to read command status: %d", ret);
-            return 0;  // Changed from return ret
-        }
-        
-        dev_info(&client->dev, "FPS command status: 0x%02X", status_buffer[0]);
-        
-        bool is_busy = (status_buffer[0] & 0x01) != 0;
-        bool has_failed = (status_buffer[0] & 0x02) != 0;
-        u8 error_code = (status_buffer[0] >> 2) & 0x3F;  /* Bits 2-7 */
-        
-        if (!is_busy) {
-            if (has_failed) {
-                dev_warn(&client->dev, "FPS command execution failed with error code: 0x%02X", error_code);
-                return 0;  // Changed from return -EIO
-            }
-            dev_info(&client->dev, "FPS set to %d successfully", fps);
-            return 0;
-        }
-        
-        dev_info(&client->dev, "FPS command is busy, retrying...");
-        retry_count++;
-    }
-    
-    dev_warn(&client->dev, "FPS command timed out after %d retries", max_retries);
-    return 0;  // Changed from return -ETIMEDOUT
+    dev_err(&client->dev, "=== PIPELINE STATE [%s] ===", context);
+    dev_err(&client->dev, "Streaming: %d", rs300->streaming);
+    dev_err(&client->dev, "Active format: 0x%x (%dx%d)", 
+            rs300->fmt.code, rs300->fmt.width, rs300->fmt.height);
+    dev_err(&client->dev, "Current mode: %dx%d @ %d/%d fps", 
+            rs300->mode->width, rs300->mode->height,
+            rs300->mode->max_fps.denominator, rs300->mode->max_fps.numerator);
+    dev_err(&client->dev, "Pixel rate for format: %llu", rs300_get_pixel_rate(rs300->fmt.code));
+    dev_err(&client->dev, "=== END PIPELINE STATE ===");
 }
 
 static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
@@ -1963,26 +2348,43 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
     u8 status_buffer[1];
     int ret = 0;
 
-    dev_info(&client->dev, "Setting stream to %d", enable);
+    dev_err(&client->dev, "=== RS300_SET_STREAM CALLED: enable=%d ===", enable);
+    dev_err(&client->dev, "STREAM DEBUG: Current streaming state=%d", rs300->streaming);
+    
+    rs300_debug_pipeline_state(rs300, "STREAM_ENTRY");
     
     // Add detailed format info when streaming starts
     if (enable) {
-        dev_info(&client->dev, "Stream starting with format: %dx%d, code=0x%x", 
-            rs300->fmt.width, rs300->fmt.height, rs300->fmt.code);
-        dev_info(&client->dev, "Using mode: %dx%d @ %d/%d fps", 
+        /*
+         * IMPORTANT: Camera warm-up timing requirement
+         *
+         * The RS300 thermal camera requires approximately 2 seconds (60 frames at 30fps)
+         * of warm-up time after stream start before outputting valid thermal data.
+         *
+         * - Frames 1-60: Initialization data (constant patterns like 0x36 0x80)
+         * - Frame 60+: Valid thermal data (>1000 unique patterns)
+         *
+         * User-space applications should either:
+         * 1. Capture 90+ frames and extract frame 60+ for processing
+         * 2. Start stream, wait 2+ seconds, then begin capturing
+         *
+         * See documentation: ~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt
+         */
+        dev_err(&client->dev, "=== STREAM START DEBUG ===");
+        dev_err(&client->dev, "Format: 0x%x (%s), Resolution: %dx%d", 
+            rs300->fmt.code,
+            rs300->fmt.code == MEDIA_BUS_FMT_YUYV8_1X16 ? "YUYV8_1X16" :
+            rs300->fmt.code == MEDIA_BUS_FMT_YUYV8_2X8 ? "YUYV8_2X8" : "OTHER",
+            rs300->fmt.width, rs300->fmt.height);
+        dev_err(&client->dev, "Mode: %dx%d @ %d/%d fps", 
             rs300->mode->width, rs300->mode->height,
             rs300->mode->max_fps.denominator, rs300->mode->max_fps.numerator);
-        
-        // Instead of trying to directly set the link frequency, we'll just
-        // notify the media pipeline about our current format and let the
-        // unicam driver handle the appropriate frequency settings
-        
-        // Just print debug info about what resolution we're using
-        if (rs300->mode->width == 256 && rs300->mode->height == 192) {
-            dev_info(&client->dev, "Using 256x192 resolution - reduced bandwidth mode");
-        } else {
-            dev_info(&client->dev, "Using 640x512 resolution - full bandwidth mode");
-        }
+        dev_err(&client->dev, "Pixel rate: %llu Hz, Link rate: %d Hz", 
+            rs300_get_pixel_rate(rs300->fmt.code), RS300_LINK_RATE);
+        dev_err(&client->dev, "Colorspace: %d, Quantization: %d, Transfer: %d",
+            rs300->fmt.colorspace, rs300->fmt.quantization, rs300->fmt.xfer_func);
+    } else {
+        dev_err(&client->dev, "=== STREAM STOP DEBUG ===");
     }
 
     mutex_lock(&rs300->mutex);
@@ -1993,6 +2395,22 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
     }
 
     if (enable) {
+        /* SECURITY FIX: Use local buffer instead of static global (prevents race condition) */
+        u8 start_regs[28] = {
+            0x01, 0x30, 0xc1, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
+            0x0a, 0x00,
+            0x00, 0x00, //crc [14]
+            0x00, 0x00, //crc [16]
+            0x00, //path [18]
+            0x16, //src [19]
+            0x03, //dst [20]
+            0x3c, // 60 fps [21]
+            0x80, 0x02, //width&0xff, width>>8 [22-23]
+            0x00, 0x02, //height&0xff, height>>8 [24-25]
+            0x00, 0x00
+        };
 
         // Set FPS first
         ret = rs300_set_fps(rs300, fps);
@@ -2002,7 +2420,8 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
         }
         dev_info(&client->dev, "FPS is set to %d", fps);
 
-        rs300->streaming = enable;
+        /* SECURITY FIX: Don't set streaming flag yet - wait for hardware success */
+        /* Removed: rs300->streaming = enable; (was set too early) */
         start_regs[19] = type;
         start_regs[21] = fps;  // Add this line to set the FPS from the module parameter
         start_regs[22] = rs300->mode->width & 0xff;
@@ -2049,65 +2468,132 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
         
         dev_info(&client->dev, "Stream started successfully");
 
-        // Add retry loop for busy status
-        int retry = 0;
-        const int max_retries = 10;  // Adjust as needed
-        while (retry < max_retries) {
+        // Retry loop to handle intermittent camera hardware errors
+        #define STREAM_START_RETRIES 3
+        int stream_attempt;
+        int stream_success = 0;
+
+        for (stream_attempt = 0; stream_attempt < STREAM_START_RETRIES; stream_attempt++) {
+            // Wait for busy bit to clear
+            int retry = 0;
+            const int max_retries = 10;  // 10 × 100ms = 1 second timeout
+
+            while (retry < max_retries) {
+                ret = read_regs(client, I2C_VD_BUFFER_STATUS, status_buffer, 1);
+                if (ret == 0) {
+                    dev_info(&client->dev, "Attempt %d/%d - Status check %d: 0x%02x",
+                             stream_attempt + 1, STREAM_START_RETRIES, retry, status_buffer[0]);
+
+                    if (!(status_buffer[0] & VCMD_BUSY_STS_BIT)) {
+                        dev_info(&client->dev, "Busy bit cleared");
+                        break;
+                    }
+
+                    // Reset bit failure is a hard error - don't retry
+                    if (status_buffer[0] & VCMD_RST_STS_BIT) {
+                        dev_err(&client->dev, "Camera reset failed (hard error)");
+                        ret = -EIO;
+                        goto error_unlock;
+                    }
+
+                    // Check for error during busy polling
+                    if (status_buffer[0] & VCMD_ERR_STS_BIT) {
+                        dev_warn(&client->dev, "Camera error during busy poll: 0x%02x", status_buffer[0]);
+                        // Don't fail immediately - let final status check handle it
+                        break;
+                    }
+                }
+
+                msleep(100);  // Wait 100ms between checks
+                retry++;
+            }
+
+            // Busy timeout is a hard error - don't retry
+            if (retry >= max_retries) {
+                dev_err(&client->dev, "Camera remained busy after %d retries (hard error)", max_retries);
+                ret = -ETIMEDOUT;
+                goto error_unlock;
+            }
+
+            // Final status check after busy bit cleared
+            msleep(2000);  // Wait for camera to stabilize
             ret = read_regs(client, I2C_VD_BUFFER_STATUS, status_buffer, 1);
-            if (ret == 0) {
-                dev_info(&client->dev, "Stream status check %d: 0x%02x", retry, status_buffer[0]);
-                
-                if (!(status_buffer[0] & VCMD_BUSY_STS_BIT)) {
-                    dev_info(&client->dev, "Camera is ready");
-                    break;
-                }
-                
-                if (status_buffer[0] & VCMD_RST_STS_BIT) {
-                    dev_err(&client->dev, "Camera reset failed");
-                    ret = -EIO;
-                    goto error_unlock;
-                }
-                
-                if (status_buffer[0] & VCMD_ERR_STS_BIT) {
-                    dev_err(&client->dev, "Camera error: 0x%02x", status_buffer[0] & VCMD_ERR_STS_BIT);
+            if (ret != 0) {
+                dev_err(&client->dev, "I2C error reading final status (hard error)");
+                goto error_unlock;
+            }
+
+            dev_info(&client->dev, "Attempt %d/%d - Final stream status: 0x%02x",
+                     stream_attempt + 1, STREAM_START_RETRIES, status_buffer[0]);
+
+            // Check for error in final status
+            if (status_buffer[0] & VCMD_ERR_STS_BIT) {
+                // This is the intermittent error (typically 0x0e) that triggers deadlock
+                if (stream_attempt < STREAM_START_RETRIES - 1) {
+                    // Not the last attempt - RETRY
+                    int backoff_ms = 100 << stream_attempt;  // 100ms, 200ms, 400ms
+                    dev_warn(&client->dev,
+                             "Camera error 0x%02x on attempt %d/%d, retrying after %dms...",
+                             status_buffer[0], stream_attempt + 1, STREAM_START_RETRIES, backoff_ms);
+
+                    msleep(backoff_ms);
+
+                    // Re-send start command
+                    dev_info(&client->dev, "Re-sending start command for retry %d", stream_attempt + 2);
+                    if (write_regs(client, I2C_VD_BUFFER_RW, start_regs, sizeof(start_regs)) < 0) {
+                        dev_err(&client->dev, "Failed to re-send start command on retry %d", stream_attempt + 2);
+                        ret = -EIO;
+                        goto error_unlock;
+                    }
+
+                    // Continue to next attempt
+                    continue;
+                } else {
+                    // Final attempt failed
+                    dev_err(&client->dev,
+                            "Camera failed after %d attempts, final status: 0x%02x",
+                            STREAM_START_RETRIES, status_buffer[0]);
                     ret = -EIO;
                     goto error_unlock;
                 }
             }
-            
-            msleep(100);  // Wait 100ms between checks
-            retry++;
+
+            // Success!
+            dev_info(&client->dev, "Stream started successfully on attempt %d/%d",
+                     stream_attempt + 1, STREAM_START_RETRIES);
+            stream_success = 1;
+            break;
         }
 
-        if (retry >= max_retries) {
-            dev_err(&client->dev, "Camera remained busy after %d retries", max_retries);
-            ret = -ETIMEDOUT;
+        if (!stream_success) {
+            dev_err(&client->dev, "Failed to start stream after %d attempts", STREAM_START_RETRIES);
+            ret = -EIO;
             goto error_unlock;
         }
 
-        // Verify streaming status
-        msleep(2000);  // Wait a bit after busy clear
-        ret = read_regs(client, I2C_VD_BUFFER_STATUS, status_buffer, 1);
-        if (ret == 0) {
-            dev_info(&client->dev, "Final stream status: 0x%02x", status_buffer[0]);
-            if (status_buffer[0] & VCMD_ERR_STS_BIT) {
-                dev_err(&client->dev, "Camera reported error after stream start");
-                ret = -EIO;
-                goto error_unlock;
-            }
-        }
+        /* SECURITY FIX: Only set streaming flag AFTER successful hardware start */
+        rs300->streaming = true;
+        dev_info(&client->dev, "Stream started successfully, streaming flag set");
     } else {
-        dev_info(&client->dev, "Stopping stream");
+        dev_err(&client->dev, "Stopping stream");
         rs300_stop_streaming(rs300);
-        dev_info(&client->dev, "Stream stopped");
+        rs300->streaming = false;
+        dev_err(&client->dev, "Stream stopped, streaming flag cleared");
     }
 
-    rs300->streaming = enable;
+    dev_err(&client->dev, "=== STREAM FUNCTION COMPLETE: enable=%d, streaming=%d, ret=%d ===",
+            enable, rs300->streaming, ret);
     mutex_unlock(&rs300->mutex);
 
     return ret;
 
 error_unlock:
+    dev_err(&client->dev, "=== STREAM ERROR EXIT: ret=%d ===", ret);
+    /* Send STOP command to clean up camera state after failed START attempts */
+    if (enable) {
+        dev_info(&client->dev, "Sending STOP command to clean up after failed START");
+        rs300_stop_streaming(rs300);
+    }
     mutex_unlock(&rs300->mutex);
     return ret;
 }
@@ -2129,27 +2615,44 @@ static const s64 link_freq_menu_items[] = {
  * is opened.
  */
 static int rs300_init_cfg(struct v4l2_subdev *sd,
-			   struct v4l2_subdev_state *state)
+                           struct v4l2_subdev_state *state)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
-	struct v4l2_mbus_framefmt *format;
+        struct i2c_client *client = v4l2_get_subdevdata(sd);
+        struct v4l2_mbus_framefmt *format;
+        int ret;
 
-	dev_info(&client->dev, "rs300_init_cfg");
+        dev_info(&client->dev, "rs300_init_cfg");
 
-	/* Initialize the format for the image pad */
-	format = v4l2_subdev_get_fmt(sd, state, IMAGE_PAD);
-	format->code = supported_modes[mode].code;
-	format->width = supported_modes[mode].width;
-	format->height = supported_modes[mode].height;
-	format->field = V4L2_FIELD_NONE;
-	rs300_reset_colorspace(format);
+        /* Initialize the format for the image pad */
+        {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_ACTIVE,
+                        .pad = IMAGE_PAD,
+                };
+                ret = v4l2_subdev_get_fmt(sd, state, &fmt_req);
+                if (ret < 0)
+                        return ret;
+                format = &fmt_req.format;
+        }
+        format->code = supported_modes[mode].code;
+        format->width = supported_modes[mode].width;
+        format->height = supported_modes[mode].height;
+        format->field = V4L2_FIELD_NONE;
+        rs300_reset_colorspace(format);
 
-	/* Initialize the format for the metadata pad if needed */
-	if (NUM_PADS > 1) {
-		format = v4l2_subdev_get_fmt(sd, state, METADATA_PAD);
-		format->code = MEDIA_BUS_FMT_SENSOR_DATA;
-		format->width = 0;  /* Set appropriate width for metadata */
-		
+        /* Initialize the format for the metadata pad if needed */
+        if (NUM_PADS > 1) {
+                struct v4l2_subdev_format fmt_req = {
+                        .which = V4L2_SUBDEV_FORMAT_ACTIVE,
+                        .pad = METADATA_PAD,
+                };
+                ret = v4l2_subdev_get_fmt(sd, state, &fmt_req);
+                if (ret < 0)
+                        return ret;
+                format = &fmt_req.format;
+                format->code = MEDIA_BUS_FMT_SENSOR_DATA;
+                format->width = 0;  /* Set appropriate width for metadata */
+
 		format->height = 0; /* Set appropriate height for metadata */
 		format->field = V4L2_FIELD_NONE;
 	}
@@ -2203,10 +2706,16 @@ static int rs300_power_off(struct device *dev)
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct rs300 *rs300 = to_rs300(sd);
 
-	gpiod_set_value_cansleep(rs300->reset_gpio, 1); //logic high -> device tree defines reset: logic high = 0V (active low)
-    dev_info(dev, "Resetting rs300");
+	/* SECURITY FIX: Only access GPIO if initialized (prevents NULL deref on rmmod) */
+	if (rs300->reset_gpio) {
+		gpiod_set_value_cansleep(rs300->reset_gpio, 1); //logic high -> device tree defines reset: logic high = 0V (active low)
+		dev_info(dev, "Resetting rs300");
+	} else {
+		dev_info(dev, "No reset GPIO configured, skipping reset");
+	}
+
 	regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
-    dev_info(dev, "Regulators disabled");
+	dev_info(dev, "Regulators disabled");
 
 	return 0;
 }
@@ -2349,6 +2858,152 @@ static const struct v4l2_ctrl_config temporal_nr_ctrl = {
     .def = 50,
 };
 
+static const struct v4l2_ctrl_config autoshutter_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 8,
+    .name = "Auto Shutter",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,  /* BOOLEAN needs step=1 (unlike BUTTON which uses step=0) */
+    .def = 0,  /* Off by default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_temp_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 9,
+    .name = "Auto Shutter Temperature",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 100,  /* 3.12°C maximum */
+    .step = 1,
+    .def = 50,   /* 1.56°C default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_min_interval_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 10,
+    .name = "Auto Shutter Min Interval",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 300,
+    .step = 1,
+    .def = 1,    /* 1 second default */
+};
+
+static const struct v4l2_ctrl_config autoshutter_max_interval_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 11,
+    .name = "Auto Shutter Max Interval",
+    .type = V4L2_CTRL_TYPE_INTEGER,
+    .min = 0,    /* Start at 0 for V4L2 validation */
+    .max = 600,
+    .step = 1,
+    .def = 120,  /* 120 seconds default */
+};
+
+static const struct v4l2_ctrl_config camera_sleep_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 12,
+    .name = "Camera Sleep",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 0,  /* Awake by default */
+};
+
+static const struct v4l2_ctrl_config antiburn_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 13,
+    .name = "Anti-burn Protection",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 0,  /* Off by default */
+};
+
+static const char * const shutter_menu[] = {
+    "Closed",
+    "Open",
+    NULL
+};
+
+static const struct v4l2_ctrl_config shutter_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 14,
+    .name = "Shutter State",
+    .type = V4L2_CTRL_TYPE_MENU,
+    .qmenu = shutter_menu,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 1,  /* Open by default */
+};
+
+static const char * const hook_edge_menu[] = {
+    "No Hook",
+    "1st Gear",
+    "2 Levels",
+    NULL
+};
+
+static const struct v4l2_ctrl_config hook_edge_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 15,
+    .name = "Hook Edge Position",
+    .type = V4L2_CTRL_TYPE_MENU,
+    .qmenu = hook_edge_menu,
+    .min = 0,
+    .max = 2,
+    .step = 1,
+    .def = 0,
+};
+
+static const char * const frame_rate_menu[] = {
+    "25Hz",
+    "30Hz",
+    "50Hz",
+    "60Hz",
+    NULL
+};
+
+static const struct v4l2_ctrl_config frame_rate_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 16,
+    .name = "Detector Frame Rate",
+    .type = V4L2_CTRL_TYPE_MENU,
+    .qmenu = frame_rate_menu,
+    .min = 0,
+    .max = 3,
+    .step = 1,
+    .def = 3,  /* 60Hz default */
+};
+
+static const struct v4l2_ctrl_config analog_output_fmt_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 17,
+    .name = "Digital-Analog Output Format",
+    .type = V4L2_CTRL_TYPE_BOOLEAN,
+    .min = 0,
+    .max = 1,
+    .step = 1,
+    .def = 0,
+};
+
+static const struct v4l2_ctrl_config output_mode_ctrl = {
+    .ops = &rs300_ctrl_ops,
+    .id = V4L2_CID_CUSTOM_BASE + 7,
+    .name = "Output Mode",
+    .type = V4L2_CTRL_TYPE_MENU,
+    .qmenu = output_mode_menu,
+    .min = 0,
+    .max = 5,
+    .step = 1,
+    .def = 5,  /* Default to YUV output */
+};
+
 static int rs300_init_controls(struct rs300 *rs300)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&rs300->sd);
@@ -2360,9 +3015,9 @@ static int rs300_init_controls(struct rs300 *rs300)
     int ret;
 
     dev_info(&client->dev, "Initializing controls");
-    
+
     ctrl_hdlr = &rs300->ctrl_handler;
-    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 11);
+    ret = v4l2_ctrl_handler_init(ctrl_hdlr, 22);
     if (ret) {
         dev_err(&client->dev, "Failed to init ctrl handler: %d", ret);
         return ret;
@@ -2381,10 +3036,12 @@ static int rs300_init_controls(struct rs300 *rs300)
     if (rs300->link_frequency)
         rs300->link_frequency->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
+    /* Initialize pixel rate based on default format (YUYV8_1X16) */
+    u64 pixel_rate = rs300_get_pixel_rate(MEDIA_BUS_FMT_YUYV8_1X16);
     rs300->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, NULL,
                                       V4L2_CID_PIXEL_RATE,
-                                      RS300_PIXEL_RATE, RS300_PIXEL_RATE, 1, 
-                                      RS300_PIXEL_RATE);
+                                      pixel_rate, pixel_rate, 1, 
+                                      pixel_rate);
     
     if (rs300->pixel_rate)
         rs300->pixel_rate->flags |= V4L2_CTRL_FLAG_READ_ONLY;
@@ -2408,6 +3065,17 @@ static int rs300_init_controls(struct rs300 *rs300)
     rs300->dde = v4l2_ctrl_new_custom(ctrl_hdlr, &dde_ctrl, NULL);
     rs300->spatial_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &spatial_nr_ctrl, NULL);
     rs300->temporal_nr = v4l2_ctrl_new_custom(ctrl_hdlr, &temporal_nr_ctrl, NULL);
+    rs300->output_mode = v4l2_ctrl_new_custom(ctrl_hdlr, &output_mode_ctrl, NULL);
+    rs300->autoshutter = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_ctrl, NULL);
+    rs300->autoshutter_temp = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_temp_ctrl, NULL);
+    rs300->autoshutter_min_interval = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_min_interval_ctrl, NULL);
+    rs300->autoshutter_max_interval = v4l2_ctrl_new_custom(ctrl_hdlr, &autoshutter_max_interval_ctrl, NULL);
+    rs300->camera_sleep = v4l2_ctrl_new_custom(ctrl_hdlr, &camera_sleep_ctrl, NULL);
+    rs300->antiburn = v4l2_ctrl_new_custom(ctrl_hdlr, &antiburn_ctrl, NULL);
+    rs300->shutter = v4l2_ctrl_new_custom(ctrl_hdlr, &shutter_ctrl, NULL);
+    rs300->hook_edge = v4l2_ctrl_new_custom(ctrl_hdlr, &hook_edge_ctrl, NULL);
+    rs300->frame_rate = v4l2_ctrl_new_custom(ctrl_hdlr, &frame_rate_ctrl, NULL);
+    rs300->analog_output_fmt = v4l2_ctrl_new_custom(ctrl_hdlr, &analog_output_fmt_ctrl, NULL);
 
     /* Check for errors */
     if (ctrl_hdlr->error) {
@@ -2668,6 +3336,13 @@ static int rs300_probe(struct i2c_client *client)
 	/* Initialize default format */
 	rs300_set_default_format(rs300);
 
+	/* Configure hardware YUV format to match driver expectation */
+	ret = rs300_set_yuv_format(rs300, 2); /* 0 = UYVY format, 1=VYUY format, 2 = YUYV format, 3=YVYU format */
+	if (ret) {
+		dev_warn(dev, "Failed to set YUV format to UYVY: %d (continuing anyway)", ret);
+		/* Don't fail probe on this error, as it's not critical for basic operation */
+	}
+
 	/* Initialize mutex */
 	mutex_init(&rs300->mutex);
 	
@@ -2732,6 +3407,13 @@ static void rs300_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	rs300_free_controls(rs300);
 
+	/*
+	 * Disable regulators to ensure clean power state for module reload.
+	 * Without this, regulators remain enabled after rmmod, causing issues
+	 * when the module is reloaded without a reboot.
+	 */
+	regulator_bulk_disable(rs300_NUM_SUPPLIES, rs300->supplies);
+	dev_info(&client->dev, "RS300 regulators disabled, driver removed\n");
 }
 
 static const struct i2c_device_id rs300_id[] = {

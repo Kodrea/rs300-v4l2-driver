@@ -1,0 +1,225 @@
+Category,Command Name,Command Setting,I2C Full command with CRC
+ Shutter related, Shutter Correction,,10 02 43 00 00 00 00 00 00 00 00 00 00 00 00 00 CF C8
+, Background Correction,,01 10 52 00 00 00 00 00 00 00 00 00 00 00 00 00 24 FD
+, Close the shutter,,01 0F 45 00 00 00 00 00 00 00 00 00 00 00 00 00 8D 5A
+, Open shutter,,01 0F 45 00 01 00 00 00 00 00 00 00 00 00 00 00 F8 59
+, Automatic shutter switch, Settings - Off,10 02 41 00 00 00 00 00 00 00 00 00 00 00 00 00 0D 3E
+,,Setting-On,10 02 41 00 01 00 00 00 00 00 00 00 00 00 00 00 78 3D
+,, Get,10 02 81 00 00 00 00 00 00 00 00 00 01 00 00 00 78 34
+, Automatic shutter parameters, Setting - Temperature 10,10 02 42 00 00 0A 00 00 00 00 00 00 00 00 00 00 93 b1
+,, Setting - Temperature 50,10 02 42 00 00 32 00 00 00 00 00 00 00 00 00 00 5A EC
+,, Setting - minimum interval time 1s,10 02 42 00 01 01 00 00 00 00 00 00 00 00 00 00 92 68
+,, Setting - Maximum interval time 120s,10 02 42 00 02 78 00 00 00 00 00 00 00 00 00 00 58 ac
+,, Setting - Maximum interval time 360s,10 02 42 00 02 68 01 00 00 00 00 00 00 00 00 00 20 96
+,, Get-Temperature,10 02 82 00 00 01 00 00 00 00 00 00 02 00 00 00 4E FA
+,, Get-Minimum Interval Time,10 02 82 00 01 01 00 00 00 00 00 00 02 00 00 00 3B F9
+,, Get-Maximum Interval Time,10 02 82 00 02 01 00 00 00 00 00 00 02 00 00 00 A4 FC
+ Calibration related instructions, k value, Calibrate k value - collect low temperature first,10 11 41 00 00 00 00 00 00 00 00 00 00 00 00 00 A2 93
+,,Calibrate k value-collect high temperature again,10 11 41 00 01 00 00 00 00 00 00 00 00 00 00 00 D7 90
+,, Calibrate k value-collection and calculation,10 11 41 00 02 00 00 00 00 00 00 00 00 00 00 00 48 95
+,, Save k value,10 11 43 00 00 00 00 00 00 00 00 00 00 00 00 00 60 65
+,, Cancel calibration results,10 11 42 00 00 00 00 00 00 00 00 00 00 00 00 00 01 1E
+,, Clear k value,10 11 44 00 00 00 00 00 00 00 00 00 00 00 00 00 66 15
+,, Restore factory K value data,10 11 45 00 00 00 00 00 00 00 00 00 00 00 00 00 07 6E
+, Blind Element, Automatic blind calibration,10 11 51 00 00 00 00 00 00 00 00 00 00 00 00 00 55 55
+,, Cursor switch setting-enable,10 11 57 00 01 00 00 00 00 00 00 00 00 00 00 00 47 5D
+,, Cursor switch setting - blanking,10 11 57 00 00 00 00 00 00 00 00 00 00 00 00 00 32 5E
+,, Cursor switch acquisition,10 11 81 00 00 00 00 00 00 00 00 00 01 00 00 00 D7 99
+,," Cursor position setting - (300, 280) - Example",10 11 58 00 2C 01 18 01 00 00 00 00 00 00 00 00 34 50
+,, Get cursor position,10 11 82 00 00 00 00 00 00 00 00 00 04 00 00 00 31 A8
+,,"Set the cursor point to the blind pixel (manual calibration) - (300, 280) - Example",10 11 52 00 2C 01 18 01 00 00 00 00 00 00 00 00 9D 4D
+,," Set the cursor point to a non-blind element (manual calibration) - (300, 280) - Example",10 11 52 01 2C 01 18 01 00 00 00 00 00 00 00 00 FE 08
+,, Cancel this calibration data,10 11 53 00 00 00 00 00 00 00 00 00 00 00 00 00 97 A3
+,, Saving blind data,10 11 54 00 00 00 00 00 00 00 00 00 00 00 00 00 91 D3
+,, Clear blind data,10 11 55 00 00 00 00 00 00 00 00 00 00 00 00 00 F0 A8
+,, Restore factory blind data,10 11 56 00 00 00 00 00 00 00 00 00 00 00 00 00 53 25
+, Pot lid, Calibration lid,10 11 61 00 00 00 00 00 00 00 00 00 00 00 00 00 6D 0E
+,, Save the lid,10 11 63 00 00 00 00 00 00 00 00 00 00 00 00 00 AF F8
+,, Cancel calibration results,10 11 62 00 00 00 00 00 00 00 00 00 00 00 00 00 CE 83
+,, Empty the lid,10 11 64 00 00 00 00 00 00 00 00 00 00 00 00 00 A9 88
+,, Restore the factory data of the pot cover,10 11 65 00 00 00 00 00 00 00 00 00 00 00 00 00 C8 F3
+ System Features, Firmware Update,,01 01 42 00 00 00 00 00 00 00 00 00 00 00 00 00 A5 DB
+, Anti-burn protection switch, Settings - Off,10 03 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 58 8D
+,,Setting-On,10 03 4B 00 01 00 00 00 00 00 00 00 00 00 00 00 2D 8E
+,, Get,10 03 8B 00 00 00 00 00 00 00 00 00 01 00 00 00 2D 87
+, Module sleep, Settings-Wake-up,10 10 48 00 00 00 00 00 00 00 00 00 00 00 00 00 54 AD
+,, Settings - Sleep,10 10 48 00 01 00 00 00 00 00 00 00 00 00 00 00 21 AE
+,, Get,10 10 88 00 00 00 00 00 00 00 00 00 01 00 00 00 21 A7
+, Boot logo, Settings - Off,10 10 41 00 00 00 00 00 00 00 00 00 00 00 00 00 5E 3D
+,,Setting-On,10 10 41 00 01 00 00 00 00 00 00 00 00 00 00 00 2B 3E
+,, Get,10 10 81 00 00 00 00 00 00 00 00 00 01 00 00 00 2B 37
+, DVP/I2C Voltage Switching, Setting -1.8V,10 10 47 00 00 00 00 00 00 00 00 00 00 00 00 00 39 36
+,, Setup - 3.3V,10 10 47 00 01 00 00 00 00 00 00 00 00 00 00 00 4C 35
+,, Get,10 10 87 00 00 00 00 00 00 00 00 00 01 00 00 00 4C 3C
+, Parameter save-restore, Parameter preservation,10 10 51 00 00 00 00 00 00 00 00 00 00 00 00 00 A9 FB
+,, Parameter recovery,10 10 52 00 00 00 00 00 00 00 00 00 00 00 00 00 0A 76
+ Get device information, Get module information, Device Name,01 01 81 00 01 00 00 00 00 00 00 00 20 00 00 00 FC 1E
+,, Firmware version,01 01 81 00 02 00 00 00 00 00 00 00 0B 00 00 00 32 32
+,, VID,01 01 81 00 04 00 00 00 00 00 00 00 02 00 00 00 7B CA
+,, PID,01 01 81 00 05 00 00 00 00 00 00 00 02 00 00 00 0E C9
+,, PN,01 01 81 00 06 00 00 00 00 00 00 00 20 00 00 00 B7 16
+,, SN,01 01 81 00 07 00 00 00 00 00 00 00 20 00 00 00 C2 15
+, Get module temperature,,10 10 91 00 00 00 00 00 00 00 00 00 02 00 00 00 00 6A
+, Get the coordinates of the highest temperature point in the area of interest,,10 10 92 00 00 00 00 00 7f 01 1f 01 0e 00 00 00 e8 0c
+,,,10 10 92 00 32 00 32 00 4d 01 ed 00 0e 00 00 00 34 59
+, Get the power-on time,,10 10 93 00 00 00 00 00 00 00 00 00 04 00 00 00 5B BB
+ Video output related, Digital video formats, Settings - USB - Progressive - 30hz,10 10 46 00 01 00 1E 00 00 00 00 00 00 00 00 00 4f e3
+,,Settings - USB - Progressive - 60hz,10 10 46 00 01 00 3C 00 00 00 00 00 00 00 00 00 c8 04
+,, settings-dvp-progressive-30hz,10 10 46 00 01 01 1E 00 00 00 00 00 00 00 00 00 06 3b
+,, settings-dvp-progressive-60hz,10 10 46 00 01 01 3C 00 00 00 00 00 00 00 00 00 81 dc
+,, settings -bt656 -progressive -30hz,10 10 46 00 01 02 1E 00 00 00 00 00 00 00 00 00 fc 43
+,, settings -bt656-progressive-60hz,10 10 46 00 01 02 3C 00 00 00 00 00 00 00 00 00 7b a4
+,, settings -bt656 -interlaced -25hz,10 10 46 00 01 12 00 00 00 00 00 00 00 00 00 00 a3 bb
+,, settings-mipi-progressive-30hz,10 10 46 00 01 03 1E 00 00 00 00 00 00 00 00 00 b5 9b
+,, settings-mipi-progressive-60hz,10 10 46 00 01 03 3C 00 00 00 00 00 00 00 00 00 32 7c
+,, Settings - USB - Progressive - 25hz (for mini2 256),10 10 46 00 01 00 19 00 00 00 00 00 00 00 00 00 b5 ff
+,, Settings - USB - Progressive - 50hz (for mini2 256),10 10 46 00 01 00 32 00 00 00 00 00 00 00 00 00 3c 3d
+,, Setting -dvp-progressive-25hz (for mini2 256),10 10 46 00 01 01 19 00 00 00 00 00 00 00 00 00 fc 27
+,, Setting -dvp-progressive-50hz (for mini2 256),10 10 46 00 01 01 32 00 00 00 00 00 00 00 00 00 75 e5
+,, Setting-bt656-progressive-25hz (for mini2 256),10 10 46 00 01 02 19 00 00 00 00 00 00 00 00 00 06 5f
+,, Setting-bt656-progressive-50hz (for mini2 256),10 10 46 00 01 02 32 00 00 00 00 00 00 00 00 00 8f 9d
+,, Setting-mipi-progressive-25hz (for mini2 256),10 10 46 00 01 03 19 00 00 00 00 00 00 00 00 00 4f 87
+,, Setting-mipi-progressive-50hz (for mini2 256),10 10 46 00 01 03 32 00 00 00 00 00 00 00 00 00 c6 45
+,, Setting - Turning off digital output,10 10 46 00 00 00 00 00 00 00 00 00 00 00 00 00 58 4d
+,, Get,10 10 86 00 00 00 00 00 00 00 00 00 04 00 00 00 68 fb
+, Analog video formats, Settings - Enable ntsc,10 10 4A 00 01 00 00 00 00 00 00 00 00 00 00 00 e3 58
+,, Settings - Enable PAL,10 10 4A 00 01 01 00 00 00 00 00 00 00 00 00 00 aa 80
+,, Settings - Disable Simulation,10 10 4A 00 00 00 00 00 00 00 00 00 00 00 00 00 96 5b
+,, Get,10 10 8A 00 00 00 00 00 00 00 00 00 02 00 00 00 3f ca
+, Save digital-analog output format, set up,10 10 49 00 00 00 00 00 00 00 00 00 00 00 00 00 35 D6
+, Detector frame rate, Setting -30hz,10 10 44 00 1E 00 00 00 00 00 00 00 00 00 00 00 5C 9C
+,, Setting -60hz,10 10 44 00 3C 00 00 00 00 00 00 00 00 00 00 00 16 F4
+,, Setting -25Hz,10 10 44 00 19 00 00 00 00 00 00 00 00 00 00 00 17 94
+,, Setting -50hz,10 10 44 00 32 00 00 00 00 00 00 00 00 00 00 00 80 E4
+,, Get,10 10 84 00 00 00 00 00 00 00 00 00 01 00 00 00 EF B1
+, Image data source, Setup - IR,10 10 45 00 00 00 00 00 00 00 00 00 00 00 00 00 FB C0
+,, Settings - KBC,10 10 45 00 01 00 00 00 00 00 00 00 00 00 00 00 8E C3
+,, Setting - TNR,10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6
+,, Setting - SNR,10 10 45 00 03 00 00 00 00 00 00 00 00 00 00 00 64 C5
+,, Setup - DDE,10 10 45 00 04 00 00 00 00 00 00 00 00 00 00 00 2F CD
+,, Settings - YUV,10 10 45 00 05 00 00 00 00 00 00 00 00 00 00 00 5A CE
+,, Get,10 10 85 00 00 00 00 00 00 00 00 00 01 00 00 00 8E CA
+, YUV format, Set-uyvy,10 03 4D 00 00 00 00 00 00 00 00 00 00 00 00 00 3F 86
+,, Setting-vyuy,10 03 4D 01 00 00 00 00 00 00 00 00 00 00 00 00 5C C3
+,, Setting-yuyv,10 03 4D 02 00 00 00 00 00 00 00 00 00 00 00 00 F9 0C
+,, Setting -yvyu,10 03 4D 03 00 00 00 00 00 00 00 00 00 00 00 00 9A 49
+,, Get,10 03 8C 00 00 00 00 00 00 00 00 00 01 00 00 00 2B F7
+, Screen freezes, Set-disable,10 10 42 00 00 00 00 00 00 00 00 00 00 00 00 00 FD B0
+,, Set-enable,10 10 42 00 01 00 00 00 00 00 00 00 00 00 00 00 88 B3
+,, Get,10 10 82 00 00 00 00 00 00 00 00 00 01 00 00 00 88 BA
+, Mirror flip, Settings - No Flip,10 10 43 00 00 00 00 00 00 00 00 00 00 00 00 00 9C CB
+,, Settings - Flip left and right,10 10 43 00 01 00 00 00 00 00 00 00 00 00 00 00 E9 C8
+,, Settings - Flip upside down,10 10 43 00 02 00 00 00 00 00 00 00 00 00 00 00 76 CD
+,, Settings - Left and Right + Up and Down,10 10 43 00 03 00 00 00 00 00 00 00 00 00 00 00 03 CE
+,, Get,10 10 83 00 00 00 00 00 00 00 00 00 01 00 00 00 E9 C1
+, External synchronization mode,Setting-On,10 10 4B 00 01 00 00 00 00 00 00 00 00 00 00 00 82 23
+,, Settings - Off,10 10 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 F7 20
+,, Get,10 10 8B 00 00 00 00 00 00 00 00 00 01 00 00 00 82 2A
+, Electronic zoom-center, Setting -1x,01 31 42 00 00 0A 00 00 00 00 00 00 00 00 00 00 06 0A
+,, Setting -2x,01 31 42 00 00 14 00 00 00 00 00 00 00 00 00 00 41 0C
+,, Setting - 3x,01 31 42 00 00 1E 00 00 00 00 00 00 00 00 00 00 7C 0E
+,,Setting - 4x,01 31 42 00 00 28 00 00 00 00 00 00 00 00 00 00 CF 00
+,, Setting -8x,01 31 42 00 00 50 00 00 00 00 00 00 00 00 00 00 D3 19
+,, Get,01 31 82 00 00 00 00 00 00 00 00 00 01 00 00 00 4E 02
+, Electronic zoom-coordinates," Setting -(300,100), 2.1 times",01 31 51 00 00 15 00 00 2C 01 64 00 00 00 00 00 5B 14
+,, Get,01 31 91 00 00 00 00 00 00 00 00 00 05 00 00 00 EB 83
+ Image adjustment related instructions, Scene Mode, Setting - Low Temperature Protrusion,10 04 42 00 00 00 00 00 00 00 00 00 00 00 00 00 C5 65
+,, Settings - Linear Stretch,10 04 42 00 01 00 00 00 00 00 00 00 00 00 00 00 B0 66
+,, Settings - Low Contrast,10 04 42 00 02 00 00 00 00 00 00 00 00 00 00 00 2F 63
+,, Settings - General Mode (Default),10 04 42 00 03 00 00 00 00 00 00 00 00 00 00 00 5A 60
+,, Settings - High Contrast,10 04 42 00 04 00 00 00 00 00 00 00 00 00 00 00 11 68
+,, Settings - Highlight,10 04 42 00 05 00 00 00 00 00 00 00 00 00 00 00 64 6B
+,, Setting-Reserve 1,10 04 42 00 06 00 00 00 00 00 00 00 00 00 00 00 FB 6E
+,, Settings-Reserve 2,10 04 42 00 07 00 00 00 00 00 00 00 00 00 00 00 8E 6D
+,, Settings-Reserve 3,10 04 42 00 08 00 00 00 00 00 00 00 00 00 00 00 6D 7E
+,, Settings - Outline Mode,10 04 42 00 09 00 00 00 00 00 00 00 00 00 00 00 18 7D
+,, Get,10 04 89 00 01 00 00 00 00 00 00 00 01 00 00 00 0D 0A
+, False Color, Settings - White Hot,10 03 45 00 00 00 00 00 00 00 00 00 00 00 00 00 54 6D
+,, Set-reserved,10 03 45 00 00 01 00 00 00 00 00 00 00 00 00 00 1D B5
+,, Settings-Gold Sepia,10 03 45 00 00 02 00 00 00 00 00 00 00 00 00 00 E7 CD
+,, Settings - Ironbow,10 03 45 00 00 03 00 00 00 00 00 00 00 00 00 00 AE 15
+,, Setting-Rainbow,10 03 45 00 00 04 00 00 00 00 00 00 00 00 00 00 13 3C
+,, Settings-Night,10 03 45 00 00 05 00 00 00 00 00 00 00 00 00 00 5A E4
+,, Settings - Aurora,10 03 45 00 00 06 00 00 00 00 00 00 00 00 00 00 A0 9C
+,, Settings - Red_Hot,10 03 45 00 00 07 00 00 00 00 00 00 00 00 00 00 E9 44
+,, Setting-Jungle,10 03 45 00 00 08 00 00 00 00 00 00 00 00 00 00 DA CF
+,, Settings-Medical,10 03 45 00 00 09 00 00 00 00 00 00 00 00 00 00 93 17
+,, Settings - Black_Hot,10 03 45 00 00 0A 00 00 00 00 00 00 00 00 00 00 69 6F
+,, Setting-Golden Red Glory_Hot,10 03 45 00 00 0B 00 00 00 00 00 00 00 00 00 00 20 B7
+,, Get,10 03 85 00 00 00 00 00 00 00 00 00 01 00 00 00 21 67
+, Detail Enhancement, Setting - 0,10 04 45 00 00 00 00 00 00 00 00 00 00 00 00 00 C3 15
+,, Settings - 10 levels,10 04 45 00 0A 00 00 00 00 00 00 00 00 00 00 00 81 08
+,, Settings - 20 levels,10 04 45 00 14 00 00 00 00 00 00 00 00 00 00 00 47 2F
+,, Setting - 30 levels,10 04 45 00 1E 00 00 00 00 00 00 00 00 00 00 00 05 32
+,, Settings - 40 levels,10 04 45 00 28 00 00 00 00 00 00 00 00 00 00 00 CB 60
+,, Setting - 50 levels,10 04 45 00 32 00 00 00 00 00 00 00 00 00 00 00 D9 4A
+,, Setting - 60 levels,10 04 45 00 3C 00 00 00 00 00 00 00 00 00 00 00 4F 5A
+,, Setting - 70 levels,10 04 45 00 46 00 00 00 00 00 00 00 00 00 00 00 BD C3
+,, Setting - 80,10 04 45 00 50 00 00 00 00 00 00 00 00 00 00 00 D3 FF
+,, Setting - 90 gears,10 04 45 00 5A 00 00 00 00 00 00 00 00 00 00 00 91 E2
+,, Setting -100,10 04 45 00 64 00 00 00 00 00 00 00 00 00 00 00 F7 AB
+,, Get,10 04 85 00 01 00 00 00 00 00 00 00 01 00 00 00 C3 1C
+, brightness, Setting - 0,10 04 47 00 00 00 00 00 00 00 00 00 00 00 00 00 01 E3
+,, Settings - 10 levels,10 04 47 00 0A 00 00 00 00 00 00 00 00 00 00 00 43 FE
+,, Settings - 20 levels,10 04 47 00 14 00 00 00 00 00 00 00 00 00 00 00 85 D9
+,, Setting - 30 levels,10 04 47 00 1E 00 00 00 00 00 00 00 00 00 00 00 C7 C4
+,, Settings - 40 levels,10 04 47 00 28 00 00 00 00 00 00 00 00 00 00 00 09 96
+,, Setting - 50 levels,10 04 47 00 32 00 00 00 00 00 00 00 00 00 00 00 1B BC
+,, Setting - 60 levels,10 04 47 00 3C 00 00 00 00 00 00 00 00 00 00 00 8D AC
+,, Setting - 70 levels,10 04 47 00 46 00 00 00 00 00 00 00 00 00 00 00 7F 35
+,, Setting - 80,10 04 47 00 50 00 00 00 00 00 00 00 00 00 00 00 11 09
+,, Setting - 90 gears,10 04 47 00 5A 00 00 00 00 00 00 00 00 00 00 00 53 14
+,, Setting -100,10 04 47 00 64 00 00 00 00 00 00 00 00 00 00 00 35 5D
+,, Get,10 04 87 00 01 00 00 00 00 00 00 00 01 00 00 00 01 EA
+, Contrast, Setting - 0,10 04 4A 00 00 00 00 00 00 00 00 00 00 00 00 00 AE 8E
+,, Settings - 10 levels,10 04 4A 00 0A 00 00 00 00 00 00 00 00 00 00 00 EC 93
+,, Settings - 20 levels,10 04 4A 00 14 00 00 00 00 00 00 00 00 00 00 00 2A B4
+,, Setting - 30 levels,10 04 4A 00 1E 00 00 00 00 00 00 00 00 00 00 00 68 A9
+,, Settings - 40 levels,10 04 4A 00 28 00 00 00 00 00 00 00 00 00 00 00 A6 FB
+,, Setting - 50 levels,10 04 4A 00 32 00 00 00 00 00 00 00 00 00 00 00 B4 D1
+,, Setting - 60 levels,10 04 4A 00 3C 00 00 00 00 00 00 00 00 00 00 00 22 C1
+,, Setting - 70 levels,10 04 4A 00 46 00 00 00 00 00 00 00 00 00 00 00 D0 58
+,, Setting - 80,10 04 4A 00 50 00 00 00 00 00 00 00 00 00 00 00 BE 64
+,, Setting - 90 gears,10 04 4A 00 5A 00 00 00 00 00 00 00 00 00 00 00 FC 79
+,, Setting -100,10 04 4A 00 64 00 00 00 00 00 00 00 00 00 00 00 9A 30
+,, Get,10 04 8A 00 01 00 00 00 00 00 00 00 01 00 00 00 AE 87
+, Airspace Noise Reduction, Setting - 0,10 04 4B 00 00 00 00 00 00 00 00 00 00 00 00 00 CF F5
+,, Settings - 10 levels,10 04 4B 00 0A 00 00 00 00 00 00 00 00 00 00 00 8D E8
+,, Settings - 20 levels,10 04 4B 00 14 00 00 00 00 00 00 00 00 00 00 00 4B CF
+,, Setting - 30 levels,10 04 4B 00 1E 00 00 00 00 00 00 00 00 00 00 00 09 D2
+,, Settings - 40 levels,10 04 4B 00 28 00 00 00 00 00 00 00 00 00 00 00 C7 80
+,, Setting - 50 levels,10 04 4B 00 32 00 00 00 00 00 00 00 00 00 00 00 D5 AA
+,, Setting - 60 levels,10 04 4B 00 3C 00 00 00 00 00 00 00 00 00 00 00 43 BA
+,, Setting - 70 levels,10 04 4B 00 46 00 00 00 00 00 00 00 00 00 00 00 B1 23
+,, Setting - 80,10 04 4B 00 50 00 00 00 00 00 00 00 00 00 00 00 DF 1F
+,, Setting - 90 gears,10 04 4B 00 5A 00 00 00 00 00 00 00 00 00 00 00 9D 02
+,, Setting -100,10 04 4B 00 64 00 00 00 00 00 00 00 00 00 00 00 FB 4B
+,, Get,10 04 8B 00 01 00 00 00 00 00 00 00 01 00 00 00 CF FC
+, Temporal noise reduction, Setting - 0,10 04 4C 00 00 00 00 00 00 00 00 00 00 00 00 00 C9 85
+,, Settings - 10 levels,10 04 4C 00 0A 00 00 00 00 00 00 00 00 00 00 00 8B 98
+,, Settings - 20 levels,10 04 4C 00 14 00 00 00 00 00 00 00 00 00 00 00 4D BF
+,, Setting - 30 levels,10 04 4C 00 1E 00 00 00 00 00 00 00 00 00 00 00 0F A2
+,, Settings - 40 levels,10 04 4C 00 28 00 00 00 00 00 00 00 00 00 00 00 C1 F0
+,, Setting - 50 levels,10 04 4C 00 32 00 00 00 00 00 00 00 00 00 00 00 D3 DA
+,, Setting - 60 levels,10 04 4C 00 3C 00 00 00 00 00 00 00 00 00 00 00 45 CA
+,, Setting - 70 levels,10 04 4C 00 46 00 00 00 00 00 00 00 00 00 00 00 B7 53
+,, Setting - 80,10 04 4C 00 50 00 00 00 00 00 00 00 00 00 00 00 D9 6F
+,, Setting - 90 gears,10 04 4C 00 5A 00 00 00 00 00 00 00 00 00 00 00 9B 72
+,, Setting -100,10 04 4C 00 64 00 00 00 00 00 00 00 00 00 00 00 FD 3B
+,, Get,10 04 8C 00 01 00 00 00 00 00 00 00 01 00 00 00 C9 8C
+, Gamma intensity, Setting - 0,10 04 4D 00 00 00 00 00 00 00 00 00 00 00 00 00 A8 FE
+,, Settings - 10 levels,10 04 4D 00 0A 00 00 00 00 00 00 00 00 00 00 00 EA E3
+,, Settings - 20 levels,10 04 4D 00 14 00 00 00 00 00 00 00 00 00 00 00 2C C4
+,, Setting - 30 levels,10 04 4D 00 1E 00 00 00 00 00 00 00 00 00 00 00 6E D9
+,, Settings - 40 levels,10 04 4D 00 28 00 00 00 00 00 00 00 00 00 00 00 A0 8B
+,, Setting - 50 levels,10 04 4D 00 32 00 00 00 00 00 00 00 00 00 00 00 B2 A1
+,, Setting - 60 levels,10 04 4D 00 3C 00 00 00 00 00 00 00 00 00 00 00 24 B1
+,, Setting - 70 levels,10 04 4D 00 46 00 00 00 00 00 00 00 00 00 00 00 D6 28
+,, Setting - 80,10 04 4D 00 50 00 00 00 00 00 00 00 00 00 00 00 B8 14
+,, Setting - 90 gears,10 04 4D 00 5A 00 00 00 00 00 00 00 00 00 00 00 FA 09
+,, Setting -100,10 04 4D 00 64 00 00 00 00 00 00 00 00 00 00 00 9C 40
+,, Get,10 04 8D 00 01 00 00 00 00 00 00 00 01 00 00 00 A8 F7
+, Hook edge position, Setting - 0,10 04 4E 00 00 00 00 00 00 00 00 00 00 00 00 00 0b 73
+,, Setting - 1st gear,10 04 4E 00 01 00 00 00 00 00 00 00 00 00 00 00 7e 70
+,, Setting - 2 levels,10 04 4E 00 02 00 00 00 00 00 00 00 00 00 00 00 e1 75
+,, Get,10 04 8E 00 01 00 00 00 00 00 00 00 01 00 00 00 7e 79
