@@ -5,8 +5,7 @@ Quick start guide to capture your first thermal image and explore basic camera c
 ## Prerequisites
 
 **Before starting**, ensure you've completed installation:
-- ✅ [Raspberry Pi 5 Installation](installation-pi5.md) **OR**
-- ✅ [Raspberry Pi 4 Installation](installation-pi4.md)
+- ✅ [Installation Guide](installation.md) - for Pi 4 or Pi 5
 
 **Verification**:
 ```bash

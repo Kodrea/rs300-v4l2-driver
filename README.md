@@ -120,10 +120,9 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 ## Installation
 
-**Choose your platform:**
+**For both Raspberry Pi 4 & 5:**
 
-- **Raspberry Pi 5**: [Complete Pi 5 Installation Guide](docs/getting-started/installation-pi5.md)
-- **Raspberry Pi 4**: [Complete Pi 4 Installation Guide](docs/getting-started/installation-pi4.md)
+- [Complete Installation Guide](docs/getting-started/installation.md) - Supports Pi 4 and Pi 5 with platform-specific sections
 
 **Quick Start** (all platforms):
 ```bash

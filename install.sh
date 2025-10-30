@@ -175,7 +175,7 @@ if [ "$PLATFORM" = "pi4" ]; then
     echo "  - 256×192: mode = 1"
     echo "  - 384×288: mode = 2"
     echo ""
-    log_info "See: docs/getting-started/installation-pi4.md for details"
+    log_info "See: docs/getting-started/installation.md for details"
     echo ""
     read -p "Have you configured rs300.c for your module? (y/N) " -n 1 -r
     echo

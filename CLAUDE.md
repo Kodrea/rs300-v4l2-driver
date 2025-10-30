@@ -115,7 +115,7 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100 --stream-to=test.yuv
 - `docs/reference/SECURITY_AUDIT.md` - Security analysis
 
 **Setup Guides**:
-- `docs/getting-started/installation-pi5.md` - Pi 5 driver install
+- `docs/getting-started/installation.md` - Pi 4 & Pi 5 driver installation
 - `docs/getting-started/first-capture.md` - Quick start test
 
 **Lessons Learned**:
