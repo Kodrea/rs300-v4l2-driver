@@ -1,8 +1,22 @@
 # /start-issue
 
-Start work on a GitHub issue with safety checks, branch setup, and context storage.
+Start work on a GitHub issue with interactive questions, safety checks, branch setup, and context storage.
 
-Automatically executable after trigger with full permissions configured.
+## EXECUTABLE COMMAND - Interactive Mode
+
+This command:
+1. Fetches and validates the GitHub issue
+2. Shows the issue details clearly
+3. Asks interactive questions (pull from remote, branch type, branch name)
+4. Runs git pre-flight checks
+5. Creates branch and stores issue context
+6. Shows completion summary with next steps
+
+## Usage
+
+```
+/start-issue 11
+```
 
 ## Permissions
 
@@ -14,140 +28,35 @@ Required permissions in `.claude/settings.local.json` (all configured):
 - `Bash(git checkout:*)` - Create and switch to new branch
 - `Bash(git config:*)` - Store issue metadata in branch config
 
-All permissions are safe: read-only operations and non-destructive git commands.
+## EXECUTABLE STEPS
 
-## Usage
+You are given an issue number as input. Follow these steps exactly:
 
-```
-/start-issue 11
-```
+### Step 1: Validate Issue and Get Details
 
-## What It Does
+Fetch the issue from GitHub. If it fails, show error and stop.
 
-1. **Validates issue** - Exists, open, not assigned to someone else
-2. **Shows details** - Title, description, files to modify, implementation plan
-3. **Confirms understanding** - Asks if you understand scope before proceeding
-4. **Pre-flight checks** - Git repo clean, on main branch, up to date
-5. **Creates branch** - Asks for branch type and name, follows conventions
-6. **Stores context** - Records issue number in git config for later validation
-7. **Shows checklist** - Lists files to edit and phases to complete
-
-## Command Flow
-
-### Step 1: Parse Issue Number
-
-User provides issue number (e.g., 11). Extract and validate it's a number.
-
-```bash
-gh issue view {issue_number} --json state,title,body,labels,assignees \
-  --template '{{json .}}'
-```
-
-If issue doesn't exist or fetch fails, show error and stop.
-
-### Step 2: Validate Issue State
-
-Check:
-- **Is it open?** (state == "OPEN")
-  - If closed: "Issue #X is CLOSED. Continue anyway? (y/n)"
-- **Is it unassigned?** (assignees is empty)
-  - If assigned: "Issue assigned to [person]. Continue anyway? (y/n)"
-- **Does it have a type label?** (bug, docs, enhancement, refactor, etc.)
-  - If missing: "Warning: No type label. Proceeding anyway."
-
-If any checks fail, ask user to confirm before continuing.
-
-### Step 3: Display Issue Details
-
-Show clearly formatted:
+Once you have the issue details, show them in a clear format like:
 ```
 ═══════════════════════════════════════════════════════
-ISSUE #11: I2C Skill Output Mode Command Mismatch
+ISSUE #{number}: {title}
 ═══════════════════════════════════════════════════════
-
-Labels: docs, priority: high
-Milestone: Beta v1.0
-State: OPEN
-
-Files to Modify:
-  - .claude/skills/i2c-commands/SKILL.md
-  - docs/reference/I2C_PROTOCOL.md
-
-Implementation Plan:
-
-Phase 1: Verify Correct Command Format
-  ☐ Find correct I2C output mode command in rs300.c
-  ☐ Confirm command header is 0x10/0x10/0x45
-  ☐ Confirm packet size is 18 bytes
-
-Phase 2: Update Skill File
-  ☐ Remove incorrect 0x55/0x43/0x49 entry
-  ☐ Add correct 0x10/0x10/0x45 entry with fields
-  ☐ Add note: serial vs I2C protocol difference
-
-Phase 3: Update Documentation
-  ☐ Add output mode section to I2C_PROTOCOL.md
-  ☐ Cross-reference to I2C_QUICK_REFERENCE.md
-
-Acceptance Criteria:
-  ☐ Skill shows correct I2C command format
-  ☐ Serial vs I2C documented
-  ☐ No conflicting information
-═══════════════════════════════════════════════════════
+State: {state}
+Labels: {labels}
 ```
 
-### Step 4: Confirm Understanding
+### Step 2: Pre-flight Git Checks
 
-Ask user:
-```
-Do you understand the scope and requirements? (y/n)
-```
+Before asking questions, run these checks:
 
-If no:
-- Show each phase with more detail
-- Ask clarifying questions
-- Let user ask: "What is X?" and explain
-- Don't proceed until confident
+1. Check inside git repo
+2. Check on main branch
+3. Check no uncommitted changes
+4. Run `git fetch origin main` (non-destructive)
 
-If yes:
-- Move to Step 5
+If any check fails, show error and stop. Do NOT proceed to interactive questions.
 
-### Step 5: Pre-flight Git Checks
-
-Run these checks in order. If any fail, ask to fix first:
-
-```bash
-# Check 1: Inside git repo
-if ! git rev-parse --git-dir > /dev/null 2>&1; then
-  "Error: Not in a git repository"
-  exit 1
-fi
-
-# Check 2: On main branch
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-if [ "$current_branch" != "main" ]; then
-  "Error: Not on 'main' branch (currently on '$current_branch')"
-  "Switch to main first: git checkout main"
-  exit 1
-fi
-
-# Check 3: No uncommitted changes
-if ! git diff --quiet; then
-  "Error: Uncommitted changes detected"
-  "Commit or stash changes first"
-  exit 1
-fi
-
-# Check 4: Main is up to date with origin
-git fetch origin main 2>/dev/null
-if ! git diff main origin/main --quiet; then
-  "Warning: Your main is behind origin/main"
-  "Run: git pull origin main"
-  exit 1
-fi
-```
-
-Show results:
+Show results clearly:
 ```
 Git Pre-flight Checks:
   ✓ In git repository
@@ -156,109 +65,65 @@ Git Pre-flight Checks:
   ✓ Main is up to date
 ```
 
-### Step 6: Determine Branch Type
+### Step 3: Ask Interactive Questions
 
-Use issue labels to suggest branch type prefix:
+Once all pre-flight checks pass, use the AskUserQuestion tool to ask these questions in a single call:
 
-```
-Labels: docs, priority: high
+**Question 1: Pull from Remote**
+- Header: "Remote"
+- Question: "Before creating branch, do you want to pull latest changes from remote?"
+- Options:
+  - "Yes, pull origin/main" - Run git pull origin main first
+  - "No, skip" - Proceed without pulling
+  - "Check status first" - Show git status before deciding
 
-Suggested branch type: docs/
-Options: docs / fix / feature / refactor / other
+**Question 2: Branch Type**
+- Header: "Branch Type"
+- Question: "Select branch type for this issue"
+- Options: Suggest based on issue labels (docs → docs/, bug → fix/, feature → feature/, refactor → refactor/)
+  - Default to "Other" if no matching label
+- Allow user to select "Other" for custom type
 
-Select branch type (or press Enter for suggested): docs/
-```
+**Question 3: Branch Name**
+- Header: "Branch Name"
+- Question: "Suggest a descriptive branch name (lowercase, hyphens only)"
+- Options:
+  - Show suggested name based on issue title (e.g., "i2c-skill-output-mode")
+  - Allow user to select "Other" to enter custom name
 
-Map labels to types:
-- `type: docs` or `docs` → suggest `docs/`
-- `type: bug` or `bug` → suggest `fix/`
-- `type: enhancement` or `type: feature` → suggest `feature/`
-- `type: refactor` → suggest `refactor/`
-- Others → ask user
+Process responses:
+- If user wants to pull: `git pull origin main`
+- Validate branch name format (lowercase, hyphens, numbers only, max 60 chars)
+- Check branch doesn't already exist: `git branch -a | grep {name}`
 
-### Step 7: Branch Name
+### Step 4: Create Branch and Store Context
 
-Ask user for descriptive branch name:
+Once user responds to all questions:
 
-```
-Issue title: I2C Skill Output Mode Command Mismatch
-Suggested name: i2c-skill-output-mode
-
-Enter branch name (or press Enter for suggested):
-(Branch will be: docs/i2c-skill-output-mode)
-```
-
-Validate branch name:
-- Only lowercase, hyphens, numbers (no spaces, underscores, etc.)
-- Not too long (max 60 chars)
-- Doesn't already exist
-
-If invalid, ask again.
-
-### Step 8: Create Branch
-
-Run:
 ```bash
 git checkout -b {branch_type}/{branch_name}
-```
-
-Verify:
-```bash
-current=$(git rev-parse --abbrev-ref HEAD)
-if [ "$current" == "{branch_type}/{branch_name}" ]; then
-  "✓ Branch created and checked out"
-else
-  "Error: Failed to create branch"
-  exit 1
-fi
-```
-
-### Step 9: Store Issue Context
-
-Store issue number in git config so `/pr-ready` can validate later:
-
-```bash
 git config branch.{branch_name}.issueNumber {issue_number}
 ```
 
-Verify:
-```bash
-stored=$(git config branch.{branch_name}.issueNumber)
-if [ "$stored" == "{issue_number}" ]; then
-  "✓ Issue #$stored linked to this branch"
-else
-  "Warning: Could not store issue number in git config"
-fi
-```
+Verify both commands succeeded.
 
-### Step 10: Show Completion Summary
+### Step 5: Show Completion Summary
 
+Display final summary:
 ```
 ═══════════════════════════════════════════════════════
 ✓ READY TO START
 ═══════════════════════════════════════════════════════
 
-Issue: #11 - I2C Skill Output Mode Command Mismatch
-Branch: docs/i2c-skill-output-mode
-Files to edit:
-  1. .claude/skills/i2c-commands/SKILL.md
-  2. docs/reference/I2C_PROTOCOL.md
+Issue: #{number} - {title}
+Branch: {type}/{name}
 
 Next Steps:
-  1. Edit the files above
-  2. Test your changes
-  3. Commit with message: "Fixes #11"
-  4. Push: git push origin docs/i2c-skill-output-mode
-  5. Create PR on GitHub
-  6. Review on PR page (Files Changed tab)
-  7. Merge when satisfied
+  1. Edit the files
+  2. Commit: "Fixes #{number}"
+  3. Push: git push origin {type}/{name}
+  4. Create PR on GitHub
 
-Checklist for Phase 1:
-  ☐ Find correct command in rs300.c
-  ☐ Confirm 0x10/0x10/0x45 format
-  ☐ Confirm 18-byte packet size
-
-Ready to edit.
 ═══════════════════════════════════════════════════════
 ```
 
@@ -269,44 +134,23 @@ Ready to edit.
 | Situation | Action |
 |-----------|--------|
 | Issue doesn't exist | Show error, suggest checking issue number |
-| User not authenticated | Show: "Run: gh auth login" |
-| Not in git repo | Show: "Not in git directory" |
-| On wrong branch | Show: "Checkout main first: git checkout main" |
-| Uncommitted changes | Show: "Commit or stash changes first" |
-| Main behind origin | Show: "Pull latest: git pull origin main" |
-| Branch already exists | Ask: "Branch exists. Use different name?" |
-| Invalid branch name | Show rules, ask again |
-| Git config fails | Warn but continue (not critical) |
+| Not authenticated | Show: "Run: gh auth login" |
+| Not in git repo | Show: "Error: Not in git repository" |
+| On wrong branch | Show: "Error: Checkout main first" |
+| Uncommitted changes | Show: "Error: Commit or stash changes first" |
+| Main behind origin | Show: "Error: Pull latest first" |
+| Branch already exists | Show: "Error: Branch exists, use different name" |
+| Invalid branch name | Show rules and ask again |
 
 ---
 
-## Design Decisions
+## Key Features
 
-**Why ask "do you understand?" before creating branch?**
-- Separates reading/understanding from doing/acting
-- If user realizes they misunderstood, they haven't created branch yet
-- Prevents throwaway branches
-
-**Why store issue number in git config?**
-- `/pr-ready` can later validate that commit has "Fixes #X" for right issue
-- If user forgets "Fixes #11", we can catch it before merge
-- Provides context without file-based state
-
-**Why pre-flight checks?**
-- Prevents creating branch on wrong base
-- Prevents branch with mixed changes from other work
-- Catches common mistakes early
-
-**Why validate issue state (open/unassigned)?**
-- Even solo dev: prevents wasted work on closed issues
-- Good practice for potential future collaborators
-- User can still force through if they want
-
-**Why ask for branch type and name separately?**
-- Respects your branch conventions (type prefix)
-- User decides name (understands what they're working on)
-- Both are validated
-- Follows git best practices
+- **Pull Option**: User can opt to pull latest changes before creating branch
+- **Label-based Suggestions**: Branch type automatically suggested from issue labels
+- **Name Validation**: Ensures branch name follows convention (lowercase, hyphens, numbers only)
+- **Context Storage**: Issue number stored in git config for later validation
+- **Pre-flight Safety**: All git checks run before asking user questions
 
 ---
 
@@ -315,22 +159,3 @@ Ready to edit.
 - `gh` CLI installed and authenticated
 - Inside git repository
 - Git version 2.10+ (for branch config support)
-
-## Testing
-
-Test with issue #11 (known good state):
-```
-/start-issue 11
-→ Validate issue open ✓
-→ Show plan ✓
-→ Confirm understanding ✓
-→ Check git state ✓
-→ Ask branch type ✓
-→ Ask branch name ✓
-→ Create docs/i2c-skill-output-mode ✓
-→ Store issue context ✓
-→ Show summary ✓
-```
-
-Then `git log --oneline` should show you're on the branch.
-And `git config branch.i2c-skill-output-mode.issueNumber` should output `11`.
