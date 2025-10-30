@@ -50,6 +50,10 @@ RS300 I2C commands use **two command classes**:
 | Contrast SET | 0x10/0x04/0x4A | SET | Dyn | P1=0-100 | Status | 500ms | 174-184 |
 | **Output Mode SET** | **0x10/0x10/0x45** | **SET** | **Hard** | **P1=0-5** | **Status** | **500ms** | **95-101** |
 | YUV Format SET | 0x10/0x03/0x4D | SET | Dyn | P1=0-3 | Status | 500ms | 102-106 |
+| Anti-burn Protection SET | 0x10/0x03/0x4B | SET | Hard | P1=0/1 | Status | 500ms | 42-43 |
+| Anti-burn Protection GET | 0x10/0x03/0x8B | GET | Hard | P1=0x00, P12=0x01 | Byte[4] | 500ms | 44 |
+| Open Shutter | 0x01/0x0F/0x45 | SET | Hard | P1=0x01 | Status | 500ms | 5 |
+| Close Shutter | 0x01/0x0F/0x45 | SET | Hard | P1=0x00 | Status | 500ms | 4 |
 
 ### 3.2 Image Processing Commands
 
@@ -60,6 +64,10 @@ RS300 I2C commands use **two command classes**:
 | TNR SET | 0x10/0x04/0x4C | SET | Dyn | P1=0-100 | Status | 500ms | 198-208 |
 | Scene Mode SET | 0x10/0x04/0x42 | SET | Dyn | P1=0-9 | Status | 500ms | 126-136 |
 | Zoom SET | 0x01/0x31/0x42 | SET | Dyn | P1=0x00, P2=level×10 | Status | 500ms | 118-122 |
+| Hook Edge Position SET | 0x10/0x04/0x4E | SET | Dyn | P1=0-2 | Status | 500ms | 222-224 |
+| Hook Edge Position GET | 0x10/0x04/0x8E | GET | Dyn | P1=0x01, P12=0x01 | Byte[4] | 500ms | 225 |
+| Detector Frame Rate SET | 0x10/0x10/0x44 | SET | Dyn | P1=fps | Status | 500ms | 90-93 |
+| Detector Frame Rate GET | 0x10/0x10/0x84 | GET | Dyn | P1=0x00, P12=0x01 | Byte[4] | 500ms | 94 |
 
 ### 3.3 Device Control Commands
 
@@ -72,6 +80,7 @@ RS300 I2C commands use **two command classes**:
 | Autoshutter Params | 0x10/0x02/0x42 | SET | Dyn | P1=type, P2-3=multi-byte | Status | 500ms | 9-16 |
 | Sleep GET | 0x10/0x10/0x88 | GET | Dyn | P1=0x01, P9=0x01 | Byte[4] | 500ms | 47 |
 | Sleep SET | 0x10/0x10/0x48 | SET | Dyn | P1=0/1 | Status | 500ms | 45-46 |
+| Digital-Analog Output Format | 0x10/0x10/0x49 | SET | Hard | All=0x00 | Status | 500ms | 89 |
 
 ### 3.4 Device Information Commands
 
@@ -346,6 +355,192 @@ CSV Row: 12
 01 01 81 00 01 00 00 00 00 00 00 00 20 00 00 00 FC 1E
 ```
 
+### 5.8 Open/Close Shutter
+
+**Command**: Control thermal camera shutter (open = accept thermal input, close = block thermal input)
+**Hex Code**: `0x01/0x0F/0x45` (Class: Device, Module: Shutter, SubCmd: Shutter control)
+**CSV Rows**: 4-5
+
+**Operations**:
+| Operation | P1 Value | CRC (LSB, MSB) | Purpose |
+|-----------|----------|----------------|---------|
+| Close | 0x00 | 0x8D, 0x5A | Block thermal input (shutter closed) |
+| Open | 0x01 | 0xF8, 0x59 | Accept thermal input (shutter open) |
+
+**Note**: Both operations use hardcoded CRC values - do NOT calculate dynamically.
+
+**Packet Structure** (18 bytes):
+```
+[0]  = 0x01 (Class: Device)
+[1]  = 0x0F (Module: Shutter)
+[2]  = 0x45 (SubCmd: Shutter control)
+[3]  = 0x00 (Reserved)
+[4]  = operation (0=close, 1=open)
+[5-15] = 0x00 (Padding)
+[16-17] = CRC (Hardcoded lookup)
+```
+
+**Example**: Open shutter
+```
+Packet: 01 0F 45 00 01 00 00 00 00 00 00 00 00 00 00 00 F8 59
+                    ^^                                   ^^^^^
+                    P1=1 (Open)                         CRC (hardcoded)
+CSV Row: 5
+```
+
+### 5.9 Anti-burn Protection
+
+**Command**: Enable/disable camera anti-burn protection (protects sensor from bright light damage)
+**Hex Code**: `0x10/0x03/0x4B` (SET), `0x10/0x03/0x8B` (GET)
+**CSV Rows**: 42-44
+
+**Settings**:
+| Setting | Value | CRC (LSB, MSB) | Purpose |
+|---------|-------|----------------|---------|
+| OFF | 0x00 | 0x58, 0x8D | Disable anti-burn protection |
+| ON | 0x01 | 0x2D, 0x8E | Enable anti-burn protection |
+
+**GET Parameters**:
+- P1: 0x00 (selector)
+- P12: 0x01 (response length = 1 byte)
+- CRC: 0x2D, 0x87 (hardcoded)
+
+**Packet Structure** (SET):
+```
+[0]  = 0x10 (Class: Camera)
+[1]  = 0x03 (Module: Display/Protection)
+[2]  = 0x4B (SubCmd: Anti-burn SET)
+[3]  = 0x00 (Reserved)
+[4]  = setting (0=OFF, 1=ON)
+[5-15] = 0x00 (Padding)
+[16-17] = CRC (Hardcoded lookup)
+```
+
+**Example**: Enable anti-burn protection
+```
+Packet: 10 03 4B 00 01 00 00 00 00 00 00 00 00 00 00 00 2D 8E
+                    ^^                                   ^^^^^
+                    P1=1 (ON)                           CRC (hardcoded)
+CSV Row: 43
+```
+
+### 5.10 Hook Edge Position
+
+**Command**: Set edge enhancement hook position (controls where edge enhancement is applied)
+**Hex Code**: `0x10/0x04/0x4E` (SET), `0x10/0x04/0x8E` (GET)
+**CSV Rows**: 222-225
+**CRC Type**: Dynamic (CRC-16-CCITT)
+
+**Positions**:
+| Position | Value | Description |
+|----------|-------|-------------|
+| 0 | 0x00 | No edge hook |
+| 1st Gear | 0x01 | First edge level |
+| 2 Levels | 0x02 | Two edge levels |
+
+**GET Parameters**:
+- P1: 0x01 (selector)
+- P12: 0x01 (response length = 1 byte)
+
+**Packet Structure** (SET):
+```
+[0]  = 0x10 (Class: Camera)
+[1]  = 0x04 (Module: Image Processing)
+[2]  = 0x4E (SubCmd: Hook edge SET)
+[3]  = 0x00 (Reserved)
+[4]  = position (0, 1, or 2)
+[5-15] = 0x00 (Padding)
+[16-17] = CRC (Calculate using CRC-16-CCITT)
+```
+
+**Example**: Set hook edge position to 1st gear
+```
+Step 1: Construct packet
+[0-2]   = 10 04 4E
+[3]     = 00 (Reserved)
+[4]     = 01 (P1: 1st Gear)
+[5-15]  = 00 00 00 00 00 00 00 00 00 00 00
+
+Step 2: Calculate CRC
+uint16_t crc = calculate_crc(cmd, 16);
+
+Step 3: Final packet (18 bytes)
+10 04 4E 00 01 00 00 00 00 00 00 00 00 00 00 00 [CRC_L] [CRC_H]
+
+CSV Row: 223
+```
+
+### 5.11 Detector Frame Rate
+
+**Command**: Set thermal detector frame rate (frames per second)
+**Hex Code**: `0x10/0x10/0x44` (SET), `0x10/0x10/0x84` (GET)
+**CSV Rows**: 90-94
+**CRC Type**: Dynamic (CRC-16-CCITT)
+
+**Frame Rate Options**:
+| Rate | P1 Value | Hex | CSV Row |
+|------|----------|-----|---------|
+| 30 Hz | 0x1E | 30 | 90 |
+| 60 Hz | 0x3C | 60 | 91 |
+| 25 Hz | 0x19 | 25 | 92 |
+| 50 Hz | 0x32 | 50 | 93 |
+
+**GET Parameters**:
+- P1: 0x00 (selector)
+- P12: 0x01 (response length = 1 byte)
+
+**Packet Structure** (SET):
+```
+[0]  = 0x10 (Class: Camera)
+[1]  = 0x10 (Module: MIPI/Timing)
+[2]  = 0x44 (SubCmd: Frame rate SET)
+[3]  = 0x00 (Reserved)
+[4]  = frame_rate (0x1E/0x3C/0x19/0x32)
+[5-15] = 0x00 (Padding)
+[16-17] = CRC (Calculate using CRC-16-CCITT)
+```
+
+**Example**: Set frame rate to 60 Hz
+```
+Step 1: Construct packet
+[0-2]   = 10 10 44
+[3]     = 00 (Reserved)
+[4]     = 3C (P1: 60 Hz)
+[5-15]  = 00 00 00 00 00 00 00 00 00 00 00
+
+Step 2: Calculate CRC
+uint16_t crc = calculate_crc(cmd, 16);
+
+Step 3: Final packet (18 bytes)
+10 10 44 00 3C 00 00 00 00 00 00 00 00 00 00 00 [CRC_L] [CRC_H]
+
+CSV Row: 91
+```
+
+### 5.12 Digital-Analog Output Format
+
+**Command**: Save/apply digital-analog output format configuration
+**Hex Code**: `0x10/0x10/0x49`
+**CSV Row**: 89
+**CRC Type**: Hardcoded (0x35, 0xD6)
+
+**Description**: Configuration command to save or apply the current digital-analog output format settings. Parameters are all zero (no configuration parameters).
+
+**Packet Structure**:
+```
+[0]  = 0x10 (Class: Camera)
+[1]  = 0x10 (Module: MIPI/Output)
+[2]  = 0x49 (SubCmd: Digital-analog format)
+[3-15] = 0x00 (All parameters zero)
+[16] = 0x35 (CRC LSB - hardcoded)
+[17] = 0xD6 (CRC MSB - hardcoded)
+```
+
+**Complete Packet**:
+```
+10 10 49 00 00 00 00 00 00 00 00 00 00 00 00 00 35 D6
+```
+
 ---
 
 ## 6. CRC Calculation & Lookup
@@ -429,6 +624,62 @@ cmd[17] = output_mode_crc[mode][1]; // MSB
 | PID | 0x05 | 0x02 | 0x0E | 0xC9 | 59 |
 | PN | 0x06 | 0x20 | 0xB7 | 0x16 | 60 |
 | SN | 0x07 | 0x20 | 0xC2 | 0x15 | 61 |
+
+#### 6.2.3 Shutter Control CRC Table (Command: 0x01/0x0F/0x45)
+
+| Operation | P1 Value | CRC LSB | CRC MSB | CSV Row |
+|-----------|----------|---------|---------|---------|
+| Close Shutter | 0x00 | 0x8D | 0x5A | 4 |
+| Open Shutter | 0x01 | 0xF8 | 0x59 | 5 |
+
+**Implementation Example**:
+```c
+static const uint8_t shutter_crc[2][2] = {
+    {0x8D, 0x5A}, // Close shutter
+    {0xF8, 0x59}, // Open shutter
+};
+
+// Usage:
+cmd[16] = shutter_crc[operation][0]; // LSB
+cmd[17] = shutter_crc[operation][1]; // MSB
+```
+
+#### 6.2.4 Anti-burn Protection CRC Table (Command: 0x10/0x03/0x4B SET, 0x10/0x03/0x8B GET)
+
+**SET Commands**:
+| Setting | P1 Value | CRC LSB | CRC MSB | CSV Row |
+|---------|----------|---------|---------|---------|
+| OFF | 0x00 | 0x58 | 0x8D | 42 |
+| ON | 0x01 | 0x2D | 0x8E | 43 |
+
+**GET Command** (0x10/0x03/0x8B):
+- CRC: 0x2D, 0x87 (fixed, CSV Row 44)
+
+**Implementation Example**:
+```c
+static const uint8_t antiburn_crc[2][2] = {
+    {0x58, 0x8D}, // OFF
+    {0x2D, 0x8E}, // ON
+};
+
+static const uint8_t antiburn_get_crc[2] = {0x2D, 0x87}; // GET command
+
+// Usage (SET):
+cmd[16] = antiburn_crc[setting][0]; // LSB
+cmd[17] = antiburn_crc[setting][1]; // MSB
+
+// Usage (GET):
+cmd[16] = antiburn_get_crc[0]; // LSB
+cmd[17] = antiburn_get_crc[1]; // MSB
+```
+
+#### 6.2.5 Digital-Analog Output Format CRC (Command: 0x10/0x10/0x49)
+
+| Command | CRC LSB | CRC MSB | CSV Row |
+|---------|---------|---------|---------|
+| Digital-Analog Output | 0x35 | 0xD6 | 89 |
+
+This is a single fixed command with no variants, so the CRC is simply hardcoded as shown above.
 
 ---
 
@@ -750,10 +1001,13 @@ Before sending any I2C command, verify:
 All commands in this skill are verified against specific CSV rows. When in doubt, **always check the CSV**.
 
 **Key CSV Row Ranges**:
-- **Output Mode**: Rows 95-101 (6 modes + GET)
+- **Shutter Control**: Rows 4-5 (Close/Open operations)
+- **Anti-burn Protection**: Rows 42-44 (OFF, ON, GET)
 - **Sleep Control**: Rows 45-47 (SET wake/sleep + GET)
 - **Device Info**: Rows 56-61 (Name, FW, VID, PID, PN, SN)
-- **FPS Settings**: Rows 66-94 (Multiple interface/framerate combos)
+- **Detector Frame Rate**: Rows 90-94 (30Hz, 60Hz, 25Hz, 50Hz + GET)
+- **Digital-Analog Output Format**: Row 89 (Configuration save)
+- **Output Mode**: Rows 95-101 (6 modes + GET)
 - **Zoom Control**: Rows 118-122 (5 levels: 1x, 2x, 3x, 4x, 8x)
 - **Scene Mode**: Rows 126-136 (10 scene modes)
 - **Colormap**: Rows 137-148 (12 color palettes)
@@ -762,6 +1016,7 @@ All commands in this skill are verified against specific CSV rows. When in doubt
 - **Contrast**: Rows 174-184 (11 values)
 - **SNR (Spatial Noise Reduction)**: Rows 186-197 (11 values)
 - **TNR (Temporal Noise Reduction)**: Rows 198-208 (11 values)
+- **Hook Edge Position**: Rows 222-225 (3 positions + GET)
 
 ---
 
