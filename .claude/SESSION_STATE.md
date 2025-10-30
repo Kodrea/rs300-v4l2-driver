@@ -16,10 +16,10 @@ Phase 0 (Preparation): COMPLETE
 - Created label configuration guide (.github/LABELS.md)
 
 Phase 1-2 (Manual GitHub Setup): IN PROGRESS
-- Follow: https://github.com/[repo]/projects (create Project Board manually)
-- Follow: https://github.com/[repo]/settings/labels (create labels)
-- Follow: https://github.com/[repo]/settings/milestones (create milestones)
-- Follow: https://github.com/[repo]/settings/general (enable Discussions)
+- Follow: https://github.com/[repo]/projects → New project → Board template → Configure Status field (Backlog, Todo, In Progress, Review, Done)
+- Follow: https://github.com/[repo]/settings/labels (create 13 labels using .github/LABELS.md)
+- Follow: https://github.com/[repo]/settings/milestones (create 4 milestones: v1.0 Beta, v1.0 Production, v1.1, Experimental)
+- Follow: https://github.com/[repo]/settings/general (enable Discussions with 3 categories)
 
 Phase 3 (Knowledge Migration): PENDING
 - Move known issues to GitHub Issues
@@ -72,10 +72,10 @@ None. Workflow ready for Phase 2 manual GitHub setup.
 ## Next Steps
 
 1. **Manual GitHub Web UI** (Phase 2):
-   - Create Project Board with 5 columns (Backlog → Todo → In Progress → Review → Done)
-   - Create 13 labels (use .github/LABELS.md)
-   - Create 4 milestones (v1.0 Beta → v1.0 Production → v1.1 → Experimental)
-   - Enable Discussions with 3 categories
+   - Create Project Board: Projects → New → Board template → Configure Status field (Backlog, Todo, In Progress, Review, Done)
+   - Create 13 labels: Settings → Labels → New label (reference .github/LABELS.md)
+   - Create 4 milestones: Settings → Milestones → New (v1.0 Beta, v1.0 Production, v1.1, Experimental)
+   - Enable Discussions: Settings → General → toggle Discussions → create 3 categories (Architecture, Lessons Learned, Feature Ideas)
 
 2. **Knowledge Migration** (Phase 3):
    - Create 5-10 issues from SETUP_AND_TROUBLESHOOTING.md known issues

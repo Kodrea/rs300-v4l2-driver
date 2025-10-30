@@ -64,16 +64,21 @@ Create a new **Project** to track work visually.
 2. Click **New project**
 3. **Name**: "RS300 Driver Development"
 4. **Description**: "Kanban board for RS300 thermal camera driver development"
-5. **Template**: Choose **Table** (easier for automation)
+5. **Template**: Choose **Board** (visual Kanban layout)
+6. Click **Create project**
 
-### Configure Columns
+### Configure Status Field
 
-Standard Kanban columns:
+Board template includes default **Status** field (Single Select type).
+
+Edit the Status field values to create Kanban columns:
 - **Backlog** - Not yet prioritized
 - **Todo** - Ready to start
 - **In Progress** - Currently being worked on
 - **Review** - Waiting for review/approval
 - **Done** - Completed
+
+**Result**: Visual board with 5 columns, drag issues between them
 
 ### Automation Rules
 
