@@ -4,14 +4,6 @@
 
 ---
 
-## ⚠️ CRITICAL: This skill documents I2C PROTOCOL ONLY
-
-**DO NOT confuse with serial protocol**:
-- ✅ I2C Protocol: 18-byte packets, class 0x10 (camera) or 0x01 (device/zoom)
-- ❌ Serial Protocol: 23-byte packets, class 0x55 (USB/UART only)
-- **These protocols are incompatible** - using serial commands on I2C bus will fail
-
----
 
 ## 1. When to Use This Skill
 
@@ -43,8 +35,6 @@ RS300 I2C commands use **two command classes**:
 | `0x10` | Camera control | 0x02-0x10 | Brightness, Colormap, FFC, Output Mode, FPS |
 | `0x01` | Device info & zoom | 0x01, 0x31 | Device Name, VID/PID, Zoom control |
 
-**⚠️ DO NOT USE class 0x55** - This is serial protocol only (USB/UART), not I2C.
-
 ---
 
 ## 3. Command Reference (Quick Summary)
@@ -60,8 +50,6 @@ RS300 I2C commands use **two command classes**:
 | Contrast SET | 0x10/0x04/0x4A | SET | Dyn | P1=0-100 | Status | 500ms | 174-184 |
 | **Output Mode SET** | **0x10/0x10/0x45** | **SET** | **Hard** | **P1=0-5** | **Status** | **500ms** | **95-101** |
 | YUV Format SET | 0x10/0x03/0x4D | SET | Dyn | P1=0-3 | Status | 500ms | 102-106 |
-
-**⚠️ Critical Note**: Output Mode command uses **I2C protocol** (0x10/0x10/0x45), NOT serial protocol (0x55/0x43/0x49).
 
 ### 3.2 Image Processing Commands
 
@@ -164,10 +152,7 @@ Packet: 10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6
 CSV Row: 97
 ```
 
-**⚠️ CRITICAL WARNING**:
-- **DO NOT use serial protocol** (0x55/0x43/0x49) on I2C bus
-- **DO NOT calculate CRC** - always use hardcoded values from table above
-- **DO NOT use 23-byte packet format** - I2C uses standard 18 bytes
+**⚠️ IMPORTANT**: DO NOT calculate CRC for output mode - always use hardcoded values from the table above.
 
 ### 5.2 Brightness SET
 
@@ -447,45 +432,7 @@ cmd[17] = output_mode_crc[mode][1]; // MSB
 
 ---
 
-## 7. Protocol Disambiguation: I2C vs Serial
-
-**RS300 supports TWO completely different command protocols. This skill documents I2C ONLY.**
-
-### 7.1 Protocol Comparison
-
-| Feature | I2C Protocol (This Skill) | Serial Protocol (NOT This Skill) |
-|---------|---------------------------|----------------------------------|
-| **Interface** | I2C bus (Raspberry Pi) | USB/UART serial |
-| **Packet Size** | 18 bytes | 23 bytes |
-| **Command Class** | 0x10 (camera), 0x01 (device) | 0x55 (serial wrapper) |
-| **Output Mode Hex** | 0x10/0x10/0x45 | 0x55/0x43/0x49 |
-| **Structure** | Standard I2C format | Extended serial format with wrapper |
-| **CRC Position** | Bytes [16-17] | Bytes [21-22] |
-| **Compatibility** | I2C bus ONLY | Serial interface ONLY |
-
-### 7.2 Output Mode Example: I2C vs Serial
-
-**I2C Protocol** (CORRECT for this driver):
-```
-Packet (18 bytes): 10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6
-                   ^^  ^^  ^^      ^^                                ^^^^^
-                   Class Module Sub  Mode                            CRC
-                   0x10  0x10  0x45  TNR                             [16-17]
-```
-
-**Serial Protocol** (WRONG for I2C - shown for disambiguation only):
-```
-Packet (23 bytes): 55 43 49 00 00 10 10 45 00 02 ... [padding] ... [CRC at 21-22]
-                   ^^  ^^  ^^      ^^  ^^  ^^
-                   Serial wrapper  I2C command embedded
-                   0x55/0x43/0x49  (different structure)
-```
-
-**⚠️ CRITICAL**: Never use serial protocol commands (0x55/...) on I2C bus. They are incompatible and will fail.
-
----
-
-## 8. Working Examples (End-to-End)
+## 7. Working Examples (End-to-End)
 
 ### Example 1: Set Brightness to 50
 
@@ -645,20 +592,9 @@ cmd[17] = (crc >> 8) & 0xFF;
 
 ---
 
-## 9. Common Mistakes & Prevention
+## 8. Common Mistakes & Prevention
 
-### Mistake 1: Using Serial Protocol on I2C Bus
-```
-❌ WRONG: Using 0x55/0x43/0x49 for output mode
-   Packet: 55 43 49 00 ... (23 bytes)
-   Error: Camera rejects command, wrong protocol
-
-✅ RIGHT: Using 0x10/0x10/0x45 for output mode
-   Packet: 10 10 45 00 ... (18 bytes)
-   Success: I2C protocol command accepted
-```
-
-### Mistake 2: Wrong Parameter Byte Position
+### Mistake 1: Wrong Parameter Byte Position
 ```
 ❌ WRONG: Setting brightness at byte[5] instead of byte[4]
    Packet: 10 04 47 00 00 32 ... (brightness at P2)
@@ -669,7 +605,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: Brightness set correctly
 ```
 
-### Mistake 3: Forgetting CRC Calculation
+### Mistake 2: Forgetting CRC Calculation
 ```
 ❌ WRONG: Leaving CRC bytes as 0x00
    Packet: 10 04 47 00 32 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -680,7 +616,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: Command accepted
 ```
 
-### Mistake 4: Insufficient Polling Delay
+### Mistake 3: Insufficient Polling Delay
 ```
 ❌ WRONG: Polling too fast (every 1ms)
    Error: I2C bus overload, commands may fail
@@ -689,7 +625,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: Reliable command execution
 ```
 
-### Mistake 5: Zoom Level Not Multiplied by 10
+### Mistake 4: Zoom Level Not Multiplied by 10
 ```
 ❌ WRONG: Setting zoom P2=2 for 2x zoom
    Packet: 01 31 42 00 00 02 ... (P2=2)
@@ -700,7 +636,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: 2x zoom correctly applied
 ```
 
-### Mistake 6: Calculating CRC for Output Mode
+### Mistake 5: Calculating CRC for Output Mode
 ```
 ❌ WRONG: Dynamically calculating CRC for output mode
    uint16_t crc = calculate_crc(cmd, 16); // Wrong CRC value
@@ -712,7 +648,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: Command accepted
 ```
 
-### Mistake 7: Wrong Reserved Byte Value
+### Mistake 6: Wrong Reserved Byte Value
 ```
 ❌ WRONG: Setting byte[3] to 0x12 or non-zero
    Packet: 10 04 47 12 32 ... (reserved = 0x12)
@@ -723,7 +659,7 @@ cmd[17] = (crc >> 8) & 0xFF;
    Success: Standard protocol followed
 ```
 
-### Mistake 8: Multi-Byte Parameters as Big-Endian
+### Mistake 7: Multi-Byte Parameters as Big-Endian
 ```
 ❌ WRONG: Encoding 360 as big-endian (MSB first)
    P2 = 0x01 (MSB), P3 = 0x68 (LSB)
@@ -736,7 +672,7 @@ cmd[17] = (crc >> 8) & 0xFF;
 
 ---
 
-## 10. Verification Checklist
+## 9. Verification Checklist
 
 Before sending any I2C command, verify:
 
@@ -753,9 +689,9 @@ Before sending any I2C command, verify:
 
 ---
 
-## 11. Execution Flow
+## 10. Execution Flow
 
-### 11.1 Standard Command Execution (SET Commands)
+### 10.1 Standard Command Execution (SET Commands)
 
 1. **Construct packet** (18 bytes)
    - Set class, module, subCmd (bytes [0-2])
@@ -786,7 +722,7 @@ Before sending any I2C command, verify:
    return 0; // Command succeeded
    ```
 
-### 11.2 GET Command Execution (Single-Byte Response)
+### 10.2 GET Command Execution (Single-Byte Response)
 
 1-3. **Same as SET commands** (construct, write, poll)
 
@@ -795,7 +731,7 @@ Before sending any I2C command, verify:
    value = i2c_read_byte(client, 0x1d04); // byte[4] of response
    ```
 
-### 11.3 GET Command Execution (Multi-Byte Response)
+### 10.3 GET Command Execution (Multi-Byte Response)
 
 1-3. **Same as SET commands** (construct, write, poll)
 
@@ -807,7 +743,7 @@ Before sending any I2C command, verify:
 
 ---
 
-## 12. CSV Cross-Reference
+## 11. CSV Cross-Reference
 
 **Primary Source of Truth**: `.claude/skills/i2c-commands/Mini2_I2C_full_commands.csv`
 
@@ -829,7 +765,7 @@ All commands in this skill are verified against specific CSV rows. When in doubt
 
 ---
 
-## 13. Related Documentation
+## 12. Related Documentation
 
 ### Primary References:
 - **This Skill**: `.claude/skills/i2c-commands/SKILL.md` (Complete I2C reference)
