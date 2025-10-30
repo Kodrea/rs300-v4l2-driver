@@ -46,7 +46,7 @@ RS300 I2C commands use **two command classes**:
 | Brightness GET | 0x10/0x04/0x87 | GET | Dyn | P1=0x01, P9=0x01 | Byte[4] | 500ms | 173 |
 | Brightness SET | 0x10/0x04/0x47 | SET | Dyn | P1=0-100 | Status | 500ms | 162-172 |
 | Colormap GET | 0x10/0x03/0x85 | GET | Dyn | P1=0x01, P9=0x01 | Byte[4] | 500ms | 149 |
-| Colormap SET | 0x10/0x03/0x45 | SET | Dyn | ⚠️P2=0-11 | Status | 500ms | 137-148 |
+| Colormap SET | 0x10/0x03/0x45 | SET | Dyn | P2=0-11 | Status | 500ms | 137-148 |
 | Contrast SET | 0x10/0x04/0x4A | SET | Dyn | P1=0-100 | Status | 500ms | 174-184 |
 | **Output Mode SET** | **0x10/0x10/0x45** | **SET** | **Hard** | **P1=0-5** | **Status** | **500ms** | **95-101** |
 | YUV Format SET | 0x10/0x03/0x4D | SET | Dyn | P1=0-3 | Status | 500ms | 102-106 |
@@ -190,7 +190,7 @@ CSV Row: 167
 **CSV Rows**: 137-148 (12 palettes)
 **CRC Type**: Dynamic (CRC-16-CCITT)
 
-**⚠️ Parameter Position Ambiguity**: CSV shows colormap at **P2** (byte[5]), but standard patterns suggest **P1** (byte[4]). Use P2 per CSV, but verify if issues occur.
+**Note**: Unlike Brightness and Contrast (which use P1), Colormap uses **P2** (byte[5]) for the palette value. This is the camera's firmware design.
 
 **Palettes**:
 | Palette | Value | P1 | P2 |
