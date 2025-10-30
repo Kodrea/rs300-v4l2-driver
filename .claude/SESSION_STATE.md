@@ -2,33 +2,36 @@
 
 **Last Updated**: 2025-10-30
 **Branch**: docs/llm-optimization
-**Status**: GitHub-centric workflow setup in progress
+**Status**: GitHub-centric workflow COMPLETE and ready for feature work
 
 ---
 
 ## Current Phase
 
-**GitHub Setup & Transition to GitHub-Centric Workflow**
+**GitHub-Centric Workflow Setup: COMPLETE**
+
+All infrastructure is now in place and tested.
 
 Phase 0 (Preparation): COMPLETE
 - Updated GitHub_SETUP.md for current doc structure
 - Created GitHub templates (.github/ISSUE_TEMPLATE/, .github/pull_request_template.md)
 - Created label configuration guide (.github/LABELS.md)
 
-Phase 1-2 (Manual GitHub Setup): IN PROGRESS
-- Follow: https://github.com/[repo]/projects → New project → Board template → Configure Status field (Backlog, Todo, In Progress, Review, Done)
-- Follow: https://github.com/[repo]/settings/labels (create 13 labels using .github/LABELS.md)
-- Follow: https://github.com/[repo]/settings/milestones (create 4 milestones: v1.0 Beta, v1.0 Production, v1.1, Experimental)
-- Follow: https://github.com/[repo]/settings/general (enable Discussions with 3 categories)
+Phase 1-2 (GitHub Setup): COMPLETE
+- Created Project Board with Kanban columns (Backlog, Todo, In Progress, Review, Done)
+- Created 21 labels via gh label create (organized by type, priority, platform, status)
+- Created 2 milestones: Beta v1.0, Pi 5 ISP Integration
+- Created 4 Discussion categories: Announcements, General, Ideas, Q&A
 
-Phase 3 (Knowledge Migration): PENDING
-- Move known issues to GitHub Issues
-- Move design decisions to GitHub Discussions
-- Link from issues to relevant documentation
+Phase 3 (Knowledge Migration): COMPLETE
+- Created 8 GitHub Issues (#5-#12) from known issues and limitations
+- Created 3 GitHub Discussions (#13-#15) from design decisions and research
+- Linked issues to relevant documentation and discussions
 
-Phase 4 (Cleanup): PENDING
-- Archive GitHub_SETUP.md to /archive/docs-old/
-- Merge branch to main
+Phase 4 (Workflow Documentation & Testing): COMPLETE
+- Created GITHUB_WORKFLOW_TUTORIAL.md (.claude/guides/)
+- Enhanced issue #11 with detailed 3-phase implementation plan
+- Ready for first real workflow test using issue #11
 
 ---
 
@@ -65,37 +68,56 @@ Documentation restructure from 70+ scattered files to 7 focused docs + GitHub:
 
 ## Blockers
 
-None. Workflow ready for Phase 2 manual GitHub setup.
+None. All GitHub infrastructure ready.
 
 ---
 
-## Next Steps
+## Next Steps (For Next Session)
 
-1. **Manual GitHub Web UI** (Phase 2):
-   - Create Project Board: Projects → New → Board template → Configure Status field (Backlog, Todo, In Progress, Review, Done)
-   - Create 13 labels: Settings → Labels → New label (reference .github/LABELS.md)
-   - Create 4 milestones: Settings → Milestones → New (v1.0 Beta, v1.0 Production, v1.1, Experimental)
-   - Enable Discussions: Settings → General → toggle Discussions → create 3 categories (Architecture, Lessons Learned, Feature Ideas)
+**Immediate: Test the Workflow with Issue #11**
 
-2. **Knowledge Migration** (Phase 3):
-   - Create 5-10 issues from SETUP_AND_TROUBLESHOOTING.md known issues
-   - Create 3-5 discussions from .claude/lessons-learned/
-   - Link from issues to relevant docs
+1. Read GITHUB_WORKFLOW_TUTORIAL.md (.claude/guides/)
+   - Explains complete workflow step-by-step
+   - Uses issue #11 (I2C Skill Output Mode) as test case
 
-3. **Final Cleanup & Merge** (Phase 4):
-   - Archive GitHub_SETUP.md after verification
-   - Merge docs/llm-optimization → main
-   - Verify GitHub setup works
+2. Work on Issue #11:
+   - Check project board: gh project view
+   - Click issue #11 to see implementation plan
+   - Create branch: git checkout -b fix/i2c-skill-output-mode
+   - Make changes to skill file + docs
+   - Create PR and review your own code
+   - Merge when ready
+
+3. Issues #5-#12 available on project board in Todo/Backlog
+   - Pick based on priority
+   - Follow same workflow (branch → commit → PR → merge)
+
+**After Testing Workflow:**
+- Merge docs/llm-optimization → main
+- Continue with feature development using GitHub-based workflow
 
 ---
 
 ## Key Context
 
-- **Branch**: docs/llm-optimization (ready to merge after GitHub setup)
-- **RS300 Driver**: Beta, production-ready (security fixes applied)
-- **Documentation**: Minimal .md files + GitHub as system of record
-- **Philosophy**: LLM session handoff: GitHub issues show work, CLAUDE.md shows architecture
+**GitHub-Based Workflow:**
+- Project Board: Visual task status (Kanban)
+- Issues: Work items (bugs, features, tasks)
+- Discussions: Design decisions, research, lessons learned
+- PR Workflow: Branch → Commit → PR → Review → Merge
 
----
+**Guides:**
+- .claude/guides/GITHUB_WORKFLOW_TUTORIAL.md: Complete workflow explanation using issue #11
+- CLAUDE.md: Project guide, critical platform quirks, known issues
+- docs/: User-facing documentation (7 focused files)
 
-**For technical reference:** See `CLAUDE.md` (section: Documentation Structure)
+**Current Status:**
+- Branch: docs/llm-optimization (ready to merge)
+- RS300 Driver: Beta, production-ready (security fixes applied 2025-10-22)
+- GitHub Infrastructure: Complete and tested
+- Workflow: Ready for first real test (issue #11)
+
+**For next session:**
+- Read the workflow tutorial
+- Work on issue #11 using PR workflow
+- Then continue with other issues from the board
