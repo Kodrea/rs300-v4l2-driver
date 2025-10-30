@@ -10,7 +10,7 @@ Intelligent navigation for Claude Code when working with this V4L2 driver.
 **Architecture**: Linux kernel driver via MIPI CSI-2 + I2C
 **Platform**: Raspberry Pi 5 (BCM2712/RP1-CFE)
 **Status**: Beta - Security fixes applied (2025-10-22), production testing recommended
-**Documentation**: 70 .md files (~24,000 lines) in docs/, .claude/, and docs/reference/
+**Documentation**: Minimal .md files in docs/ and .claude/, GitHub used for issue tracking and status
 
 ---
 
@@ -29,7 +29,7 @@ Intelligent navigation for Claude Code when working with this V4L2 driver.
 **Pipeline Persistence**:
 - Media pipeline configuration **does not persist across reboots**
 - Must run `./configure_media.sh` after each reboot
-- Or enable systemd/udev auto-config (see docs/reference/BOOT_CONFIGURATION.md)
+- Or enable systemd/udev auto-config (see docs/reference/SETUP_AND_TROUBLESHOOTING.md)
 
 **I2C Communication**:
 - I2C bus: `i2c-10` (Pi 5), `i2c-1` (Pi 4)
@@ -87,55 +87,42 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100 --stream-to=test.yuv
 
 ## Session Handoff Protocol
 
-**NEW SESSION - Required Reading** (1-2 minutes):
+**NEW SESSION - Required Reading** (2 minutes):
 
-1. **SESSION_STATE.md** (.claude/SESSION_STATE.md) - Read first
-   - Current work status
-   - Blockers and open questions
-   - Recent decisions with rationale
-
-2. **START_HERE.md** (docs/START_HERE.md) - Human-readable status
-   - Current phase
-   - Quick commands
+1. **SESSION_STATE.md** (.claude/SESSION_STATE.md) - Current phase, blockers, next steps
+2. **GitHub Project Board** - Visual task status and linked issues
+3. **docs/README.md** - Reference guide to essential documentation
 
 **ENDING SESSION - Required Actions**:
 
-1. Run `/update-docs` command (automatic before commits)
-   - Updates SESSION_STATE.md
-   - Generates session note in .claude/sessions/
-   - Validates documentation links
-
-2. Commit work if applicable:
-   ```bash
-   git add [files]
-   git commit -m "descriptive message"
-   ```
-
-3. Update SESSION_STATE.md manually if:
-   - Tasks are half-done (update "In-Progress Work")
-   - You're blocked on something (add to "Blockers & Questions")
-   - Important decisions made (document in "Recent Decisions")
-
-**Session Checklists**: See .claude/templates/SESSION_HANDOFF_TEMPLATE.md
+1. Update SESSION_STATE.md with current phase/progress
+2. Commit changes with descriptive message
+3. Create GitHub issues for any new blockers/tasks discovered
 
 ---
 
-## Key Documentation Paths
+## Documentation Structure
 
-**Session Management**:
-- .claude/SESSION_STATE.md - AI-optimized current state
-- docs/START_HERE.md - Human-readable project status
+**Entry Points**:
+- `.claude/SESSION_STATE.md` - Session status and next steps
+- `CLAUDE.md` (this file) - Project guide and critical quirks
 
-**Getting Started**:
-- docs/getting-started/installation-pi5.md - Pi 5 installation
-- docs/getting-started/first-capture.md - Quick start tutorial
-- docs/README.md - Complete documentation hub
+**Essential References**:
+- `docs/reference/SETUP_AND_TROUBLESHOOTING.md` - Setup & diagnostics
+- `docs/reference/DRIVER_ANALYSIS.md` - Driver internals
+- `docs/reference/DEV_QUICK_REFERENCE.md` - Command cheat sheets
+- `docs/reference/RS300_Media_Pipeline_Guide.md` - Pipeline architecture
+- `docs/reference/SECURITY_AUDIT.md` - Security analysis
 
-**Technical Reference**:
-- docs/reference/DRIVER_ANALYSIS.md - Complete driver internals (~600 lines)
-- docs/reference/I2C_PROTOCOL.md - I2C command specification (~550 lines)
-- docs/reference/DEV_QUICK_REFERENCE.md - Command cheat sheets (~450 lines)
-- docs/reference/TROUBLESHOOTING.md - Debug procedures (~600 lines)
+**Setup Guides**:
+- `docs/getting-started/installation-pi5.md` - Pi 5 driver install
+- `docs/getting-started/first-capture.md` - Quick start test
+
+**Lessons Learned**:
+- `.claude/lessons-learned/` - Documented solutions and design decisions
+
+**Archived Docs**:
+- `/archive/docs-old/` - Outdated docs preserved for reference only
 
 **Code & Tests**:
 - rs300.c - Main driver (2,946 lines)
@@ -143,28 +130,16 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100 --stream-to=test.yuv
 
 ---
 
-## Media Pipeline Quick Reference (Pi 5)
+## Quick Setup (Pi 5)
 
-**Automated Configuration** (recommended):
+After installing driver (`./setup.sh`) and rebooting:
+
 ```bash
-./configure_media.sh
+./configure_media.sh        # Configure media pipeline
+v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100 --stream-to=test.yuv
 ```
 
-**Manual Configuration** (for reference):
-```bash
-# Link entities
-media-ctl -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0[1]"
-
-# Set formats (MUST use UYVY8_1X16 - 16-bit packed)
-media-ctl -V "'rs300 10-003c':0 [fmt:UYVY8_1X16/640x512 field:none]"
-media-ctl -V "'csi2':0 [fmt:UYVY8_1X16/640x512]"
-media-ctl -V "'csi2':4 [fmt:UYVY8_1X16/640x512]"
-
-# Configure video device
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY
-```
-
-**See**: docs/reference/RS300_Media_Pipeline_Guide.md for complete details
+See `docs/reference/SETUP_AND_TROUBLESHOOTING.md` for detailed configuration options.
 
 ---
 
@@ -204,4 +179,6 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY
 
 ---
 
-**For complete documentation**: See docs/README.md or run `/update-docs` for system health check.
+**For complete documentation**: See `docs/README.md` - Start here for technical reference.
+
+**Important**: Always rebuild driver via `setup.sh` - never use `make` or `insmod` directly.
