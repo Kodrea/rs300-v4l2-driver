@@ -11,6 +11,9 @@
 4. [CRC-16 Calculation](#crc-16-calculation)
 5. [Status Register](#status-register)
 6. [Command Reference](#command-reference)
+   - [Output Mode Values](#output-mode-values)
+   - [YUV Format Values](#yuv-format-values)
+   - [FPS Values](#fps-values)
 7. [Command Execution Flow](#command-execution-flow)
 8. [Error Handling](#error-handling)
 9. [Example Transactions](#example-transactions)
@@ -20,12 +23,12 @@
 
 ## Overview
 
-The RS300 thermal camera uses I2C for command and control communication. The protocol implements:
+The RS300 thermal camera uses **I2C protocol** for command and control communication on Raspberry Pi. The protocol implements:
 
 - **Bus**: I2C bus 10 (i2c-10, I2C CSI/DSI controller)
 - **Address**: 0x3c (7-bit addressing)
 - **Speed**: Standard/Fast mode (100kHz - 400kHz)
-- **Command Buffer**: 18-byte structured packets
+- **Command Buffer**: 18-byte structured packets (I2C format)
 - **Error Detection**: CRC-16-CCITT checksums
 - **Status Feedback**: Dedicated status register
 
@@ -34,6 +37,8 @@ The RS300 thermal camera uses I2C for command and control communication. The pro
 - Command buffer size: 256 bytes (0x1d00)
 - Status polling with timeout/retry
 - Parameter validation by hardware
+
+**Protocol Note**: This document covers **I2C protocol communication only** (0x10 class/module commands). The camera also supports a separate serial protocol (USB/UART) with different command formats (0x55/... prefix). Do not confuse the two protocols - I2C and serial use different command structures, packet sizes, and CRC schemes. This project (RS300 V4L2 driver on Raspberry Pi) uses **I2C exclusively**. For historical context, see `.claude/lessons-learned/004-i2c-skill-output-mode-error.md`.
 
 ---
 
@@ -286,9 +291,24 @@ result = decode_status(status)
 | Set Spatial NR | 0x10 | 0x04 | 0x4B | P1=value (0-100) | Status only |
 | Set Temporal NR | 0x10 | 0x04 | 0x4C | P1=value (0-100) | Status only |
 | **MIPI Interface** |
+| Get Output Mode | 0x10 | 0x10 | 0x85 | P9=0x01 | P1=mode value |
+| Set Output Mode | 0x10 | 0x10 | 0x45 | P1=value (0-5) | Status only (hardcoded CRC) |
 | Set FPS | 0x10 | 0x10 | 0x46 | P1=0x01, P2=0x03, P3=fps | Status only |
 | **Zoom** |
 | Set Zoom | 0x01 | 0x31 | 0x42 | P2=level×10 (10-80) | Status only (fixed CRC) |
+
+### Output Mode Values
+
+| Value | Mode | Description | CRC (LSB, MSB) |
+|-------|------|-------------|----------------|
+| 0 | IR | Raw infrared sensor output | 0xFB, 0xC0 |
+| 1 | KBC | K-based contrast enhancement | 0x8E, 0xC3 |
+| 2 | TNR | Temporal noise reduction | 0x11, 0xC6 |
+| 3 | SNR | Spatial noise reduction | 0x64, 0xC5 |
+| 4 | DDE | Digital detail enhancement | 0x2F, 0xCD |
+| 5 | YUV | YUV color output (default) | 0x5A, 0xCE |
+
+**⚠️ IMPORTANT**: Output mode uses **hardcoded CRC values** - do NOT calculate CRC. Always use the values from the table above.
 
 ### YUV Format Values
 
@@ -522,6 +542,56 @@ Poll 0x0200 with 1000ms delay (FFC takes time):
   [Poll at 2000ms] 0x00 (success - FFC complete)
 ```
 
+### Example 4: Set Output Mode to TNR (Temporal Noise Reduction)
+
+**Command Construction**:
+```
+Byte  0: 0x10  (Class: Camera control)
+Byte  1: 0x10  (Module: MIPI interface)
+Byte  2: 0x45  (SubCmd: Output mode selection)
+Byte  3: 0x00  (Reserved)
+Byte  4: 0x02  (Parameter: 2 = TNR mode)
+Byte  5-15: 0x00 (Unused parameters)
+Byte 16-17: 0x11, 0xC6  (Hardcoded CRC for TNR mode - DO NOT CALCULATE)
+```
+
+**Important**: Output mode command uses a hardcoded CRC lookup table. You must use the pre-calculated CRC values for each mode. Calculating CRC dynamically will fail.
+
+**I2C Transaction**:
+```
+Write to 0x3c, register 0x1d00:
+  10 10 45 00 02 00 00 00 00 00 00 00 00 00 00 00 11 C6
+                 ^^ (mode = 2 for TNR)                ^^^^^
+                                                   CRC (hardcoded)
+
+Poll 0x0200 with 50ms delay:
+  [Poll] 0x01 (busy)
+  [Poll] 0x00 (success)
+```
+
+**All Output Mode CRCs** (Use these exact values):
+```
+Mode 0 (IR):  0xFB, 0xC0
+Mode 1 (KBC): 0x8E, 0xC3
+Mode 2 (TNR): 0x11, 0xC6
+Mode 3 (SNR): 0x64, 0xC5
+Mode 4 (DDE): 0x2F, 0xCD
+Mode 5 (YUV): 0x5A, 0xCE
+```
+
+**GET Transaction** (reading current mode):
+```
+Write GET command to 0x3c, register 0x1d00:
+  10 10 85 00 00 00 00 00 00 00 00 00 01 00 00 00 [CRC]
+                                          ^^ (request flag at byte 12)
+
+Poll 0x0200 until not busy
+
+Read from 0x3c, register 0x1d00:
+  10 10 85 00 MM 00 00 00 00 00 00 00 01 00 00 00 [CRC]
+           ^^ (MM = current mode value: 0-5)
+```
+
 ---
 
 ## Implementation Notes
@@ -662,7 +732,19 @@ Verify:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-10-21
+## Cross-References
+
+- **SKILL.md** - Structured skill database with complete command listing and CSV references
+- **CHANGES.md** - Documentation update history and protocol corrections
+- **Mini2_I2C_full_commands.csv** - Complete command reference table with all parameters
+- **Lesson Learned (004)** - `.claude/lessons-learned/004-i2c-skill-output-mode-error.md` - Historical context on I2C vs serial protocol confusion
+- **Driver Implementation** - `rs300.c` - Production C/Linux kernel driver with full I2C implementation
+- **Quick Reference** - `.claude/skills/i2c-commands/QUICK_REFERENCE.txt` - Command cheat sheet
+
+---
+
+**Document Version**: 1.1
+**Last Updated**: 2025-10-30
 **Device**: RS300 Thermal Camera (Mini2)
 **I2C Address**: 0x3c (7-bit)
+**Recent Updates**: Added complete output mode command section (SET/GET), clarified I2C vs serial protocol distinction
