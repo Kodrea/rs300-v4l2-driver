@@ -179,7 +179,7 @@ echo ""
 echo "=== CHECKING CLAUDE.md ACCURACY ==="
 
 # Extract file count from CLAUDE.md
-grep "Files.*files" docs/CLAUDE.md | head -1 > /tmp/claude_filecount.txt
+grep "Files.*files" CLAUDE.md | head -1 > /tmp/claude_filecount.txt
 cat /tmp/claude_filecount.txt
 
 echo ""
