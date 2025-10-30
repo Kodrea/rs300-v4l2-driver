@@ -1,12 +1,8 @@
 #!/bin/sh
 
 dtc -Wno-interrupts_property -@ -I dts -O dtb -o rs300.dtbo rs300-overlay.dts
-# Check if /boot/firmware exists (newer Raspberry Pi OS)
-if [ -d "/boot/firmware/overlays" ]; then
-    install -m 751 rs300.dtbo /boot/firmware/overlays/
-else
-    install -m 751 rs300.dtbo /boot/overlays/
-fi
+# Pi 5 uses /boot/firmware/overlays
+install -m 644 rs300.dtbo /boot/firmware/overlays/
 
 # Create modprobe configuration for debug mode
 echo "options rs300 debug=1" > /etc/modprobe.d/rs300.conf
