@@ -1,3 +1,6 @@
+## See the repo below for the refactored raspberry pi 5 driver (03/2026)
+- https://github.com/Kodrea/mini2-driver-rpi5
+
 # RS300 Thermal Camera Driver for Raspberry Pi
 - Credit to [will127534](https://github.com/will127534) for the setup script in his imx294 driver
 - Used the [IMX219.c](https://github.com/raspberrypi/linux/blob/rpi-6.6.y/drivers/media/i2c/imx219.c) as a template for the driver on RPi.
