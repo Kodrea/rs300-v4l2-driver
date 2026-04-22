@@ -1,5 +1,13 @@
 obj-m += rs300.o
 
+ifdef DEBUG
+ccflags-y += -DDEBUG
+endif
+
+ifdef CONFIG_RS300_LEGACY_MENU
+ccflags-y += -DCONFIG_RS300_LEGACY_MENU
+endif
+
 KERNELRELEASE ?= $(shell uname -r)
 KDIR ?= /lib/modules/$(KERNELRELEASE)/build
 
