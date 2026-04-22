@@ -75,12 +75,29 @@ static const char * const scene_mode_menu[] = {
     NULL
 };
 
-/* Define output mode menu items */
+/* output_mode V4L2 menu. Default is 2 items (YUV, Y16).
+ * Build with CONFIG_RS300_LEGACY_MENU=1 to restore the 6-item legacy
+ * menu (IR/KBC/TNR/SNR/DDE/YUV). The kernel-level CRC table covers
+ * values 0-5 regardless of the flag, so either menu maps to the same
+ * sensor bytes for a given index.
+ */
+#ifdef CONFIG_RS300_LEGACY_MENU
+static const char * const output_mode_menu[] = {
+    "IR Output (Raw)",    /* 0 */
+    "KBC Output",         /* 1 */
+    "TNR Output",         /* 2 */
+    "SNR Output",         /* 3 */
+    "DDE Output",         /* 4 */
+    "YUV Output",         /* 5 */
+    NULL
+};
+#else
 static const char * const output_mode_menu[] = {
     "YUV Output",         /* 0 - 8-bit YUV (default) */
     "Y16 Output",         /* 1 - raw 16-bit thermal */
     NULL
 };
+#endif
 
 #define NUM_COLORMAP_ITEMS (ARRAY_SIZE(colormap_menu) - 1) // Account for NULL terminator
 
@@ -2994,8 +3011,13 @@ static const struct v4l2_ctrl_config output_mode_ctrl = {
     .type = V4L2_CTRL_TYPE_MENU,
     .qmenu = output_mode_menu,
     .min = 0,
+#ifdef CONFIG_RS300_LEGACY_MENU
+    .max = 5,
+    .def = 5,  /* Default to YUV at legacy index 5 */
+#else
     .max = 1,
     .def = 0,  /* Default to YUV (bypass). Set to 1 for Y16 (ISP). */
+#endif
 };
 
 static int rs300_init_controls(struct rs300 *rs300)
