@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Definitions for RS300 camera module on Raspberry Pi Zero 2W (BCM2710, legacy Unicam)
+/dts-v1/;
+/plugin/;
+
+/{
+    compatible = "brcm,bcm2835";
+    
+    // Fragment 0: Enable I2C0 interface
+    fragment@0 {
+        target = <&i2c0if>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+    
+    // Fragment 1: Enable I2C0 mux
+    fragment@1 {
+        target = <&i2c0mux>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+    
+    // Fragment 2: Configure clock
+    clk_frag: fragment@2 {
+        target = <&cam1_clk>;
+        __overlay__ {
+            status = "okay";
+            clock-frequency = <24000000>;
+        };
+    };
+    
+    // Fragment 3: Configure I2C and sensor
+    i2c_frag: fragment@3 {
+        target = <&i2c_csi_dsi>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+            
+            cam_node: rs300@3c {
+                compatible = "mini2,rs300";
+                reg = <0x3c>;
+                status = "okay";
+                
+                clocks = <&cam1_clk>;
+                clock-names = "xvclk";
+                
+                reset-gpios = <&gpio 5 0>;
+                
+                VANA-supply = <&cam1_reg>;      /* 2.8v */
+                VDIG-supply = <&cam_dummy_reg>;
+                VDDL-supply = <&cam_dummy_reg>;
+                
+                port {
+                    cam_endpoint: endpoint {
+                        remote-endpoint = <&csi_ep>;
+                        bus-type = <4>; /* MIPI CSI-2 D-PHY */
+                        clock-lanes = <0>;
+                        data-lanes = <1 2>;
+                        link-frequencies = /bits/ 64 <80000000>;
+                    };
+                };
+            };
+        };
+    };
+    
+    // Fragment 4: Configure CSI
+    csi_frag: fragment@4 {
+        target = <&csi1>;
+        csi: __overlay__ {
+            status = "okay";
+            brcm,media-controller;
+            
+            port {
+                csi_ep: endpoint {
+                    remote-endpoint = <&cam_endpoint>;
+                    bus-type = <4>; /* MIPI CSI-2 D-PHY */
+                    clock-lanes = <0>;
+                    data-lanes = <1 2>;
+                };
+            };
+        };
+    };
+    
+    // Overrides
+    __overrides__ {
+        media-controller = <&csi>,"brcm,media-controller?";
+    };
+};
