@@ -1,3 +1,5 @@
+> **Multi-platform builds of this driver, including Pi 5 and additional SBC families, are developed in the mono-repo at [Kodrea/mini2-thermal-driver](https://github.com/Kodrea/mini2-thermal-driver). This repository focuses on Pi 4B, CM4, and Zero 2 W via the legacy unicam stack (`bcm2835-unicam-legacy`), and is kept alive for the existing community. Pi 5 users: use the mono-repo's [`platforms/raspberry-pi/rpi5/`](https://github.com/Kodrea/mini2-thermal-driver/tree/main/platforms/raspberry-pi/rpi5) directory.**
+
 ## See the repo below for the refactored raspberry pi 5 driver (03/2026)
 - https://github.com/Kodrea/mini2-driver-rpi5
 
