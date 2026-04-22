@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Definitions for RS300 camera module on Raspberry Pi Zero 2W (BCM2710, legacy Unicam)
+// Definitions for RS300 camera module on Raspberry Pi 5 (BCM2712)
 /dts-v1/;
 /plugin/;
 
 /{
-    compatible = "brcm,bcm2835";
+    compatible = "brcm,bcm2712";
     
     // Fragment 0: Enable I2C0 interface
     fragment@0 {
@@ -24,7 +24,7 @@
     
     // Fragment 2: Configure clock
     clk_frag: fragment@2 {
-        target = <&cam1_clk>;
+        target = <&cam0_clk>;
         __overlay__ {
             status = "okay";
             clock-frequency = <24000000>;
@@ -33,23 +33,23 @@
     
     // Fragment 3: Configure I2C and sensor
     i2c_frag: fragment@3 {
-        target = <&i2c_csi_dsi>;
+        target = <&i2c_csi_dsi0>;
         __overlay__ {
             #address-cells = <1>;
             #size-cells = <0>;
             status = "okay";
             
             cam_node: rs300@3c {
-                compatible = "mini2,rs300";
+                compatible = "infisense,rs300";
                 reg = <0x3c>;
                 status = "okay";
                 
-                clocks = <&cam1_clk>;
+                clocks = <&cam0_clk>;
                 clock-names = "xvclk";
                 
                 reset-gpios = <&gpio 5 0>;
                 
-                VANA-supply = <&cam1_reg>;      /* 2.8v */
+                VANA-supply = <&cam0_reg>;      /* 2.8v */
                 VDIG-supply = <&cam_dummy_reg>;
                 VDDL-supply = <&cam_dummy_reg>;
                 
@@ -60,6 +60,7 @@
                         clock-lanes = <0>;
                         data-lanes = <1 2>;
                         link-frequencies = /bits/ 64 <80000000>;
+                        clock-noncontinuous;
                     };
                 };
             };
@@ -68,7 +69,7 @@
     
     // Fragment 4: Configure CSI
     csi_frag: fragment@4 {
-        target = <&csi1>;
+        target = <&csi0>;
         csi: __overlay__ {
             status = "okay";
             brcm,media-controller;
@@ -79,6 +80,7 @@
                     bus-type = <4>; /* MIPI CSI-2 D-PHY */
                     clock-lanes = <0>;
                     data-lanes = <1 2>;
+                    clock-noncontinuous;
                 };
             };
         };
@@ -87,5 +89,10 @@
     // Overrides
     __overrides__ {
         media-controller = <&csi>,"brcm,media-controller?";
+        cam1 = <&i2c_frag>, "target:0=",<&i2c_csi_dsi1>,
+               <&csi_frag>, "target:0=",<&csi1>,
+               <&clk_frag>, "target:0=",<&cam1_clk>,
+               <&cam_node>, "clocks:0=",<&cam1_clk>,
+               <&cam_node>, "VANA-supply:0=",<&cam1_reg>;
     };
 };
