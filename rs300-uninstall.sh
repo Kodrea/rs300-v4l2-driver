@@ -107,9 +107,14 @@ fi
 # ----------------------------------------------------------------------------
 print_status "Removing DKMS module..."
 
-if dkms status | grep -q "rs300"; then
-    if sudo dkms remove -m rs300 -v 0.0.1 --all 2>/dev/null; then
-        print_success "DKMS module removed"
+if dkms status | grep -q "rs300-dkms\|^rs300,"; then
+    # Try the current package name first (installed by install.sh), then
+    # fall back to the historical package name for pre-sync installations.
+    if sudo dkms remove -m rs300-dkms -v 0.0.1 --all 2>/dev/null; then
+        print_success "DKMS module removed (rs300-dkms)"
+        REMOVED_ITEMS+=("DKMS module (rs300-dkms/0.0.1)")
+    elif sudo dkms remove -m rs300 -v 0.0.1 --all 2>/dev/null; then
+        print_success "DKMS module removed (rs300, pre-sync install)"
         REMOVED_ITEMS+=("DKMS module (rs300/0.0.1)")
     else
         print_warning "Failed to remove DKMS module (may not be installed)"
@@ -118,12 +123,14 @@ else
     print_status "DKMS module not found (already removed or not installed)"
 fi
 
-# Remove source directory
-if [ -d /usr/src/rs300-0.0.1 ]; then
-    sudo rm -rf /usr/src/rs300-0.0.1
-    print_success "DKMS source directory removed"
-    REMOVED_ITEMS+=("DKMS source directory (/usr/src/rs300-0.0.1)")
-fi
+# Remove source directory (check both current and pre-sync paths)
+for src_dir in /usr/src/rs300-dkms-0.0.1 /usr/src/rs300-0.0.1; do
+    if [ -d "$src_dir" ]; then
+        sudo rm -rf "$src_dir"
+        print_success "DKMS source directory removed: $src_dir"
+        REMOVED_ITEMS+=("DKMS source directory ($src_dir)")
+    fi
+done
 
 # Unload module if loaded
 if lsmod | grep -q rs300; then
@@ -341,5 +348,5 @@ else
 fi
 
 echo ""
-echo "To reinstall: ./setup.sh"
+echo "To reinstall: sudo ./install.sh"
 echo ""
