@@ -1,7 +1,22 @@
-> **Multi-platform builds of this driver, including Pi 5 and additional SBC families, are developed in the mono-repo at [Kodrea/mini2-thermal-driver](https://github.com/Kodrea/mini2-thermal-driver). This repository focuses on Pi 4B, CM4, and Zero 2 W via the legacy unicam stack (`bcm2835-unicam-legacy`), and is kept alive for the existing community. Pi 5 users: use the mono-repo's [`platforms/raspberry-pi/rpi5/`](https://github.com/Kodrea/mini2-thermal-driver/tree/main/platforms/raspberry-pi/rpi5) directory.**
+# NEW Repository Hosting All Available Platforms
 
-## See the repo below for the refactored raspberry pi 5 driver (03/2026)
-- https://github.com/Kodrea/mini2-driver-rpi5
+**[Kodrea/mini2-thermal-driver](https://github.com/Kodrea/mini2-thermal-driver)**
+## Working Boards
+- Raspberry Pi 5, 4B, Zero 2W
+     - Boards I don't have but should work: CM4/CM5
+- Radxa Rock 5B+, Zero 3W
+
+## Coming Soon
+- NVIDIA Jetson Orin Nano
+- Raspberry Pi 3B+
+
+---
+
+<br> </br>
+# **[rs300-v4l2-driver Is DEPRICATED]**
+<br> </br>
+
+---
 
 # RS300 Thermal Camera Driver for Raspberry Pi
 - Credit to [will127534](https://github.com/will127534) for the setup script in his imx294 driver
