@@ -148,7 +148,7 @@ v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 ```
 Start Here (Testing Complete!)
 │
-├─ Want to use the driver? → Read WARMUP_TEST_REPORT.txt then capture images
+├─ Want to use the driver? → Read Capture Notes below, then capture images
 │
 ├─ Need to understand warm-up timing? → See Capture Notes below
 │
@@ -195,7 +195,7 @@ Start Here (Testing Complete!)
 **Session Complete**:
 - All security fixes validated
 - Thermal imaging validated with 4 colormap examples
-- Warm-up timing documented in WARMUP_TEST_REPORT.txt
+- Warm-up timing documented under Capture Notes below
 - Driver ready for production use
 
 ---
