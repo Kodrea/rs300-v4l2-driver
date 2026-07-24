@@ -1016,7 +1016,9 @@ static int rs300_set_output_mode(struct rs300 *rs300, int value)
     /* Fill remaining parameters with zeros (bytes 5-15) */
     memset(&cmd_buffer[5], 0, 11);
 
-    /* Use pre-calculated CRC values for each mode (hardcoded per I2C_QUICK_REFERENCE.md) */
+    /* Use pre-calculated CRC values for each mode, taken from the vendor I2C
+     * command reference. Unlike other commands these are not computed at
+     * runtime, so changing the mode table means recomputing them. */
     /* CRC lookup table: [mode][low_byte, high_byte] */
     static const u8 mode_crc[6][2] = {
         {0xFB, 0xC0},  /* Mode 0: YUV (8-bit processed) */

@@ -82,7 +82,8 @@ sudo rs300-configure
 # 2. View raw frames (requires ffmpeg)
 ffplay -f rawvideo -pixel_format uyvy422 -video_size 640x512 /tmp/thermal_raw.yuv
 
-# 3. Process through ISP (see RASPBERRY_PI_ISP_GUIDE.md Section 6)
+# 3. Process through ISP
+./isp_processing_example.sh
 ```
 
 ### Check ISP Availability
