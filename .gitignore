@@ -5,6 +5,7 @@
 *.mod.c
 *.symvers
 *.order
+*.dtbo
 .*.cmd
 .tmp_versions/
 
