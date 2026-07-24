@@ -105,8 +105,10 @@ i2cget -y 10 0x3c 0x02 b             # Read status (0x00=idle, 0x01=busy, 0x02=f
 lsmod | grep rs300                    # Loaded?
 cat /sys/module/rs300/parameters/mode # Current mode
 modinfo rs300                         # Module details
-sudo rmmod rs300                      # Unload
-sudo modprobe rs300 mode=0 fps=60     # Load with params
+# Do not unload the module on Pi 5: it crashes rp1_cfe.
+# Change parameters through modprobe.d and reboot instead:
+#   echo "options rs300 mode=2 fps=60" | sudo tee /etc/modprobe.d/rs300.conf
+#   sudo reboot
 ```
 
 ---
@@ -171,10 +173,11 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100 2>&1 | grep fps
 ## Full Reset Sequence
 
 ```bash
-sudo rmmod rs300
 sudo dmesg -C
-sudo modprobe rs300 mode=0 fps=60 debug=1
-./configure_media.sh
+echo "options rs300 mode=2 fps=60" | sudo tee /etc/modprobe.d/rs300.conf
+sudo reboot
+# after the reboot
+sudo rs300-configure
 dmesg | grep rs300
 ```
 

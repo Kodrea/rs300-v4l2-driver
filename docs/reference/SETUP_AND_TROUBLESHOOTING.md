@@ -130,12 +130,15 @@ dmesg | tail -50
 | `Hardware configuration check failed` | Device tree mismatch | Check `dtoverlay=rs300` in config.txt |
 | `failed to get regulators` | Power supply config issue | Device tree power pin misconfigured |
 
-**Reload without reboot:**
+**Reload the driver:**
+
+On Pi 5 the module cannot be unloaded. `rmmod rs300` triggers an rp1_cfe
+teardown crash, so a reboot is the supported way to reload it.
+
 ```bash
-sudo rmmod rs300
-sleep 1
-sudo modprobe rs300
-./configure_media.sh
+sudo reboot
+# after the reboot
+sudo rs300-configure
 v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 ```
 
@@ -232,7 +235,7 @@ dmesg | tail -20                       # Check for errors
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Hangs indefinitely | Camera not streaming or I2C stuck | Reload driver: `sudo rmmod rs300 && sudo modprobe rs300` |
+| Hangs indefinitely | Camera not streaming or I2C stuck | Reboot, then `sudo rs300-configure` |
 | `VIDIOC_STREAMON fails` | Pipeline not configured | Run `./configure_media.sh` |
 | `Operation not permitted` | Permission issue | Need `sudo` or add user to video group |
 | Frame rate too low | Warm-up period | Camera needs 2-3s before valid data, skip first 60 frames |

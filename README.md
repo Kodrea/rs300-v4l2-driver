@@ -295,7 +295,7 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 ### ✅ **Raspberry Pi 5 - BETA (Production Testing Recommended)**
 - **Driver**: RS300 module loads successfully
 - **I2C**: Communication working on i2c-10 bus at 0x3c
-- **Media Pipeline**: Automatic configuration with `./configure_media.sh`
+- **Media Pipeline**: Automatic configuration with `sudo rs300-configure`
 - **Streaming**: 60fps thermal video confirmed working (single camera)
 - **Formats**: YUYV8_1X16 and UYVY8_1X16 both supported
 - **Controls**: FFC calibration, colormap, brightness accessible
@@ -379,11 +379,11 @@ The camera needs a warm-up period before the image stabilises, and FFC blocks ot
 
 ### Media Controller Visualization (Pi 5)
 ```bash
-# Generate pipeline diagram
-python3 media-topology-visualizer.py --check-formats --show-links
+# Inspect the pipeline
+./utilities/scripts/debug_pipeline.sh
 
-# Configure with visualization
-./configure_media.sh --visualize
+# Configure it
+sudo rs300-configure
 ```
 
 ### Manual Pipeline Configuration (Pi 5)
