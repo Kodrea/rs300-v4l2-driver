@@ -272,7 +272,7 @@ HAS_ISSUES=false
 
 if [ -z "$RS300_FMT" ]; then
     print_status "ERROR" "RS300 format not configured"
-    echo "  → Run: media-ctl -d $RS300_MEDIA_DEV -V \"'rs300 10-003c':0 [fmt:YUYV8_2X8/640x512]\""
+    echo "  → Run: media-ctl -d $RS300_MEDIA_DEV -V \"'rs300 10-003c':0 [fmt:YUYV8_1X16/384x288]\""
     HAS_ISSUES=true
 fi
 

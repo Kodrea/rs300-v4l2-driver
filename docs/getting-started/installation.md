@@ -92,10 +92,17 @@ nano rs300.c
 Find these lines (around line 88-91):
 
 ```c
-static int mode = 0;   // 0=640×512, 1=256×192, 2=384×288
+static int mode = 2;   // 0=640x512, 1=256x192, 2=384x288
 static int fps = 60;   // 256: 25/50fps, 384/640: 30/60fps
 static int type = 16;  // 8 or 16 bit
-static int debug = 1;  // 0=off, 1=on
+```
+
+These are runtime module parameters, not compile-time constants. Set them
+without touching the source:
+
+```bash
+echo "options rs300 mode=2 fps=60" | sudo tee /etc/modprobe.d/rs300.conf
+sudo reboot
 ```
 
 **Select your module configuration:**
@@ -255,7 +262,7 @@ cd ~/rs300-v4l2-driver
 
 **What this does**:
 - Auto-detects RS300 camera
-- Lets you choose UYVY or YUYV format
+- Uses YUYV8_1X16, the only YUV bus format RP1-CFE accepts
 - Configures media controller links
 - Tests streaming automatically
 
@@ -411,16 +418,23 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100
 
 ### Module Parameters (Both Platforms)
 
-The driver supports compile-time module parameters. Edit `rs300.c` before running `install.sh`:
+The driver exposes these module parameters:
 
 ```c
-static int mode = 0;   // 0=640×512, 1=256×192, 2=384×288
-static int fps = 30;   // 25, 30, 50, 60
+static int mode = 2;   // 0=640x512, 1=256x192, 2=384x288
+static int fps = 60;   // 256: 25/50fps, 384/640: 30/60fps
 static int type = 16;  // 8 or 16 bit
-static int debug = 1;  // 0=off, 1=on
 ```
 
-**Note**: Changes require driver rebuild (`sudo ./install.sh`) and reboot.
+These are runtime module parameters, not compile-time constants. Set them
+without touching the source:
+
+```bash
+echo "options rs300 mode=2 fps=60" | sudo tee /etc/modprobe.d/rs300.conf
+sudo reboot
+```
+
+**Note**: Changes take effect at the next reboot.
 
 ### Custom Media Pipeline (Pi 5 Only)
 

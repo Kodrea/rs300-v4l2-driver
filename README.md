@@ -41,7 +41,7 @@ All critical and high-severity security vulnerabilities have been **FIXED**:
 - ✅ **CRITICAL**: Multi-camera race condition eliminated - global buffers converted to local variables
 - ✅ **HIGH**: All memory management issues fixed with NULL checks
 
-**See [SECURITY_AUDIT.md](docs/reference/SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
+**See [SECURITY_AUDIT.md](.claude/lessons-learned/SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
 
 **Current Status**: Driver now suitable for production testing. Multi-camera setups safe.
 
@@ -56,7 +56,6 @@ The driver includes **retry logic** to handle intermittent camera hardware error
 - **Problem Solved**: Camera hardware occasionally reports error status 0x0e (~25% of stream starts), which triggered deadlocks in the upstream rp1-cfe driver
 - **Solution**: 3-attempt retry with exponential backoff (100ms, 200ms, 400ms)
 - **Results**: 100% success rate in single-camera testing (25/25 test streams), zero stuck processes
-- **Documentation**: See [ISSUE_SUMMARY_20251021.md](docs/meta/ISSUE_SUMMARY_20251021.md) and [UPSTREAM_BUG_REPORT.md](docs/meta/UPSTREAM_BUG_REPORT.md)
 
 **Combined with security fixes**: Driver now production-ready for testing and deployment.
 
@@ -284,10 +283,10 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 **Top 3 Quick Fixes**:
 
 1. **Driver not loading?** → Check: `lsmod | grep rs300` and `dmesg | grep rs300`
-2. **No video device (Pi 5)?** → Run: `./configure_media.sh` to configure media pipeline
+2. **No video device (Pi 5)?** → Run: `sudo rs300-configure` to configure media pipeline
 3. **I2C errors?** → Verify: `i2cdetect -y 10` (Pi 5) or `i2cdetect -y 1` (Pi 4)
 
-**Complete troubleshooting guide**: [TROUBLESHOOTING.md](docs/reference/TROUBLESHOOTING.md)
+**Complete troubleshooting guide**: [SETUP_AND_TROUBLESHOOTING.md](docs/reference/SETUP_AND_TROUBLESHOOTING.md)
 
 **Note**: Previous deadlock issue (error 0x0e) resolved via retry logic. See archived docs for details.
 
@@ -372,7 +371,7 @@ v4l2-ctl -d /dev/v4l-subdev2 -c colormap=4  # Rainbow
 - Can be triggered during streaming or when idle
 - Not needed between colormap changes
 
-**See [CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) for complete details and workarounds.**
+The camera needs a warm-up period before the image stabilises, and FFC blocks other commands for roughly 1.5 seconds.
 
 ---
 

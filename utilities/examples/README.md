@@ -12,7 +12,7 @@ Interactive script demonstrating various capture and processing modes using the 
 
 **Usage**:
 ```bash
-./examples/isp_processing_example.sh
+./isp_processing_example.sh
 ```
 
 **Features**:
@@ -36,13 +36,13 @@ Python script for capturing raw thermal frames and checking ISP availability.
 **Usage**:
 ```bash
 # Capture 100 frames with live preview
-./examples/capture_for_isp.py --frames 100 --preview
+./capture_for_isp.py --frames 100 --preview
 
 # Save raw YUV data for ISP processing
-./examples/capture_for_isp.py --frames 100 --output /tmp/thermal.yuv
+./capture_for_isp.py --frames 100 --output /tmp/thermal.yuv
 
 # Check ISP device availability
-./examples/capture_for_isp.py --isp-info
+./capture_for_isp.py --isp-info
 ```
 
 **Requirements**:
@@ -66,10 +66,10 @@ pip3 install opencv-python numpy
 lsmod | grep rs300
 
 # 2. Configure media pipeline
-./configure_media.sh
+sudo rs300-configure
 
 # 3. Run ISP example
-./examples/isp_processing_example.sh
+./isp_processing_example.sh
 # Choose option 1 for direct capture
 ```
 
@@ -77,7 +77,7 @@ lsmod | grep rs300
 
 ```bash
 # 1. Capture raw frames
-./examples/capture_for_isp.py --frames 100 --output /tmp/thermal_raw.yuv
+./capture_for_isp.py --frames 100 --output /tmp/thermal_raw.yuv
 
 # 2. View raw frames (requires ffmpeg)
 ffplay -f rawvideo -pixel_format uyvy422 -video_size 640x512 /tmp/thermal_raw.yuv
@@ -88,7 +88,7 @@ ffplay -f rawvideo -pixel_format uyvy422 -video_size 640x512 /tmp/thermal_raw.yu
 ### Check ISP Availability
 
 ```bash
-./examples/capture_for_isp.py --isp-info
+./capture_for_isp.py --isp-info
 ```
 
 Expected output:
@@ -159,7 +159,6 @@ sudo apt install python3-opencv python3-numpy
 ## Advanced Examples
 
 For advanced ISP integration examples, see:
-- [RASPBERRY_PI_ISP_GUIDE.md](../RASPBERRY_PI_ISP_GUIDE.md) - Complete ISP documentation
 - Section 6: Example Workflows
 - Section 9: Practical Recommendations
 
@@ -178,7 +177,7 @@ if [ ! -e /dev/video0 ]; then
 fi
 
 # Configure if needed
-./configure_media.sh
+sudo rs300-configure
 
 # Your capture/processing logic here
 gst-launch-1.0 v4l2src device=/dev/video0 ! ...

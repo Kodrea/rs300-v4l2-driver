@@ -36,18 +36,17 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY
 
 | Method | Setup | Auto? | When to Use |
 |--------|-------|-------|------------|
-| **Manual** | Run `./configure_media.sh` after boot | No | Development, testing |
-| **Systemd service** | `sudo cp rs300-media-config.service /etc/systemd/system/ && sudo systemctl enable rs300-media-config` | Yes | Production, unattended |
-| **Udev rule** | `sudo cp 99-rs300.rules /etc/udev/rules.d/` | Yes | Hotplug, driver reload |
+| **Manual** | Run `sudo rs300-configure` after boot | No | Development, testing |
+| **Systemd service** | `sudo cp utilities/config/rs300-media-config.service /etc/systemd/system/ && sudo systemctl enable rs300-media-config` | Yes | Production, unattended |
+| **Udev rule** | `sudo cp utilities/config/99-rs300.rules /etc/udev/rules.d/` | Yes | Hotplug, driver reload |
 
 ---
 
 ## Install Systemd Auto-Config
 
 ```bash
-# Edit service file with correct script path
-sudo nano /etc/systemd/system/rs300-media-config.service
-# Update: ExecStart=/path/to/configure_media.sh --non-interactive
+# The unit already points at /usr/local/bin/rs300-configure, where install.sh
+# puts the helper, so there is no path to edit.
 
 # Enable and start
 sudo systemctl daemon-reload
@@ -63,9 +62,9 @@ sudo journalctl -u rs300-media-config.service -f
 ## Install Udev Auto-Config
 
 ```bash
-# Copy and update rule
-sudo cp 99-rs300.rules /etc/udev/rules.d/
-sudo nano /etc/udev/rules.d/99-rs300.rules  # Fix script path
+# The rule already points at /usr/local/bin/rs300-configure, so there is no
+# path to edit.
+sudo cp utilities/config/99-rs300.rules /etc/udev/rules.d/
 
 # Reload udev
 sudo udevadm control --reload-rules
@@ -333,5 +332,5 @@ Persistence comparison:
 ## References
 
 - **DRIVER_ANALYSIS.md** - Technical deep-dive
-- **QUICK_REFERENCE.md** - Command cheat sheet
+- **DEV_QUICK_REFERENCE.md** - Command cheat sheet
 - **dmesg** - Always check this first!

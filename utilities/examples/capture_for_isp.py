@@ -234,7 +234,7 @@ def main():
     if args.output:
         print(f"  1. Process with pispbe: See RASPBERRY_PI_ISP_GUIDE.md Section 6")
         print(f"  2. View raw file: ffplay -f rawvideo -pixel_format uyvy422 -video_size 640x512 {args.output}")
-    print(f"  3. Run ISP examples: ./examples/isp_processing_example.sh")
+    print(f"  3. Run ISP examples: ./isp_processing_example.sh")
 
 if __name__ == '__main__':
     main()

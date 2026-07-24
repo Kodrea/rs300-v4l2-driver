@@ -28,8 +28,11 @@ cd ~/rs300-v4l2-driver
 ```
 
 **Follow prompts**:
-1. Choose pixel format (UYVY or YUYV) - either works
+1. Choose the module resolution (0=640x512, 1=256x192, 2=384x288)
 2. Script will test streaming automatically
+
+The pixel format is not a prompt. The script always uses YUYV8_1X16, the only
+YUV bus format RP1-CFE accepts.
 
 **Pi 4**: Skip this step (no media controller required)
 
@@ -435,10 +438,9 @@ v4l2-ctl --list-devices
 
 Now that you've captured your first thermal image:
 
-1. **[Basic Usage Guide →](../guides/basic-usage.md)** - Learn more streaming methods
-2. **[Camera Controls Reference →](../guides/camera-controls.md)** - Complete control documentation
-3. **[Advanced Usage →](../../README.md#advanced-usage)** - ISP integration, boot automation
-4. **[Troubleshooting →](../reference/TROUBLESHOOTING.md)** - Detailed debugging guide
+1. **[Advanced Usage →](../../README.md#advanced-usage)** - ISP integration, boot automation
+2. **[Troubleshooting →](../reference/SETUP_AND_TROUBLESHOOTING.md)** - Detailed debugging guide
+3. **[Pipeline Guide →](../reference/RS300_Media_Pipeline_Guide.md)** - Media controller topology
 
 ## Learning Resources
 

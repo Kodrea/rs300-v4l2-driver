@@ -93,7 +93,7 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=5
 
 ### Format Mismatch
 - **Issue**: Streaming fails, different formats at each stage
-- **Check**: `./utilities/scripts/debug_pipeline.sh --visualize`
+- **Check**: `./utilities/scripts/debug_pipeline.sh`
 - **Fix**: Reset & reconfigure, verify each stage
 
 ### Link Disabled

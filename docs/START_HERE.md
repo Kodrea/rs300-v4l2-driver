@@ -61,11 +61,8 @@ All critical testing is complete. The driver is validated and ready for producti
 1. **Add warm-up note to kernel driver** - Consider adding a comment in rs300.c about the 2-second requirement
 2. **Update capture examples** - Modify example scripts to include warm-up delay
 3. **Warm-up delay** - Controls need a settling delay after stream start
-4. **Review UPSTREAM_BUG_REPORT.md** - Consider submitting warm-up timing info upstream
 
 **For Users**:
-- Review captured thermal images in `~/thermal-images-verified/`
-- Read `WARMUP_TEST_REPORT.txt` for detailed findings
 - Use the driver with confidence - all security fixes validated
 
 ---
@@ -73,23 +70,16 @@ All critical testing is complete. The driver is validated and ready for producti
 ## 📂 Key Files & Locations
 
 ### ✅ Validated Test Results (2025-10-22)
-- **Warm-Up Test Report**: `~/thermal-images-verified/WARMUP_TEST_REPORT.txt` ⭐ **READ THIS**
-- **Thermal Images**: `~/thermal-images-verified/*.png` (4 images, all colormaps validated)
-- **Warm-Up Analysis**: `~/thermal-warmup-test/warmup_test.log`
-- **Hardware Check**: `~/hardware_check.log`
+Test artefacts from that session lived outside the repository and are not distributed with it.
 
 ### Previous Test Results (Issue Identified)
-- **Initial Test Report**: `~/rs300-test-images/TEST_REPORT_20251022_094900.txt` (captured too quickly)
-- **Note**: These images showed constant data due to insufficient warm-up time
+- **Note**: An earlier run showed constant data because the camera was captured before it had warmed up.
 
 ### Documentation
-- **Camera Quirks**: `~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt` ⭐ **IMPORTANT** (warm-up timing, colormap behavior, FFC timing)
-- **Security Audit**: `SECURITY_AUDIT.md` (all fixes documented and validated)
-- **Driver Analysis**: `DRIVER_ANALYSIS.md` (complete technical reference)
-- **Quick Reference**: `DEV_QUICK_REFERENCE.md` (commands & controls)
+- **Security Audit**: `../.claude/lessons-learned/SECURITY_AUDIT.md` (all fixes documented and validated)
+- **Driver Analysis**: `reference/DRIVER_ANALYSIS.md` (complete technical reference)
+- **Quick Reference**: `reference/DEV_QUICK_REFERENCE.md` (commands & controls)
 - **Navigation**: `CLAUDE.md` (AI assistant guide)
-- **Upstream Bug Report**: `UPSTREAM_BUG_REPORT.md` (rp1-cfe deadlock documented)
-- **Extra Documentation**: `~/rs300-extra-documentation/` (test reports, colormap experiments)
 
 ---
 
@@ -116,7 +106,7 @@ Format: YUYV8_1X16/640x512
 - **Colormap changes work for live GStreamer display, but file capture behavior is inconsistent**
 - FFC (calibration) takes ~1.5 seconds and blocks other commands
 
-See `~/CAMERA_QUIRKS.txt` for complete details and workarounds.
+Allow the camera to warm up before judging image quality.
 
 ---
 
