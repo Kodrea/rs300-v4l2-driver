@@ -113,11 +113,11 @@ static int debug = 1;  // 0=off, 1=on
 ## Step 4: Run Setup Script (Both Platforms)
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+chmod +x install.sh
+sudo ./install.sh
 ```
 
-**What setup.sh does**:
+**What install.sh does**:
 - Builds the RS300 kernel module
 - Installs via DKMS (enables automatic rebuild on kernel updates)
 - Copies device tree overlay
@@ -307,7 +307,7 @@ dkms status | grep rs300
 **If not installed**, rebuild:
 ```bash
 cd ~/rs300-v4l2-driver
-./setup.sh
+sudo ./install.sh
 ```
 
 ---
@@ -375,7 +375,7 @@ v4l2-ctl --list-devices
 
 **Solution**:
 1. Verify driver mode matches your module (edit `rs300.c`)
-2. Rebuild: `./setup.sh`
+2. Rebuild: `sudo ./install.sh`
 3. Reboot: `sudo reboot`
 4. Set correct format with `v4l2-ctl --set-fmt-video`
 
@@ -411,7 +411,7 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100
 
 ### Module Parameters (Both Platforms)
 
-The driver supports compile-time module parameters. Edit `rs300.c` before running `setup.sh`:
+The driver supports compile-time module parameters. Edit `rs300.c` before running `install.sh`:
 
 ```c
 static int mode = 0;   // 0=640×512, 1=256×192, 2=384×288
@@ -420,7 +420,7 @@ static int type = 16;  // 8 or 16 bit
 static int debug = 1;  // 0=off, 1=on
 ```
 
-**Note**: Changes require driver rebuild (`./setup.sh`) and reboot.
+**Note**: Changes require driver rebuild (`sudo ./install.sh`) and reboot.
 
 ### Custom Media Pipeline (Pi 5 Only)
 

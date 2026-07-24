@@ -118,8 +118,8 @@ dmesg | tail -50
 
 | Cause | Fix |
 |-------|-----|
-| Not installed | `./setup.sh && sudo reboot` |
-| Kernel mismatch | `uname -r` → match with kernel headers, then `./setup.sh` |
+| Not installed | `sudo ./install.sh && sudo reboot` |
+| Kernel mismatch | `uname -r` → match with kernel headers, then `sudo ./install.sh` |
 | Missing overlay | Edit `/boot/firmware/config.txt`: add `dtoverlay=rs300` and `camera_auto_detect=0` |
 | Load fails (bad dmesg) | Check error message below |
 
@@ -127,7 +127,7 @@ dmesg | tail -50
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `control initialization failed` | V4L2 controls issue | Rebuild: `./setup.sh` |
+| `control initialization failed` | V4L2 controls issue | Rebuild: `sudo ./install.sh` |
 | `Hardware configuration check failed` | Device tree mismatch | Check `dtoverlay=rs300` in config.txt |
 | `failed to get regulators` | Power supply config issue | Device tree power pin misconfigured |
 

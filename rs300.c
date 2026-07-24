@@ -101,7 +101,7 @@ static const char * const output_mode_menu[] = {
 
 #define NUM_COLORMAP_ITEMS (ARRAY_SIZE(colormap_menu) - 1) // Account for NULL terminator
 
-// Mode must be set before running setup.sh
+// Mode is set via /etc/modprobe.d/rs300.conf, applied at the next boot
 // TODO: Make mode adjustable during runtime
 static int mode = 2; // 0-640; 1-256; 2-384
 static int fps = 60;

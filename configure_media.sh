@@ -95,7 +95,6 @@ restore_configuration() {
 
 # Parse command line arguments
 INTERACTIVE=true
-VISUALIZE=false
 FORMAT="$DEFAULT_FORMAT"
 PIXELFORMAT="$DEFAULT_PIXELFORMAT"
 WIDTH="$DEFAULT_WIDTH"
@@ -127,10 +126,6 @@ while [[ $# -gt 0 ]]; do
             INTERACTIVE=false
             shift
             ;;
-        --visualize)
-            VISUALIZE=true
-            shift
-            ;;
         --help)
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -141,7 +136,6 @@ while [[ $# -gt 0 ]]; do
             echo "  --height HEIGHT        Target height (default: $DEFAULT_HEIGHT, auto-detected from RS300)"
             echo "  --mode MODE            RS300 mode: 0=640x512, 1=256x192, 2=384x288 (will prompt if not specified)"
             echo "  --non-interactive      Run without user prompts"
-            echo "  --visualize            Generate PNG visualization of pipeline"
             echo "  --help                 Show this help"
             echo ""
             echo "Note: RS300 camera format and resolution are read-only (set by driver module parameters)."
@@ -190,7 +184,7 @@ print_step "Checking prerequisites"
 
 if ! lsmod | grep -q rs300; then
     print_error "RS300 driver not loaded"
-    echo "Run: ./setup.sh && sudo reboot"
+    echo "Run: sudo ./install.sh && sudo reboot"
     exit 1
 fi
 print_success "RS300 driver loaded"
@@ -291,8 +285,10 @@ if [ "$INTERACTIVE" = true ] && [ -z "$MODE" ] && [ -z "$CURRENT_MODE" ]; then
         0)
             MODE=0
             print_success "Selected mode 0: 640x512"
-            print_warning "Driver needs to be reloaded with mode=$MODE"
-            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            print_warning "Driver needs to be restarted with mode=$MODE"
+            echo "Set it in /etc/modprobe.d/rs300.conf, then reboot:"
+            echo "  echo \"options rs300 mode=$MODE fps=60\" | sudo tee /etc/modprobe.d/rs300.conf"
+            echo "  sudo reboot"
             read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -303,8 +299,10 @@ if [ "$INTERACTIVE" = true ] && [ -z "$MODE" ] && [ -z "$CURRENT_MODE" ]; then
         1)
             MODE=1
             print_success "Selected mode 1: 256x192"
-            print_warning "Driver needs to be reloaded with mode=$MODE"
-            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            print_warning "Driver needs to be restarted with mode=$MODE"
+            echo "Set it in /etc/modprobe.d/rs300.conf, then reboot:"
+            echo "  echo \"options rs300 mode=$MODE fps=60\" | sudo tee /etc/modprobe.d/rs300.conf"
+            echo "  sudo reboot"
             read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -315,8 +313,10 @@ if [ "$INTERACTIVE" = true ] && [ -z "$MODE" ] && [ -z "$CURRENT_MODE" ]; then
         2)
             MODE=2
             print_success "Selected mode 2: 384x288"
-            print_warning "Driver needs to be reloaded with mode=$MODE"
-            echo "Run: sudo rmmod rs300 && sudo modprobe rs300 mode=$MODE"
+            print_warning "Driver needs to be restarted with mode=$MODE"
+            echo "Set it in /etc/modprobe.d/rs300.conf, then reboot:"
+            echo "  echo \"options rs300 mode=$MODE fps=60\" | sudo tee /etc/modprobe.d/rs300.conf"
+            echo "  sudo reboot"
             read -p "Continue anyway to configure current driver? (y/N): " -n 1 -r
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -535,15 +535,16 @@ if [ "$ROLLBACK_NEEDED" = false ]; then
     if [ -n "$CURRENT_MODE" ]; then
         echo "  $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT --mode $CURRENT_MODE --non-interactive"
         echo ""
-        echo "To use a different mode, reload driver with:"
-        echo "  sudo rmmod rs300 && sudo modprobe rs300 mode=X  # where X is 0 (640x512), 1 (256x192), or 2 (384x288)"
+        echo "To use a different mode, set it and reboot:"
+        echo "  echo \"options rs300 mode=X fps=60\" | sudo tee /etc/modprobe.d/rs300.conf"
+        echo "  sudo reboot   # X is 0 (640x512), 1 (256x192), or 2 (384x288)"
     else
         echo "  $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT --non-interactive"
     fi
     echo ""
     echo "Next steps:"
     echo "1. Test streaming: v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10"
-    echo "2. Test controls: ./test_thermal.sh"
+    echo "2. Test controls: v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls"
     echo "3. Save working config for future use"
     
     # Save working configuration
@@ -557,22 +558,6 @@ $0 --format $FORMAT --pixelformat $PIXELFORMAT --width $WIDTH --height $HEIGHT -
 EOF
     chmod +x "$WORKING_CONFIG"
     print_success "Working configuration saved to $WORKING_CONFIG"
-    
-    # Generate visualization if requested
-    if [ "$VISUALIZE" = true ]; then
-        print_step "Generating pipeline visualization"
-        
-        if [ -f "./media-topology-visualizer.py" ]; then
-            VISUAL_OUTPUT="pipeline_configured_$(date +%Y%m%d_%H%M%S).png"
-            if python3 ./media-topology-visualizer.py --device "$MEDIA_DEV" --output "$VISUAL_OUTPUT" --check-formats; then
-                print_success "Pipeline visualization saved to $VISUAL_OUTPUT"
-            else
-                print_warning "Visualization generation failed"
-            fi
-        else
-            print_warning "Visualizer script not found - skipping visualization"
-        fi
-    fi
     
 else
     print_error "Configuration failed - check error messages above"

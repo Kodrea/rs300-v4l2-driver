@@ -116,7 +116,7 @@ All PiSP backend devices available!
 lsmod | grep rs300
 
 # If not loaded, reinstall
-./setup.sh
+sudo ./install.sh
 sudo reboot
 ```
 

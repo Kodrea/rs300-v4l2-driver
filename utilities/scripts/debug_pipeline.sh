@@ -60,7 +60,7 @@ if lsmod | grep -q rs300; then
     print_status "INFO" "Driver version: $RS300_VERSION"
 else
     print_status "ERROR" "RS300 driver not loaded"
-    echo "Run: ./setup.sh && sudo reboot"
+    echo "Run: sudo ./install.sh && sudo reboot"
     exit 1
 fi
 
@@ -299,7 +299,7 @@ if [ "$HAS_ISSUES" = false ]; then
     print_status "OK" "No critical issues detected - pipeline should be functional"
     echo ""
     echo "Next steps:"
-    echo "1. Run ./test_formats.sh to find working format combination"
+    echo "1. Run sudo rs300-configure to set a working format combination"
     echo "2. Test streaming with working format"
     echo "3. Validate thermal camera functionality"
 else
@@ -314,4 +314,4 @@ fi
 
 echo ""
 echo "=== Debug Complete ==="
-echo "For detailed format testing, run: ./test_formats.sh"
+echo "For detailed format testing, run: sudo rs300-configure"

@@ -132,9 +132,16 @@ for src_dir in /usr/src/rs300-dkms-0.0.1 /usr/src/rs300-0.0.1; do
     fi
 done
 
-# Unload module if loaded
+# Unload module if loaded.
+#
+# Not on Pi 5. Unloading rs300 while RP1-CFE holds the media pipeline triggers
+# an rp1_cfe teardown crash, so the module stays loaded until the reboot that
+# the removal of the overlay already requires. The files are gone either way.
 if lsmod | grep -q rs300; then
-    if sudo rmmod rs300 2>/dev/null; then
+    if grep -q "brcm,bcm2712" /proc/device-tree/compatible 2>/dev/null; then
+        print_warning "Leaving the module loaded: unloading rs300 on Pi 5 crashes rp1_cfe"
+        MANUAL_STEPS+=("Reboot to unload the kernel module")
+    elif sudo rmmod rs300 2>/dev/null; then
         print_success "Kernel module unloaded"
     else
         print_warning "Failed to unload kernel module (may be in use)"

@@ -357,16 +357,14 @@ ffmpeg -f rawvideo -pixel_format yuyv422 -video_size 640x512 -framerate 60 \
 **Test all controls** with the included test script:
 
 ```bash
-cd ~/rs300-v4l2-driver
+# List every control the driver exposes
+v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 
-# Quick test (2 minutes)
-./test_controls.sh --quick
+# Read one control
+v4l2-ctl -d /dev/v4l-subdev2 --get-ctrl brightness
 
-# Full test (5 minutes)
-./test_controls.sh
-
-# Test specific control
-./test_controls.sh --control brightness
+# Write one control
+v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl brightness=60
 ```
 
 **What it tests**:
@@ -386,7 +384,7 @@ lsmod | grep rs300
 
 # If not loaded, reload driver
 cd ~/rs300-v4l2-driver
-./setup.sh
+sudo ./install.sh
 sudo reboot
 ```
 

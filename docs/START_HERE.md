@@ -60,7 +60,7 @@ All critical testing is complete. The driver is validated and ready for producti
 **Optional Future Work**:
 1. **Add warm-up note to kernel driver** - Consider adding a comment in rs300.c about the 2-second requirement
 2. **Update capture examples** - Modify example scripts to include warm-up delay
-3. **Update test_controls.sh** - Add warm-up delay to automated test script
+3. **Warm-up delay** - Controls need a settling delay after stream start
 4. **Review UPSTREAM_BUG_REPORT.md** - Consider submitting warm-up timing info upstream
 
 **For Users**:

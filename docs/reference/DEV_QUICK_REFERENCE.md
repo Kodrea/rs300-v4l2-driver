@@ -5,7 +5,7 @@
 ## Quick Start
 
 ```bash
-./setup.sh 
+sudo ./install.sh
 sudo reboot
 
 ./configure_media.sh

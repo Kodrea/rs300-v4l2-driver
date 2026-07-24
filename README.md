@@ -148,14 +148,22 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 **Quick Start** (all platforms):
 ```bash
-sudo apt install raspberrypi-kernel-headers dkms git v4l-utils
 git clone https://github.com/Kodrea/rs300-v4l2-driver.git
 cd rs300-v4l2-driver
-./setup.sh
+sudo ./install.sh
 sudo reboot
 ```
 
-**Pi 5 users**: Run `./configure_media.sh` after reboot to configure the media pipeline.
+`install.sh` reads the board from `/proc/device-tree/compatible`, installs any
+missing packages, builds the driver through DKMS, and selects the matching
+device tree overlay. Pi 5 gets the RP1-CFE overlay, and the Pi 3, Pi 4, CM4 and
+Zero 2 W family gets the legacy unicam overlay.
+
+After the reboot, configure the media pipeline and run its built-in stream test:
+
+```bash
+sudo rs300-configure
+```
 
 See installation guides above for detailed platform-specific instructions.
 
@@ -165,19 +173,28 @@ See installation guides above for detailed platform-specific instructions.
 
 **For Pi 5, use the automated configuration script:**
 ```bash
-./configure_media.sh
+sudo rs300-configure
 ```
 
 **Manual streaming commands for Pi 5:**
+
+The examples below use 384x288, the driver default. For a 640x512 or 256x192
+module, set `mode` in `/etc/modprobe.d/rs300.conf` (0=640x512, 1=256x192,
+2=384x288), reboot, and substitute the matching size.
+
 ```bash
 # Basic stream test
 v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10
 
+# Capture 300 frames to a file
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=384,height=288,pixelformat=YUYV \
+  --stream-mmap --stream-count=300 --stream-to=/tmp/frames.yuv
+
 # Live viewing with ffplay
-ffplay -f v4l2 -video_size 640x512 -pixel_format yuyv422 /dev/video0
+ffplay -f v4l2 -video_size 384x288 -pixel_format yuyv422 /dev/video0
 
 # GStreamer pipeline
-gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512 ! videoconvert ! autovideosink
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=384,height=288 ! videoconvert ! autovideosink
 ```
 
 **Camera controls (Pi 5):**
