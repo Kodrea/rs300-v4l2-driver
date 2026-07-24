@@ -2429,7 +2429,7 @@ static int rs300_set_stream(struct v4l2_subdev *sd, int enable)
          * 1. Capture 90+ frames and extract frame 60+ for processing
          * 2. Start stream, wait 2+ seconds, then begin capturing
          *
-         * See documentation: ~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt
+         * See docs/START_HERE.md, Capture Notes, for warm-up timing.
          */
         dev_dbg(&client->dev, "Stream start: fmt=0x%x %dx%d, mode=%dx%d @ %d/%d fps",
             rs300->fmt.code, rs300->fmt.width, rs300->fmt.height,

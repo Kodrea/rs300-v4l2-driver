@@ -150,7 +150,7 @@ Start Here (Testing Complete!)
 │
 ├─ Want to use the driver? → Read WARMUP_TEST_REPORT.txt then capture images
 │
-├─ Need to understand warm-up timing? → Read ~/thermal-images-verified/WARMUP_TEST_REPORT.txt
+├─ Need to understand warm-up timing? → See Capture Notes below
 │
 ├─ Need to understand security fixes? → Read SECURITY_AUDIT.md
 │
@@ -181,7 +181,7 @@ Start Here (Testing Complete!)
 
 ---
 
-## 📝 Notes for AI Assistants
+## 📝 Capture Notes
 
 **✅ TESTING COMPLETE - All tasks finished successfully**
 
