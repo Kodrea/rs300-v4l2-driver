@@ -1,6 +1,5 @@
 # RS300 Driver - Current Status & Next Actions
 
-> **🤖 For AI session handoff**, see [SESSION_STATE.md](../.claude/SESSION_STATE.md) (machine-readable state)
 >
 > **📖 This file** is human-readable project status overview
 
@@ -76,10 +75,9 @@ Test artefacts from that session lived outside the repository and are not distri
 - **Note**: An earlier run showed constant data because the camera was captured before it had warmed up.
 
 ### Documentation
-- **Security Audit**: `../.claude/lessons-learned/SECURITY_AUDIT.md` (all fixes documented and validated)
+- **Security Audit**: `reference/SECURITY_AUDIT.md` (all fixes documented and validated)
 - **Driver Analysis**: `reference/DRIVER_ANALYSIS.md` (complete technical reference)
 - **Quick Reference**: `reference/DEV_QUICK_REFERENCE.md` (commands & controls)
-- **Navigation**: `CLAUDE.md` (AI assistant guide)
 
 ---
 
@@ -160,7 +158,7 @@ Start Here (Testing Complete!)
 │
 ├─ Need quick command reference? → Read DEV_QUICK_REFERENCE.md
 │
-└─ New to this project? → Read README.md then CLAUDE.md
+└─ New to this project? → Read README.md, then docs/getting-started/installation.md
 ```
 
 ---
