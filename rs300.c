@@ -502,6 +502,29 @@ static int write_regs(struct i2c_client *client,  u32 reg, u8 *val,int len)
 
 /* Duplicate struct definitions removed - now defined earlier in file */
 
+/*
+ * The YUV bus format depends on which CSI-2 receiver is downstream, and that
+ * is a property of the SoC rather than of the camera module.
+ *
+ * RP1-CFE on BCM2712 (Pi 5) accepts the 16-bit packed form and rejects the
+ * 8-bit dual-lane form outright. bcm2835-unicam-legacy on the Pi 3 / Pi 4 /
+ * CM4 / Zero 2 W family expects the 8-bit dual-lane form.
+ *
+ * Pick at runtime from the root node compatible property. That is the same
+ * string install.sh reads out of /proc/device-tree/compatible, so the two
+ * halves of the install agree on what board they are on by construction.
+ */
+static u32 rs300_yuv_bus_code(void)
+{
+	return of_machine_is_compatible("brcm,bcm2712") ?
+		MEDIA_BUS_FMT_YUYV8_1X16 : MEDIA_BUS_FMT_YUYV8_2X8;
+}
+
+/*
+ * .code is filled in by rs300_init_bus_format() during probe. The initialiser
+ * below carries the legacy unicam value so the array is never in an undefined
+ * state, but it is not the value the driver reports on a Pi 5.
+ */
 static struct rs300_mode supported_modes[] = {
     { /* 640 - Primary mode for Pi 5 */
         .width      = 640,
@@ -510,7 +533,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* YUYV8_2X8 for bcm2835_unicam_legacy (Zero 2W) */
+        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* overwritten by rs300_init_bus_format() */
     },
     {
         .width      = 256,
@@ -519,7 +542,7 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 25,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* YUYV8_2X8 for bcm2835_unicam_legacy (Zero 2W) */
+        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* overwritten by rs300_init_bus_format() */
     },
         { /* 384*/
         .width      = 384,
@@ -528,10 +551,27 @@ static struct rs300_mode supported_modes[] = {
             .numerator = 60,
             .denominator = 1,
         },
-        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* YUYV8_2X8 for bcm2835_unicam_legacy (Zero 2W) */
+        .code = MEDIA_BUS_FMT_YUYV8_2X8,  /* overwritten by rs300_init_bus_format() */
     }
 
 };
+
+/*
+ * Point every advertised mode at the bus format this SoC's receiver accepts.
+ * Called once from probe, before the default mode is selected.
+ */
+static void rs300_init_bus_format(struct device *dev)
+{
+	u32 code = rs300_yuv_bus_code();
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(supported_modes); i++)
+		supported_modes[i].code = code;
+
+	dev_info(dev, "YUV bus format: %s (0x%x)",
+		 code == MEDIA_BUS_FMT_YUYV8_1X16 ? "YUYV8_1X16" : "YUYV8_2X8",
+		 code);
+}
 
 static inline struct rs300 *to_rs300(struct v4l2_subdev *sd)
 {
@@ -2124,13 +2164,17 @@ static int __rs300_get_pad_fmt(struct rs300 *rs300,
 			fmt->format = rs300->fmt;
 
 			/* Translate format based on output_mode for CSI2 compatibility
-			 * output_mode 0 = YUYV8_1X16 (YUV 8-bit)
+			 * output_mode 0 = YUV, bus code chosen per SoC by
+			 *                 rs300_yuv_bus_code()
 			 * output_mode 1 = Y16_1X16 (raw 16-bit thermal)
 			 */
 			if (rs300->output_mode && rs300->output_mode->cur.val == 0) {
-				fmt->format.code = MEDIA_BUS_FMT_YUYV8_2X8;
-				dev_dbg(&client->dev, "Get ACTIVE format: code=0x%x (YUYV8_2X8, output_mode=0), %dx%d",
-					fmt->format.code, fmt->format.width, fmt->format.height);
+				fmt->format.code = rs300_yuv_bus_code();
+				dev_dbg(&client->dev, "Get ACTIVE format: code=0x%x (%s, output_mode=0), %dx%d",
+					fmt->format.code,
+					fmt->format.code == MEDIA_BUS_FMT_YUYV8_1X16 ?
+						"YUYV8_1X16" : "YUYV8_2X8",
+					fmt->format.width, fmt->format.height);
 			} else {
 				fmt->format.code = MEDIA_BUS_FMT_Y16_1X16;
 				dev_dbg(&client->dev, "Get ACTIVE format: code=0x%x (Y16_1X16, output_mode=%d), %dx%d",
@@ -3053,8 +3097,8 @@ static int rs300_init_controls(struct rs300 *rs300)
     if (rs300->link_frequency)
         rs300->link_frequency->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-    /* Initialize pixel rate based on default format (YUYV8_2X8 on Zero 2W) */
-    pixel_rate = rs300_get_pixel_rate(MEDIA_BUS_FMT_YUYV8_2X8);
+    /* Initialize pixel rate based on the YUV bus format this SoC uses */
+    pixel_rate = rs300_get_pixel_rate(rs300_yuv_bus_code());
     rs300->pixel_rate = v4l2_ctrl_new_std(ctrl_hdlr, NULL,
                                       V4L2_CID_PIXEL_RATE,
                                       pixel_rate, pixel_rate, 1, 
@@ -3321,7 +3365,13 @@ static int rs300_probe(struct i2c_client *client)
 	int ret;
 
 	dev_info(dev, "Starting rs300_probe");
-	
+
+	/*
+	 * Must run before anything reads supported_modes[].code, which
+	 * rs300_set_default_format() does later in this function.
+	 */
+	rs300_init_bus_format(dev);
+
 	dev_dbg(dev, "driver version: %02x.%02x.%02x",
 		DRIVER_VERSION >> 16,
 		(DRIVER_VERSION & 0xff00) >> 8,
