@@ -83,7 +83,7 @@ for each byte: crc ^= (byte << 8)
 
 ---
 
-## 3. Camera Commands (11 Total)
+## 3. Camera Commands (13 Total)
 
 | Command | Class | Module | SubCmd | Range | Func |
 |---------|-------|--------|--------|-------|------|
@@ -114,7 +114,14 @@ for each byte: crc ^= (byte << 8)
 
 ---
 
-## 4. V4L2 Controls (11 Total)
+## 4. V4L2 Controls
+
+The driver registers 26 controls. The table below covers the 11 in common use. For the full set as
+the running driver reports it:
+
+```bash
+v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls-menus
+```
 
 | Control | Type | Range | Read-Only | Default |
 |---------|------|-------|-----------|---------|
@@ -144,9 +151,9 @@ Mode 2: 384×288 @ 30fps            → YUYV8_1X16
 ```
 
 ### Media Bus Formats (4 codes)
-- YUYV8_1X16 (0x200f) - PRIMARY for RP1-CFE
-- UYVY8_1X16 (0x200e)
-- YUYV8_2X8 (0x2007) - Legacy
+- YUYV8_1X16 (0x2011) - PRIMARY for RP1-CFE
+- UYVY8_1X16 (0x200f)
+- YUYV8_2X8 (0x2008) - Legacy
 - UYVY8_2X8 (0x2006) - Legacy
 
 **CRITICAL**: RP1-CFE **only supports 16-bit packed** (*8_1X16), not 8-bit dual lane
