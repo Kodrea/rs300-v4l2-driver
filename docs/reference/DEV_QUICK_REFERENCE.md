@@ -115,32 +115,40 @@ modinfo rs300                         # Module details
 
 ## Code Locations
 
-| Feature | Function | Location |
-|---------|----------|----------|
-| Driver init | `rs300_probe()` | rs300.c:2759 |
-| Stream control | `rs300_set_stream()` | rs300.c:2097 |
-| Format setup | `rs300_set_pad_fmt()` | rs300.c:1850 |
-| Controls | `rs300_set_ctrl()` | rs300.c:1626 |
-| I2C read | `read_regs()` | rs300.c:205 |
-| I2C write | `write_regs()` | rs300.c:233 |
-| CRC | `do_crc()` | rs300.c:152 |
+Function names only. Line numbers are deliberately left out because they go
+stale on every edit. To find one:
+
+```bash
+grep -n 'rs300_set_zoom' rs300.c
+```
+
+| Feature | Function |
+|-|-|
+| Driver init | `rs300_probe()` |
+| Stream control | `rs300_set_stream()` |
+| Format setup | `rs300_set_pad_fmt()` |
+| Controls | `rs300_set_ctrl()` |
+| I2C read | `read_regs()` |
+| I2C write | `write_regs()` |
+| CRC | `do_crc()` |
 
 ### Camera Commands
-| Command | Line | Function |
-|---------|------|----------|
-| Brightness GET | 502 | `rs300_get_brightness()` |
-| Brightness SET | 1327 | `rs300_brightness_correct()` |
-| Colormap GET | 991 | `rs300_get_colormap()` |
-| Colormap SET | 1081 | `rs300_set_colormap()` |
-| FFC | 1215 | `rs300_shutter_cal()` |
-| Zoom | 1458 | `rs300_set_zoom()` |
-| Scene Mode | 1541 | `rs300_set_scene_mode()` |
-| Contrast | 778 | `rs300_set_contrast()` |
-| DDE | 635 | `rs300_set_dde()` |
-| Spatial NR | 849 | `rs300_set_spatial_nr()` |
-| Temporal NR | 920 | `rs300_set_temporal_nr()` |
-| YUV Format | 706 | `rs300_set_yuv_format()` |
-| FPS | 1997 | `rs300_set_fps()` |
+
+| Command | Function |
+|-|-|
+| Brightness GET | `rs300_get_brightness()` |
+| Brightness SET | `rs300_brightness_correct()` |
+| Colormap GET | `rs300_get_colormap()` |
+| Colormap SET | `rs300_set_colormap()` |
+| FFC | `rs300_shutter_cal()` |
+| Zoom | `rs300_set_zoom()` |
+| Scene Mode | `rs300_set_scene_mode()` |
+| Contrast | `rs300_set_contrast()` |
+| DDE | `rs300_set_dde()` |
+| Spatial NR | `rs300_set_spatial_nr()` |
+| Temporal NR | `rs300_set_temporal_nr()` |
+| YUV Format | `rs300_set_yuv_format()` |
+| FPS | `rs300_set_fps()` |
 
 ---
 

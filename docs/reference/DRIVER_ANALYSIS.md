@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-V4L2 subdevice driver for RS300 thermal camera (640×512@60fps) on Raspberry Pi 5 BCM2712/RP1-CFE. 2,946 lines of C code with 11 V4L2 controls and I2C command interface.
+V4L2 subdevice driver for RS300 thermal camera (640×512@60fps) on Raspberry Pi 5 BCM2712/RP1-CFE. Registers 26 V4L2 controls over an I2C command interface.
 
-**Stats**: 3 video modes, 4 YUV422 formats, 11 I2C commands, 2-lane CSI-2 @ 80MHz
+**Stats**: 3 video modes, 4 YUV422 formats, 13 documented I2C commands, 26 V4L2 controls, 2-lane CSI-2 @ 80MHz
 
 ---
 
@@ -106,7 +106,8 @@ for each byte: crc ^= (byte << 8)
 **Scene modes** (0-9): Low, Linear Stretch, Low Contrast, General, High Contrast, Highlight, Reserved×3, Outline
 
 **Special Notes**:
-- Zoom uses **hardcoded CRC** (0x0a, 0x06) instead of calculation
+- Zoom uses command class 0x01 rather than the standard 0x10. Its CRC is
+  calculated like every other command. Earlier revisions hardcoded it.
 - Brightness & colormap include verification readback
 - FFC uses 1000ms delay (longest)
 - FPS returns 0 even on failure (non-critical)
@@ -195,22 +196,25 @@ Write 27-byte stop_regs (similar, cmd 0xc2 vs 0xc1, path=1, dest=0)
 ### Known Issues
 - ~500 lines duplicate command execution code (consolidation abandoned - kernel crash risk)
 - Mode switching requires driver rebuild/reboot
-- Zoom command uses hardcoded CRC
 - Error handling inconsistent (FPS returns 0 on failure)
 
 ### File Structure
+
+Sections in the order they appear in the file. Line ranges are left out on
+purpose because they go stale on every edit.
+
 ```
-rs300.c (2946 lines)
-├─ Headers, metadata, menus [1-96]
-├─ Registers, CRC, helpers [105-267]
-├─ Data structures, modes [269-371]
-├─ Format handling [378-489]
-├─ Camera commands [494-1624]
-├─ V4L2 control ops [1626-1684]
-├─ Pad ops (enum, get, set) [1686-1951]
-├─ Streaming ops [1953-2256]
-├─ Init/probe/remove [2258-2893]
-└─ Driver registration [2906-2946]
+rs300.c
+├─ Headers, metadata, menus
+├─ Registers, CRC, helpers
+├─ Data structures, modes
+├─ Format handling
+├─ Camera commands
+├─ V4L2 control ops
+├─ Pad ops (enum, get, set)
+├─ Streaming ops
+├─ Init/probe/remove
+└─ Driver registration
 ```
 
 ### Strengths

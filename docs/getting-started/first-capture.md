@@ -87,7 +87,8 @@ xdg-open thermal_image.png
 
 ## Exploring Camera Controls
 
-The RS300 has 11 V4L2 controls you can adjust in real-time.
+The RS300 exposes 26 V4L2 controls. Most can be adjusted while streaming. A few,
+including `pixel_rate` and `link_freq`, are read-only.
 
 ### Identify Your Subdevice
 
@@ -371,7 +372,7 @@ v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl brightness=60
 ```
 
 **What it tests**:
-- All 11 V4L2 controls
+- All 26 V4L2 controls
 - Valid ranges
 - Error handling
 - Success/failure reporting
