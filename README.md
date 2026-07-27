@@ -41,8 +41,6 @@ All critical and high-severity security vulnerabilities have been **FIXED**:
 - ✅ **CRITICAL**: Multi-camera race condition eliminated - global buffers converted to local variables
 - ✅ **HIGH**: All memory management issues fixed with NULL checks
 
-**See [SECURITY_AUDIT.md](docs/reference/SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
-
 **Current Status**: Driver now suitable for production testing. Multi-camera setups safe.
 
 ---

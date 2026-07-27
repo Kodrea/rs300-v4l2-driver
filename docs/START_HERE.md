@@ -75,7 +75,6 @@ Test artefacts from that session lived outside the repository and are not distri
 - **Note**: An earlier run showed constant data because the camera was captured before it had warmed up.
 
 ### Documentation
-- **Security Audit**: `reference/SECURITY_AUDIT.md` (all fixes documented and validated)
 - **Driver Analysis**: `reference/DRIVER_ANALYSIS.md` (complete technical reference)
 - **Quick Reference**: `reference/DEV_QUICK_REFERENCE.md` (commands & controls)
 
@@ -151,8 +150,6 @@ Start Here (Testing Complete!)
 ├─ Want to use the driver? → Read Capture Notes below, then capture images
 │
 ├─ Need to understand warm-up timing? → See Capture Notes below
-│
-├─ Need to understand security fixes? → Read SECURITY_AUDIT.md
 │
 ├─ Need to modify driver code? → Read DRIVER_ANALYSIS.md
 │
