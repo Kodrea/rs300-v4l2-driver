@@ -5,6 +5,7 @@
 *.mod.c
 *.symvers
 *.order
+*.dtbo
 .*.cmd
 .tmp_versions/
 
@@ -14,3 +15,7 @@
 # Editor backups
 *.bak
 *~
+
+# Python bytecode
+__pycache__/
+*.pyc

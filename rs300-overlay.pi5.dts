@@ -40,7 +40,7 @@
             status = "okay";
             
             cam_node: rs300@3c {
-                compatible = "infisense,rs300";
+                compatible = "mini2,rs300";
                 reg = <0x3c>;
                 status = "okay";
                 

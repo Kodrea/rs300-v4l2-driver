@@ -26,7 +26,10 @@ RS300 pad 1 (metadata) → independent
 
 ### RS300 Pads
 
-**Pad 0 (IMAGE)**: YUYV8_2X8 / YUYV8_1X16 / UYVY8_2X8 / UYVY8_1X16, 640×512, 60fps
+**Pad 0 (IMAGE)**: YUYV8_1X16 on Pi 5, 60fps. The driver picks the bus format
+from the SoC, so on the legacy unicam family the same pad reports YUYV8_2X8.
+Resolution follows the module: 384x288 by default, 640x512 or 256x192 when the
+`mode` parameter says so.
 
 **Pad 1 (METADATA)**: SENSOR_DATA format
 
@@ -39,13 +42,15 @@ RS300 pad 1 (metadata) → independent
 ### Format Matrix
 
 | RS300 Format | CSI2 | RP1-CFE | Video Device |
-|--------------|------|---------|--------------|
-| YUYV8_2X8 | ✓ | ✓ | YUYV |
-| YUYV8_1X16 | ✓ | ✓ | YUYV |
-| UYVY8_2X8 | ✓ | ✓ | UYVY |
-| UYVY8_1X16 | ✓ | ✓ | UYVY |
+|-|-|-|-|
+| YUYV8_1X16 | yes | yes | YUYV |
+| UYVY8_1X16 | yes | yes | UYVY |
+| YUYV8_2X8 | yes | no | not reached |
+| UYVY8_2X8 | yes | no | not reached |
 
-**CRITICAL**: RP1-CFE only supports **16-bit packed** (*8_1X16), not 8-bit dual lane
+**CRITICAL**: RP1-CFE only supports **16-bit packed** (*8_1X16), not 8-bit dual lane.
+The 2X8 rows are listed only to be explicit that they do not work here. They are the
+correct choice on the legacy unicam family, which this guide does not cover.
 
 ---
 
@@ -60,17 +65,17 @@ ls /dev/media* /dev/video*      # Devices exist
 
 ### Automated Configuration
 ```bash
-./configure_media.sh --format YUYV8_2X8 --width 640 --height 512
+sudo rs300-configure --format YUYV8_1X16 --width 384 --height 288
 ```
 
 ### Manual Configuration
 ```bash
 media-ctl -d /dev/media0 -r
 media-ctl -d /dev/media0 -l "'csi2':4 -> 'rp1-cfe-csi2_ch0':0[1]"
-media-ctl -d /dev/media0 -V "'rs300 10-003c':0 [fmt:YUYV8_2X8/640x512]"
-media-ctl -d /dev/media0 -V "'csi2':0 [fmt:YUYV8_2X8/640x512]"
-media-ctl -d /dev/media0 -V "'csi2':4 [fmt:YUYV8_2X8/640x512]"
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=YUYV
+media-ctl -d /dev/media0 -V "'rs300 10-003c':0 [fmt:YUYV8_1X16/384x288]"
+media-ctl -d /dev/media0 -V "'csi2':0 [fmt:YUYV8_1X16/384x288]"
+media-ctl -d /dev/media0 -V "'csi2':4 [fmt:YUYV8_1X16/384x288]"
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=384,height=288,pixelformat=YUYV
 ```
 
 ### Verification
@@ -88,7 +93,7 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=5
 
 ### Format Mismatch
 - **Issue**: Streaming fails, different formats at each stage
-- **Check**: `./debug_pipeline.sh --visualize`
+- **Check**: `./utilities/scripts/debug_pipeline.sh`
 - **Fix**: Reset & reconfigure, verify each stage
 
 ### Link Disabled
@@ -112,8 +117,8 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=5
 
 ### Essential Commands
 ```bash
-./debug_pipeline.sh
-./configure_media.sh --format YUYV8_2X8
+./utilities/scripts/debug_pipeline.sh
+sudo rs300-configure --format YUYV8_1X16
 v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=5
 media-ctl -d /dev/media0 -r
 ```

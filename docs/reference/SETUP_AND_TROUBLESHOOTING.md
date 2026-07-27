@@ -36,18 +36,17 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=640,height=512,pixelformat=UYVY
 
 | Method | Setup | Auto? | When to Use |
 |--------|-------|-------|------------|
-| **Manual** | Run `./configure_media.sh` after boot | No | Development, testing |
-| **Systemd service** | `sudo cp rs300-media-config.service /etc/systemd/system/ && sudo systemctl enable rs300-media-config` | Yes | Production, unattended |
-| **Udev rule** | `sudo cp 99-rs300.rules /etc/udev/rules.d/` | Yes | Hotplug, driver reload |
+| **Manual** | Run `sudo rs300-configure` after boot | No | Development, testing |
+| **Systemd service** | `sudo cp utilities/config/rs300-media-config.service /etc/systemd/system/ && sudo systemctl enable rs300-media-config` | Yes | Production, unattended |
+| **Udev rule** | `sudo cp utilities/config/99-rs300.rules /etc/udev/rules.d/` | Yes | Hotplug, driver reload |
 
 ---
 
 ## Install Systemd Auto-Config
 
 ```bash
-# Edit service file with correct script path
-sudo nano /etc/systemd/system/rs300-media-config.service
-# Update: ExecStart=/path/to/configure_media.sh --non-interactive
+# The unit already points at /usr/local/bin/rs300-configure, where install.sh
+# puts the helper, so there is no path to edit.
 
 # Enable and start
 sudo systemctl daemon-reload
@@ -63,9 +62,9 @@ sudo journalctl -u rs300-media-config.service -f
 ## Install Udev Auto-Config
 
 ```bash
-# Copy and update rule
-sudo cp 99-rs300.rules /etc/udev/rules.d/
-sudo nano /etc/udev/rules.d/99-rs300.rules  # Fix script path
+# The rule already points at /usr/local/bin/rs300-configure, so there is no
+# path to edit.
+sudo cp utilities/config/99-rs300.rules /etc/udev/rules.d/
 
 # Reload udev
 sudo udevadm control --reload-rules
@@ -118,8 +117,8 @@ dmesg | tail -50
 
 | Cause | Fix |
 |-------|-----|
-| Not installed | `./setup.sh && sudo reboot` |
-| Kernel mismatch | `uname -r` → match with kernel headers, then `./setup.sh` |
+| Not installed | `sudo ./install.sh && sudo reboot` |
+| Kernel mismatch | `uname -r` → match with kernel headers, then `sudo ./install.sh` |
 | Missing overlay | Edit `/boot/firmware/config.txt`: add `dtoverlay=rs300` and `camera_auto_detect=0` |
 | Load fails (bad dmesg) | Check error message below |
 
@@ -127,16 +126,19 @@ dmesg | tail -50
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `control initialization failed` | V4L2 controls issue | Rebuild: `./setup.sh` |
+| `control initialization failed` | V4L2 controls issue | Rebuild: `sudo ./install.sh` |
 | `Hardware configuration check failed` | Device tree mismatch | Check `dtoverlay=rs300` in config.txt |
 | `failed to get regulators` | Power supply config issue | Device tree power pin misconfigured |
 
-**Reload without reboot:**
+**Reload the driver:**
+
+On Pi 5 the module cannot be unloaded. `rmmod rs300` triggers an rp1_cfe
+teardown crash, so a reboot is the supported way to reload it.
+
 ```bash
-sudo rmmod rs300
-sleep 1
-sudo modprobe rs300
-./configure_media.sh
+sudo reboot
+# after the reboot
+sudo rs300-configure
 v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 ```
 
@@ -233,7 +235,7 @@ dmesg | tail -20                       # Check for errors
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Hangs indefinitely | Camera not streaming or I2C stuck | Reload driver: `sudo rmmod rs300 && sudo modprobe rs300` |
+| Hangs indefinitely | Camera not streaming or I2C stuck | Reboot, then `sudo rs300-configure` |
 | `VIDIOC_STREAMON fails` | Pipeline not configured | Run `./configure_media.sh` |
 | `Operation not permitted` | Permission issue | Need `sudo` or add user to video group |
 | Frame rate too low | Warm-up period | Camera needs 2-3s before valid data, skip first 60 frames |
@@ -333,5 +335,5 @@ Persistence comparison:
 ## References
 
 - **DRIVER_ANALYSIS.md** - Technical deep-dive
-- **QUICK_REFERENCE.md** - Command cheat sheet
+- **DEV_QUICK_REFERENCE.md** - Command cheat sheet
 - **dmesg** - Always check this first!

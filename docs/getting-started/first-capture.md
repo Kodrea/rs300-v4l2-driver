@@ -28,8 +28,11 @@ cd ~/rs300-v4l2-driver
 ```
 
 **Follow prompts**:
-1. Choose pixel format (UYVY or YUYV) - either works
+1. Choose the module resolution (0=640x512, 1=256x192, 2=384x288)
 2. Script will test streaming automatically
+
+The pixel format is not a prompt. The script always uses YUYV8_1X16, the only
+YUV bus format RP1-CFE accepts.
 
 **Pi 4**: Skip this step (no media controller required)
 
@@ -84,7 +87,8 @@ xdg-open thermal_image.png
 
 ## Exploring Camera Controls
 
-The RS300 has 11 V4L2 controls you can adjust in real-time.
+The RS300 exposes 26 V4L2 controls. Most can be adjusted while streaming. A few,
+including `pixel_rate` and `link_freq`, are read-only.
 
 ### Identify Your Subdevice
 
@@ -357,20 +361,18 @@ ffmpeg -f rawvideo -pixel_format yuyv422 -video_size 640x512 -framerate 60 \
 **Test all controls** with the included test script:
 
 ```bash
-cd ~/rs300-v4l2-driver
+# List every control the driver exposes
+v4l2-ctl -d /dev/v4l-subdev2 --list-ctrls
 
-# Quick test (2 minutes)
-./test_controls.sh --quick
+# Read one control
+v4l2-ctl -d /dev/v4l-subdev2 --get-ctrl brightness
 
-# Full test (5 minutes)
-./test_controls.sh
-
-# Test specific control
-./test_controls.sh --control brightness
+# Write one control
+v4l2-ctl -d /dev/v4l-subdev2 --set-ctrl brightness=60
 ```
 
 **What it tests**:
-- All 11 V4L2 controls
+- All 26 V4L2 controls
 - Valid ranges
 - Error handling
 - Success/failure reporting
@@ -386,7 +388,7 @@ lsmod | grep rs300
 
 # If not loaded, reload driver
 cd ~/rs300-v4l2-driver
-./setup.sh
+sudo ./install.sh
 sudo reboot
 ```
 
@@ -437,10 +439,9 @@ v4l2-ctl --list-devices
 
 Now that you've captured your first thermal image:
 
-1. **[Basic Usage Guide →](../guides/basic-usage.md)** - Learn more streaming methods
-2. **[Camera Controls Reference →](../guides/camera-controls.md)** - Complete control documentation
-3. **[Advanced Usage →](../../README.md#advanced-usage)** - ISP integration, boot automation
-4. **[Troubleshooting →](../reference/TROUBLESHOOTING.md)** - Detailed debugging guide
+1. **[Advanced Usage →](../../README.md#advanced-usage)** - ISP integration, boot automation
+2. **[Troubleshooting →](../reference/SETUP_AND_TROUBLESHOOTING.md)** - Detailed debugging guide
+3. **[Pipeline Guide →](../reference/RS300_Media_Pipeline_Guide.md)** - Media controller topology
 
 ## Learning Resources
 

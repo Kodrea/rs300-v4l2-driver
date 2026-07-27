@@ -13,7 +13,7 @@
 ---
 
 <br> </br>
-# **[rs300-v4l2-driver Is DEPRICATED]**
+# **[rs300-v4l2-driver Is DEPRECATED]**
 <br> </br>
 
 ---
@@ -41,8 +41,6 @@ All critical and high-severity security vulnerabilities have been **FIXED**:
 - ✅ **CRITICAL**: Multi-camera race condition eliminated - global buffers converted to local variables
 - ✅ **HIGH**: All memory management issues fixed with NULL checks
 
-**See [SECURITY_AUDIT.md](docs/reference/SECURITY_AUDIT.md) for complete analysis and fix implementation details.**
-
 **Current Status**: Driver now suitable for production testing. Multi-camera setups safe.
 
 ---
@@ -56,7 +54,6 @@ The driver includes **retry logic** to handle intermittent camera hardware error
 - **Problem Solved**: Camera hardware occasionally reports error status 0x0e (~25% of stream starts), which triggered deadlocks in the upstream rp1-cfe driver
 - **Solution**: 3-attempt retry with exponential backoff (100ms, 200ms, 400ms)
 - **Results**: 100% success rate in single-camera testing (25/25 test streams), zero stuck processes
-- **Documentation**: See [ISSUE_SUMMARY_20251021.md](docs/meta/ISSUE_SUMMARY_20251021.md) and [UPSTREAM_BUG_REPORT.md](docs/meta/UPSTREAM_BUG_REPORT.md)
 
 **Combined with security fixes**: Driver now production-ready for testing and deployment.
 
@@ -78,25 +75,16 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 
 ---
 
-## Raspberry Pi MIPI CSI-2 Testing
+## Board Support
 
-| Raspberry Pi Model | Module Resolution | Connection Type | OS & Kernel | Status         | Notes                                                          |
-| ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
-| Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Power over 5V 3v3 issues:(Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues) |
-| Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
-| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | *Working       | *Purple River tested the 256 with my driver and it worked. They believe my module's firmware is the issue and are sending me instructions to update it|
-| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | ✅ **Beta** | 60fps thermal, retry logic validated, security fixes applied |
-| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
+This repository covers the Raspberry Pi only and is no longer where support is tracked. The current
+list, including the Radxa boards, is in the
+[mini2-thermal-driver README](https://github.com/Kodrea/mini2-thermal-driver#supported-platforms).
 
-- <s> For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB. </s>
-   - The issue was with my specific module and has now been verified to work with 2 other 256 modules.
-- <s> For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable. </s>
-   - Using the 5V pin in the analog/uart port solves the issue <b>BUT</b> you will need to modify the board or block the 3v3 pin with tape. If the 3v3 line is connected the camera will not use the 5V power and will get stuck in a boot loop while the camera tries to          draw too much power over 3v3.
-   - Any board purchased after mid-August 2025 will already have a fix applied.
+The 640x512, 384x288 and 256x192 modules all work over MIPI CSI-2.
 
 ## TODO
-- Test 384 and 256 modules on Pi 5
-- Continue Troubleshooting 256 mipi data on Pi 4
+- Test the 256 module on Pi 5
 - ISP integration for hardware denoising (Pi 5)
 
 ## Where I got the module
@@ -148,14 +136,22 @@ For the custom PCB I have there is USB 2.0, MIPI, and CVBS. The camera also supp
 
 **Quick Start** (all platforms):
 ```bash
-sudo apt install raspberrypi-kernel-headers dkms git v4l-utils
 git clone https://github.com/Kodrea/rs300-v4l2-driver.git
 cd rs300-v4l2-driver
-./setup.sh
+sudo ./install.sh
 sudo reboot
 ```
 
-**Pi 5 users**: Run `./configure_media.sh` after reboot to configure the media pipeline.
+`install.sh` reads the board from `/proc/device-tree/compatible`, installs any
+missing packages, builds the driver through DKMS, and selects the matching
+device tree overlay. Pi 5 gets the RP1-CFE overlay, and the Pi 3, Pi 4, CM4 and
+Zero 2 W family gets the legacy unicam overlay.
+
+After the reboot, configure the media pipeline and run its built-in stream test:
+
+```bash
+sudo rs300-configure
+```
 
 See installation guides above for detailed platform-specific instructions.
 
@@ -165,19 +161,28 @@ See installation guides above for detailed platform-specific instructions.
 
 **For Pi 5, use the automated configuration script:**
 ```bash
-./configure_media.sh
+sudo rs300-configure
 ```
 
 **Manual streaming commands for Pi 5:**
+
+The examples below use 384x288, the driver default. For a 640x512 or 256x192
+module, set `mode` in `/etc/modprobe.d/rs300.conf` (0=640x512, 1=256x192,
+2=384x288), reboot, and substitute the matching size.
+
 ```bash
 # Basic stream test
 v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=10
 
+# Capture 300 frames to a file
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=384,height=288,pixelformat=YUYV \
+  --stream-mmap --stream-count=300 --stream-to=/tmp/frames.yuv
+
 # Live viewing with ffplay
-ffplay -f v4l2 -video_size 640x512 -pixel_format yuyv422 /dev/video0
+ffplay -f v4l2 -video_size 384x288 -pixel_format yuyv422 /dev/video0
 
 # GStreamer pipeline
-gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=640,height=512 ! videoconvert ! autovideosink
+gst-launch-1.0 v4l2src device=/dev/video0 ! video/x-raw,format=YUY2,width=384,height=288 ! videoconvert ! autovideosink
 ```
 
 **Camera controls (Pi 5):**
@@ -267,10 +272,10 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 **Top 3 Quick Fixes**:
 
 1. **Driver not loading?** → Check: `lsmod | grep rs300` and `dmesg | grep rs300`
-2. **No video device (Pi 5)?** → Run: `./configure_media.sh` to configure media pipeline
+2. **No video device (Pi 5)?** → Run: `sudo rs300-configure` to configure media pipeline
 3. **I2C errors?** → Verify: `i2cdetect -y 10` (Pi 5) or `i2cdetect -y 1` (Pi 4)
 
-**Complete troubleshooting guide**: [TROUBLESHOOTING.md](docs/reference/TROUBLESHOOTING.md)
+**Complete troubleshooting guide**: [SETUP_AND_TROUBLESHOOTING.md](docs/reference/SETUP_AND_TROUBLESHOOTING.md)
 
 **Note**: Previous deadlock issue (error 0x0e) resolved via retry logic. See archived docs for details.
 
@@ -279,7 +284,7 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 ### ✅ **Raspberry Pi 5 - BETA (Production Testing Recommended)**
 - **Driver**: RS300 module loads successfully
 - **I2C**: Communication working on i2c-10 bus at 0x3c
-- **Media Pipeline**: Automatic configuration with `./configure_media.sh`
+- **Media Pipeline**: Automatic configuration with `sudo rs300-configure`
 - **Streaming**: 60fps thermal video confirmed working (single camera)
 - **Formats**: YUYV8_1X16 and UYVY8_1X16 both supported
 - **Controls**: FFC calibration, colormap, brightness accessible
@@ -298,8 +303,6 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 - **Note**: Requires manual driver configuration for resolution
 
 ### 🚧 **Development Status**
-- **256x192 Module**: I2C working, MIPI video troubleshooting in progress
-- **Pi Zero 2W**: Hardware power limitations prevent reliable operation
 - **ISP Integration**: Future Pi 5 enhancement for hardware denoising
 
 ---
@@ -355,7 +358,7 @@ v4l2-ctl -d /dev/v4l-subdev2 -c colormap=4  # Rainbow
 - Can be triggered during streaming or when idle
 - Not needed between colormap changes
 
-**See [CAMERA_QUIRKS.txt](~/rs300-extra-documentation/test-reports/CAMERA_QUIRKS.txt) for complete details and workarounds.**
+The camera needs a warm-up period before the image stabilises, and FFC blocks other commands for roughly 1.5 seconds.
 
 ---
 
@@ -363,11 +366,11 @@ v4l2-ctl -d /dev/v4l-subdev2 -c colormap=4  # Rainbow
 
 ### Media Controller Visualization (Pi 5)
 ```bash
-# Generate pipeline diagram
-python3 media-topology-visualizer.py --check-formats --show-links
+# Inspect the pipeline
+./utilities/scripts/debug_pipeline.sh
 
-# Configure with visualization
-./configure_media.sh --visualize
+# Configure it
+sudo rs300-configure
 ```
 
 ### Manual Pipeline Configuration (Pi 5)

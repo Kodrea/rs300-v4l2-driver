@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# RS300 Thermal Camera — Raspberry Pi 4 / CM4 / Zero 2 W Install Script
+# RS300 Thermal Camera Install Script
 #
 # Installs the RS300 driver via DKMS, compiles and installs the DT
 # overlay, and wires /boot/firmware/config.txt so the overlay loads at
@@ -9,10 +9,15 @@
 # bytes because the firmware cannot replay its CSI clock/pinmux setup
 # at runtime.
 #
-# Targets the legacy unicam path (bcm2835-unicam-legacy), shared by
-# Pi 4B, CM4, Zero 2 W, and the Pi 3 family. Pi 5 is rejected: Pi 5
-# uses RP1-CFE, not legacy unicam. For Pi 5, use the mono-repo at
-# github.com/Kodrea/mini2-thermal-driver (platforms/raspberry-pi/rpi5/).
+# Supports two CSI receiver families, selected at runtime from
+# /proc/device-tree/compatible:
+#
+#   Pi 5 (BCM2712)   RP1-CFE      overlay: rs300-overlay.pi5.dts
+#   Pi 4B, CM4,      legacy       overlay: rs300-overlay.dts
+#   Zero 2 W, Pi 3   unicam
+#
+# The driver makes the matching choice for the bus format on its own
+# side, so the two halves agree on the board without being told twice.
 #
 # To build with the legacy 6-item output_mode menu, set the flag
 # before running:
@@ -32,6 +37,7 @@ DKMS_SRC="/usr/src/${DRV_NAME}-dkms-${DRV_VERSION}"
 DKMS_ID="${DRV_NAME}-dkms/${DRV_VERSION}"
 OVERLAY_DEST="/boot/firmware/overlays/rs300.dtbo"
 CONFIG_FILE="/boot/firmware/config.txt"
+CONFIGURE_DEST="/usr/local/bin/rs300-configure"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -54,11 +60,11 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 echo ""
-echo "RS300 Thermal Camera — Raspberry Pi 4 / CM4 / Zero 2 W Installer"
+echo "RS300 Thermal Camera Installer"
 echo "================================================================="
 echo ""
 
-# ── Platform check ───────────────────────────────────────────────────────────
+# ── Platform detection ───────────────────────────────────────────────────────
 info "Checking platform..."
 if [ ! -f /proc/device-tree/compatible ]; then
     fail "Cannot read /proc/device-tree/compatible"
@@ -67,16 +73,22 @@ fi
 COMPAT=$(tr '\0' '\n' < /proc/device-tree/compatible)
 MODEL=$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || echo "unknown")
 
-# Reject Pi 5 (BCM2712, RP1-CFE): this installer targets bcm2835-unicam-legacy.
+# Pi 5 (BCM2712) drives RP1-CFE and needs its own overlay targeting csi0 and
+# the 16-bit packed bus format. Everything else here is bcm2835-unicam-legacy.
 if echo "$COMPAT" | grep -q "brcm,bcm2712"; then
-    fail "Pi 5 (BCM2712) uses RP1-CFE, not bcm2835-unicam-legacy.
-  Detected: $MODEL
-  For Pi 5, use the mono-repo:
-    github.com/Kodrea/mini2-thermal-driver
-  (platforms/raspberry-pi/rpi5/)"
+    PLATFORM="pi5"
+    OVERLAY_NAME="rs300-overlay.pi5.dts"
+    RECEIVER="RP1-CFE"
+    EXPECT_FMT="YUYV8_1X16"
+else
+    PLATFORM="legacy"
+    OVERLAY_NAME="rs300-overlay.dts"
+    RECEIVER="bcm2835-unicam-legacy"
+    EXPECT_FMT="YUYV8_2X8"
 fi
 
 ok "Platform: $MODEL"
+ok "CSI receiver: $RECEIVER (overlay: $OVERLAY_NAME)"
 
 # ── Dependencies ─────────────────────────────────────────────────────────────
 info "Checking dependencies..."
@@ -104,10 +116,21 @@ ok "Dependencies satisfied"
 # ── DKMS module ──────────────────────────────────────────────────────────────
 info "Installing kernel module via DKMS..."
 
-if /usr/sbin/dkms status 2>/dev/null | grep -q "${DRV_NAME}-dkms/${DRV_VERSION}"; then
-    warn "Removing existing DKMS registration"
-    /usr/sbin/dkms remove -m "${DRV_NAME}-dkms" -v "$DRV_VERSION" --all 2>/dev/null || true
-fi
+# Clear any previous rs300 DKMS registration, whatever name it was added under.
+# A board that has had an earlier install can carry "rs300/<ver>" while this
+# installer adds "rs300-dkms/<ver>". Both build the same rs300.ko into /updates,
+# so leaving both registered makes two packages fight over one module file.
+for entry in $(/usr/sbin/dkms status 2>/dev/null | sed 's/[,:].*//' | sort -u); do
+    dk_mod="${entry%%/*}"
+    dk_ver="${entry##*/}"
+    case "$dk_mod" in
+        "${DRV_NAME}"|"${DRV_NAME}-dkms")
+            warn "Removing existing DKMS registration: ${dk_mod}/${dk_ver}"
+            /usr/sbin/dkms remove -m "$dk_mod" -v "$dk_ver" --all 2>/dev/null || true
+            rm -rf "/usr/src/${dk_mod}-${dk_ver}"
+            ;;
+    esac
+done
 
 mkdir -p "$DKMS_SRC"
 cp "${SCRIPT_DIR}/dkms.conf" "$DKMS_SRC/"
@@ -130,7 +153,7 @@ ok "DKMS module installed: $(/usr/sbin/dkms status | grep "${DRV_NAME}-dkms")"
 # ── Device tree overlay ─────────────────────────────────────────────────────
 info "Compiling device tree overlay..."
 
-OVERLAY_SRC="${SCRIPT_DIR}/rs300-overlay.dts"
+OVERLAY_SRC="${SCRIPT_DIR}/${OVERLAY_NAME}"
 OVERLAY_BUILD="${SCRIPT_DIR}/rs300.dtbo"
 
 [ -r "$OVERLAY_SRC" ] || fail "Overlay source not readable: $OVERLAY_SRC"
@@ -144,6 +167,16 @@ cp "$OVERLAY_BUILD" "$OVERLAY_DEST"
 chown root:root "$OVERLAY_DEST"
 chmod 644 "$OVERLAY_DEST"
 ok "Overlay installed"
+
+# ── Media pipeline helper ────────────────────────────────────────────────────
+# configure_media.sh sets the format on the CSI-2 pads and runs a stream test.
+# Installing it under a stable name on PATH is what the removed setup.sh used
+# to do, and the docs and the systemd unit both refer to it by that path.
+info "Installing media pipeline helper to $CONFIGURE_DEST..."
+CONFIGURE_SRC="${SCRIPT_DIR}/configure_media.sh"
+[ -r "$CONFIGURE_SRC" ] || fail "Helper not readable: $CONFIGURE_SRC"
+install -m 755 -o root -g root "$CONFIGURE_SRC" "$CONFIGURE_DEST"
+ok "Installed $(basename "$CONFIGURE_DEST")"
 
 # ── config.txt: disable camera_auto_detect ──────────────────────────────────
 info "Configuring $CONFIG_FILE..."
@@ -191,10 +224,17 @@ echo "  4. ls /dev/video0                     (expect device present)"
 echo "  5. for m in /dev/media*; do"
 echo "       media-ctl -d \$m -p 2>/dev/null | grep -q 'rs300 10-003c' && \\"
 echo "         media-ctl -d \$m -p | grep -A2 'rs300 10-003c' && break"
-echo "     done                               (expect fmt:YUYV8_2X8/384x288)"
+echo "     done                               (expect fmt:${EXPECT_FMT}/384x288)"
+echo ""
+echo "Configure the media pipeline and run its built-in stream test:"
+echo "  sudo rs300-configure"
 echo ""
 echo "First capture test:"
 echo "  v4l2-ctl -d /dev/video0 --set-fmt-video=width=384,height=288,pixelformat=YUYV \\"
 echo "    --stream-mmap --stream-count=300 --stream-to=/tmp/frames.yuv"
 echo "  ls -l /tmp/frames.yuv                 (expect 66355200 bytes = 384*288*2*300)"
+echo ""
+echo "The default module mode is 384x288. For a 640x512 or 256x192 module set"
+echo "mode in /etc/modprobe.d/rs300.conf (0=640x512, 1=256x192, 2=384x288) and"
+echo "reboot."
 echo ""

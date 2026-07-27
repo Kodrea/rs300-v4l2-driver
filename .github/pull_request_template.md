@@ -30,7 +30,7 @@ How to verify the changes?
 - [ ] Tests pass (if applicable)
 - [ ] Documentation updated
 - [ ] No new security issues introduced
-- [ ] Follows project conventions (from CLAUDE.md)
+- [ ] Follows project conventions (see README.md and docs/)
 - [ ] Commit messages are clear and descriptive
 
 ## Reviewer Notes

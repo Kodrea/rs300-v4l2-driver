@@ -1,6 +1,5 @@
 [Unit]
 Description=RS300 Thermal Camera Media Pipeline Configuration
-Documentation=file:///home/cody/rs300-v4l2-driver/BOOT_CONFIGURATION.md
 After=systemd-modules-load.service dev-media0.device
 Wants=dev-media0.device
 # Wait for media controller devices to be fully initialized
@@ -10,9 +9,9 @@ After=sys-devices-platform-1f00110000.csi-media-media0.device
 Type=oneshot
 # Brief delay to ensure media devices are fully initialized
 ExecStartPre=/bin/sleep 2
-# Run configure_media.sh in non-interactive mode
-# NOTE: Update this path to match your installation directory
-ExecStart=/home/cody/rs300-v4l2-driver/configure_media.sh --non-interactive
+# Run the media pipeline helper in non-interactive mode.
+# install.sh puts it here, so this path needs no editing.
+ExecStart=/usr/local/bin/rs300-configure --non-interactive
 # Remain "active" after successful configuration
 RemainAfterExit=yes
 # Run as root to access media devices

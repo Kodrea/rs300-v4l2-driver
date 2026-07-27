@@ -4,12 +4,15 @@ RS300 Thermal Camera - Capture Frames for ISP Processing
 
 This script demonstrates:
 1. Capturing raw frames from RS300 (/dev/video0)
-2. Saving to YUV file for ISP processing
-3. Optional: Direct V4L2 M2M processing through pispbe
+2. Saving to YUV file for later processing
+3. Reporting which PiSP backend devices are present
+
+This script captures and reports. It does not itself push frames through the
+ISP. See isp_processing_example.sh for the processing side.
 
 Usage:
     ./capture_for_isp.py --frames 100 --output /tmp/thermal.yuv
-    ./capture_for_isp.py --frames 100 --use-isp --output /tmp/processed.yuv
+    ./capture_for_isp.py --isp-info
 
 Requirements:
     pip3 install opencv-python numpy
@@ -181,7 +184,7 @@ def display_isp_info():
 
     if len(available) == len(devices):
         print(f"\n{Colors.GREEN}All PiSP backend devices available!{Colors.NC}")
-        print(f"See RASPBERRY_PI_ISP_GUIDE.md for integration examples")
+        print(f"See ./isp_processing_example.sh for integration examples")
     else:
         print(f"\n{Colors.YELLOW}Some PiSP devices missing. Check:${Colors.NC}")
         print(f"  lsmod | grep pisp")
@@ -232,9 +235,9 @@ def main():
 
     print(f"\n{Colors.GREEN}Next steps:{Colors.NC}")
     if args.output:
-        print(f"  1. Process with pispbe: See RASPBERRY_PI_ISP_GUIDE.md Section 6")
+        print(f"  1. Process with pispbe: See ./isp_processing_example.sh")
         print(f"  2. View raw file: ffplay -f rawvideo -pixel_format uyvy422 -video_size 640x512 {args.output}")
-    print(f"  3. Run ISP examples: ./examples/isp_processing_example.sh")
+    print(f"  3. Run ISP examples: ./isp_processing_example.sh")
 
 if __name__ == '__main__':
     main()
