@@ -13,7 +13,7 @@
 ---
 
 <br> </br>
-# **[rs300-v4l2-driver Is DEPRICATED]**
+# **[rs300-v4l2-driver Is DEPRECATED]**
 <br> </br>
 
 ---
@@ -77,25 +77,16 @@ Approximately two weeks until the MIPI CSI-2 boards for raspberry pi will be ava
 
 ---
 
-## Raspberry Pi MIPI CSI-2 Testing
+## Board Support
 
-| Raspberry Pi Model | Module Resolution | Connection Type | OS & Kernel | Status         | Notes                                                          |
-| ------------------ | ----------------- | --------------- | ----------- | -------------- | -------------------------------------------------------------- |
-| Pi 4B              | 640x512           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video. Power over 5V 3v3 issues:(Low-voltage warning; high current draw on 3.3V CSI port. Rarely causes issues) |
-| Pi 4B              | 384x288           | MIPI CSI-2      | Bookworm    | Working        | 60Hz video                           |
-| Pi 4B              | 256x192           | MIPI CSI-2      | Bookworm    | *Working       | *Purple River tested the 256 with my driver and it worked. They believe my module's firmware is the issue and are sending me instructions to update it|
-| Pi 5               | 640x512           | MIPI CSI-2      | Bookworm    | ✅ **Beta** | 60fps thermal, retry logic validated, security fixes applied |
-| Pi Zero 2 W        | 640x512           | MIPI CSI-2      | Bookworm    | ⚠️ Brownouts   | Camera startup draws too much current, maybe possible in a later board revision|
+This repository covers the Raspberry Pi only and is no longer where support is tracked. The current
+list, including the Radxa boards, is in the
+[mini2-thermal-driver README](https://github.com/Kodrea/mini2-thermal-driver#supported-platforms).
 
-- <s> For the 256 module I'm pretty stumped, I've spent endless hours troubleshooting the mipi video. I2C commands work and the camera appears to be operating normally (shutter click startup sequence is audible and CVBS video stream works) but no matter what I do I get no video when opening the camera and no data if i try --streammap. I will continue troubleshooting but this will be on the back burner since the 50hz is available via USB. </s>
-   - The issue was with my specific module and has now been verified to work with 2 other 256 modules.
-- <s> For the Pi Zero 2W I tried powering the 5V rail directly with a DC PSU but still faced brownouts. The camera causes a voltage drop large enough that the raspberry pi reboots every time. Unfortunately attempts to power the module externally have not worked either. it's not possible to power the module by the 5V and GND connectors exposed and connect the mipi CSI-2 cable. In a later board revision I would like to have 5V pins dedicated for powering even when the module is connected by the 15pin ribbon cable. </s>
-   - Using the 5V pin in the analog/uart port solves the issue <b>BUT</b> you will need to modify the board or block the 3v3 pin with tape. If the 3v3 line is connected the camera will not use the 5V power and will get stuck in a boot loop while the camera tries to          draw too much power over 3v3.
-   - Any board purchased after mid-August 2025 will already have a fix applied.
+The 640x512, 384x288 and 256x192 modules all work over MIPI CSI-2.
 
 ## TODO
-- Test 384 and 256 modules on Pi 5
-- Continue Troubleshooting 256 mipi data on Pi 4
+- Test the 256 module on Pi 5
 - ISP integration for hardware denoising (Pi 5)
 
 ## Where I got the module
@@ -314,8 +305,6 @@ v4l2-ctl -d /dev/v4l-subdev0 --set-ctrl=colormap=3
 - **Note**: Requires manual driver configuration for resolution
 
 ### 🚧 **Development Status**
-- **256x192 Module**: I2C working, MIPI video troubleshooting in progress
-- **Pi Zero 2W**: Hardware power limitations prevent reliable operation
 - **ISP Integration**: Future Pi 5 enhancement for hardware denoising
 
 ---
