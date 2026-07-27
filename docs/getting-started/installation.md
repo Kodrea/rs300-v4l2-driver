@@ -402,18 +402,6 @@ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=100
 
 ---
 
-### Low Voltage Warnings (Pi 4 Only)
-
-**Symptom**: Yellow lightning bolt icon, kernel messages about voltage
-
-**Cause**: High current draw on 3.3V CSI port
-
-**Impact**: Rarely causes operational issues
-
-**Solution**: Use official 15W power supply minimum, consider 25W supply
-
----
-
 ## Advanced Configuration
 
 ### Module Parameters (Both Platforms)
